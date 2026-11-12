@@ -3470,6 +3470,7 @@ class VroonPhotoApp {
         const scope = document.getElementById('export-scope')?.value || 'all';
         const format = document.getElementById('export-format')?.value || 'original-raw';
         const quality = parseFloat(document.getElementById('export-quality')?.value || 0.95);
+        const method = document.getElementById('export-method')?.value || 'folder';
 
         let photosToExport;
         if (scope === 'all') {
@@ -3532,7 +3533,7 @@ class VroonPhotoApp {
             // ═══════════════════════════════════════════════════════
             // KEUZE 1: ENKELE FOTO DIRECT IN FINDER 'BEWAAR ALS' OPENEN
             // ═══════════════════════════════════════════════════════
-            if ('showSaveFilePicker' in window && photosToExport.length === 1) {
+            if ('showSaveFilePicker' in window && photosToExport.length === 1 && method !== 'zip') {
                 const p = photosToExport[0];
                 const origExt = (p.filename.split('.').pop() || 'jpg').toLowerCase();
                 const isRaw = p.isRaw || (this.rawDecoder && this.rawDecoder.isRaw(p.filename));
@@ -3547,7 +3548,6 @@ class VroonPhotoApp {
                 const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${ext}`;
                 const mimeType = (ext === 'dng') ? 'image/x-adobe-dng' : (format === 'original-raw' ? 'application/octet-stream' : format);
 
-                // DIRECT FINDER OPENEN VOORDAT RENDERING START (behoudt user activation)
                 const fileHandle = await window.showSaveFilePicker({
                     suggestedName: cleanName,
                     types: [{
@@ -3571,10 +3571,9 @@ class VroonPhotoApp {
             }
 
             // ═══════════════════════════════════════════════════════
-            // KEUZE 2: MEERDERE FOTO'S DIRECT IN FINDER MAP SELECTIE OPENEN
+            // KEUZE 2: DIRECTE FINDER MAP SELECTIE (Chrome / Edge / Arc)
             // ═══════════════════════════════════════════════════════
-            if ('showDirectoryPicker' in window && photosToExport.length > 1) {
-                // DIRECT FINDER OPENEN VOORDAT RENDERING START
+            if (method === 'folder' && 'showDirectoryPicker' in window && photosToExport.length > 1) {
                 const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
                 if (!dirHandle) return;
 
@@ -3595,63 +3594,99 @@ class VroonPhotoApp {
                     savedCount++;
                 }
 
-                alert(`✅ Succesvol ${savedCount} foto's opgeslagen in Finder in map '${dirHandle.name}'!`);
+                alert(`✅ Succesvol ${savedCount} foto's rechtstreeks opgeslagen in Finder in map '${dirHandle.name}'! Geen zip, geen downloads.`);
                 document.getElementById('loading-overlay')?.classList.add('hidden');
                 return;
             }
 
-            // OPTIE C: iPad / iOS Web Share API ("Bewaar in Bestanden")
-            if (navigator.canShare && navigator.canShare({ files: [] })) {
+            // ═══════════════════════════════════════════════════════
+            // KEUZE 3: macOS DEELMENU ("Bewaar in Bestanden / Finder")
+            // ═══════════════════════════════════════════════════════
+            let canShareTest = false;
+            try {
+                if (navigator.canShare) {
+                    const tFile = new File([''], 'test.png', { type: 'image/png' });
+                    canShareTest = navigator.canShare({ files: [tFile] });
+                }
+            } catch (e) { canShareTest = false; }
+
+            if (method === 'share' && canShareTest) {
+                const loadingText = document.getElementById('loading-text');
                 const filesArray = [];
                 for (let i = 0; i < photosToExport.length; i++) {
                     const p = photosToExport[i];
+                    if (loadingText) loadingText.textContent = `Voorbereiden voor delen (${i + 1}/${photosToExport.length}): ${p.filename}...`;
                     const { blob, ext } = await getPhotoExportData(p);
                     const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt_${i + 1}.${ext}`;
                     filesArray.push(new File([blob], cleanName, { type: blob.type || 'application/octet-stream' }));
                 }
 
-                if (navigator.canShare({ files: filesArray })) {
-                    await navigator.share({
-                        files: filesArray,
-                        title: 'vroonphoto export',
-                        text: `${filesArray.length} bewerkte foto('s) van vroonphoto`
-                    });
-                    document.getElementById('loading-overlay')?.classList.add('hidden');
-                    return;
-                }
+                await navigator.share({
+                    files: filesArray,
+                    title: 'vroonphoto export',
+                    text: `${filesArray.length} bewerkte foto('s) van vroonphoto`
+                });
+                document.getElementById('loading-overlay')?.classList.add('hidden');
+                return;
             }
 
-            // OPTIE D: Standaard download fallback (Safari of browser zonder native Directory Picker)
-            if (photosToExport.length > 1) {
+            // ═══════════════════════════════════════════════════════
+            // KEUZE 4: LOSSE BESTANDEN OPSLAAN (GÉÉN ZIP)
+            // ═══════════════════════════════════════════════════════
+            let saveAsLooseFiles = (method === 'files');
+            if (method === 'folder' && !('showDirectoryPicker' in window) && photosToExport.length > 1) {
+                // In Safari ondersteunt Apple showDirectoryPicker niet
+                const userChoice = confirm(
+                    "Safari staat webpagina's niet toe om rechtstreeks een map te openen via de File System API.\n\n" +
+                    "Wilt u de foto's opslaan als LOSSE BESTANDEN (geen ZIP)?\n\n" +
+                    "• Klik op 'OK' voor LOSSE BESTANDEN (U kiest zelf de map in Finder als Safari staat ingesteld op 'Vraag om voor elke download').\n" +
+                    "• Klik op 'Annuleren' om ze gebundeld als 1 bestand (ZIP) te downloaden.\n\n" +
+                    "💡 Tip: Gebruik Google Chrome op uw Mac om met 1 klik direct een willekeurige map in Finder te kiezen."
+                );
+                saveAsLooseFiles = userChoice;
+            }
+
+            if (saveAsLooseFiles || photosToExport.length === 1) {
                 const loadingText = document.getElementById('loading-text');
-                const fileItems = [];
                 for (let i = 0; i < photosToExport.length; i++) {
                     const p = photosToExport[i];
-                    if (loadingText) loadingText.textContent = `Verpakken in ZIP (${i + 1}/${photosToExport.length}): ${p.filename}...`;
+                    if (loadingText) loadingText.textContent = `Opslaan van bestand (${i + 1}/${photosToExport.length}): ${p.filename}...`;
                     const { blob, ext } = await getPhotoExportData(p);
-                    const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt_${i + 1}.${ext}`;
-                    const arrayBuf = await blob.arrayBuffer();
-                    fileItems.push({ name: cleanName, data: new Uint8Array(arrayBuf) });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const suffix = photosToExport.length > 1 ? `_bewerkt_${i + 1}.${ext}` : `_bewerkt.${ext}`;
+                    a.download = p.filename.replace(/\.[^/.]+$/, "") + suffix;
+                    a.click();
+                    await new Promise(r => setTimeout(r, 280));
+                    URL.revokeObjectURL(url);
                 }
-                const zipBlob = this.createSimpleZipBlob(fileItems);
-                const url = URL.createObjectURL(zipBlob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `vroonphoto_selectie_${photosToExport.length}_fotos.zip`;
-                a.click();
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
-                alert(`✅ ${photosToExport.length} foto's zijn gebundeld en direct opgeslagen als 1 ZIP-bestand ('${a.download}')! U kunt dit bestand in Finder direct uitpakken.`);
-            } else {
-                const p = photosToExport[0];
-                const { blob, ext } = await getPhotoExportData(p);
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${ext}`;
-                a.click();
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
-                alert(`✅ Foto succesvol opgeslagen op uw apparaat als '${a.download}'!`);
+                alert(`✅ ${photosToExport.length} foto('s) succesvol opgeslagen als losse bestanden (geen ZIP)!`);
+                document.getElementById('loading-overlay')?.classList.add('hidden');
+                return;
             }
+
+            // ═══════════════════════════════════════════════════════
+            // KEUZE 5: ALLES IN 1 ZIP-BESTAND BUNDELEN
+            // ═══════════════════════════════════════════════════════
+            const loadingText = document.getElementById('loading-text');
+            const fileItems = [];
+            for (let i = 0; i < photosToExport.length; i++) {
+                const p = photosToExport[i];
+                if (loadingText) loadingText.textContent = `Verpakken in ZIP (${i + 1}/${photosToExport.length}): ${p.filename}...`;
+                const { blob, ext } = await getPhotoExportData(p);
+                const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt_${i + 1}.${ext}`;
+                const arrayBuf = await blob.arrayBuffer();
+                fileItems.push({ name: cleanName, data: new Uint8Array(arrayBuf) });
+            }
+            const zipBlob = this.createSimpleZipBlob(fileItems);
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `vroonphoto_selectie_${photosToExport.length}_fotos.zip`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            alert(`✅ ${photosToExport.length} foto's zijn gebundeld en opgeslagen als ZIP-bestand ('${a.download}').`);
 
         } catch (err) {
             if (err.name !== 'AbortError') {

@@ -22,7 +22,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.7.2</strong> beschikbaar &bull; <span id="upd-note">Naadloos objecten &amp; personen verwijderen (WASM inpainting hersteld)</span></span>
+      <span><strong id="upd-ver">v1.7.3</strong> beschikbaar &bull; <span id="upd-note">Kies zelf uw doelmap in Exportcentrum (Directe Finder mapkeuze / Losse bestanden / Géén verplichte ZIP)</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -43,7 +43,7 @@
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)"
           title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.7.2</span> 🔄
+          <span id="ver-txt">v1.7.3</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -916,10 +916,10 @@
 
         <div class="dest-choice-box">
           <div style="font-weight: 700; color: var(--accent-cyan); display: flex; align-items: center; gap: 6px;">
-            <span>📁 Direct Opslaan op Apparaat (Finder, Verkenner &amp; Bestanden)</span>
+            <span>📁 Zelf Doelmap &amp; Opslagmethode Kiezen (macOS Finder / Verkenner)</span>
           </div>
           <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
-            Kies hieronder het gewenste bestandsformaat (origineel RAW, DNG, JPEG of TIFF) en de selectie. In Chrome/Edge kiest u direct de doelmap in Finder. In Safari worden foto's direct opgeslagen of gebundeld in <strong>1 overzichtelijk ZIP-bestand</strong> zonder pop-up blokkades.
+            Kies hieronder het gewenste bestandsformaat, de selectie en hoe u de foto's wilt opslaan. U bent <strong>nooit verplicht tot een ZIP-bestand</strong>: u kunt kiezen voor directe Finder mapselectie, losse bestanden of het macOS deelmenu.
           </p>
         </div>
 
@@ -929,6 +929,16 @@
             <option value="all">Alle bewerkte foto's in één keer (Batch Export)</option>
             <option value="selected">⭐ Alleen beoordeelde / geselecteerde foto's (Culling Selectie)</option>
             <option value="current">Alleen de huidige actieve foto</option>
+          </select>
+        </label>
+
+        <label id="export-method-group">
+          <div style="margin-bottom: 4px; font-weight: 600;">Opslagmethode &amp; Bestemming:</div>
+          <select id="export-method" class="form-select" style="width: 100%; background: var(--bg-panel-sub); color: var(--text-main); border: 1px solid var(--border-glow); border-radius: var(--radius-sm); padding: 6px 8px;">
+            <option value="folder" selected>📁 Direct een eigen map kiezen in Finder / Verkenner (Zonder ZIP)</option>
+            <option value="files">💾 Losse bestanden (Foto voor foto opslaan in zelfgekozen map, géén ZIP)</option>
+            <option value="share">📤 macOS Deelmenu ("Bewaar in Bestanden / Finder")</option>
+            <option value="zip">📦 Alles in 1 ZIP-bestand bundelen</option>
           </select>
         </label>
 
@@ -952,6 +962,16 @@
             <option value="0.75">75% — Compact</option>
           </select>
         </label>
+
+        <div id="export-browser-notice" style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px; padding: 10px 12px; margin-top: 10px; font-size: 11px; line-height: 1.45; color: #cbd5e1;">
+          <div style="font-weight: 700; color: #38bdf8; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <span>ℹ️ Hoe u uw doelmap direct kiest op uw Mac of computer:</span>
+          </div>
+          <div>
+            • <strong>Chrome / Edge / Arc op Mac:</strong> Ondersteunt 100% native Finder mapselectie! Er opent direct een Finder-venster waarin u een willekeurige doelmap of externe schijf kiest; alle foto's worden daar direct los in geplaatst.<br>
+            • <strong>Safari op Mac:</strong> Apple staat in Safari geen rechtstreekse mapaanmaak toe. Kies hierboven <em>"Losse bestanden (géén ZIP)"</em> of <em>"macOS Deelmenu (Bewaar in Finder)"</em>. Om in Safari altijd zelf de map te kiezen in Finder: ga in Safari naar <em>Instellingen (⌘,) &gt; Algemeen &gt; Locatie downloads</em> en selecteer <em>"Vraag om voor elke download"</em>.
+          </div>
+        </div>
       </div>
 
       <div class="modal-footer">
