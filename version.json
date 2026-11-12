@@ -1,11 +1,12 @@
 {
   "app_name": "vroonphoto",
-  "version": "1.6.5",
-  "build": 24,
-  "timestamp": "2026-11-12T19:16:09.494076+00:00",
-  "git_hash": "c44079d",
+  "version": "1.6.6",
+  "build": 25,
+  "timestamp": "2026-11-12T19:38:10.931003+00:00",
+  "git_hash": "df26dc7",
   "features": [
-    "🚀 Versie v1.6.5: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🚀 Versie v1.6.6: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🛠️ Volledig Herstel Fotoweergave & Inlezen (v1.6.6): Directe reparatie van de afbeeldingslader en voorbeeldfoto-engine. Zowel de 5 voorbeeldfoto's als geopende of vanaf SD-kaart ingelezen RAW-, DNG- en JPG-foto's worden direct feilloos weergegeven op het hoofdscherm.",
     "💾 Volledige RAW Export & Opslag (.cr2, .nef, .arw, .dng) (v1.6.5): RAW-bestanden kunnen nu ook direct als RAW worden opgeslagen! Behoud bij het exporteren of bij 1-klik submap opslag het originele camera RAW-bestand (bit-exact .cr2, .nef, .arw, .dng) of sla bewerkte foto's op als volwaardig Adobe DNG RAW containerbestand (.dng). Inclusief handige formaatkiezer in de culling-werkbalk en export-dialoog.",
     "🎨 Donkere Styling Keuzelijsten & Filters (v1.6.4): Het filter 'Toon Alle Foto's' en alle select-dropdowns zijn nu voorzien van dezelfde rustige donkere leisteen kleur, subtiele rand en witte tekst als de rest van de interface. Geen storende witte dropdowns of keuzelijsten meer.",
     "🎛️ Uniforme Knopafmetingen & Donkere Styling (v1.6.3): De SD-kaart knop en alle voorheen lichtblauwe knoppen zijn teruggebracht naar dezelfde compacte proporties en elegante donkere leisteen stijl als de rest van de knoppen. Geen overdreven grote of fel oplichtende knoppen meer, maar een rustige, strakke en perfect afgestemde navigatiebalk en interface.",

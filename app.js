@@ -3366,17 +3366,6 @@ class VroonPhotoApp {
             expCanvas.toBlob(blob => resolve(blob), format, quality);
         });
     }
-            }
-
-            // Standaard Canvas formaten: JPEG, PNG, WebP
-            const expCanvas = document.createElement('canvas');
-            expCanvas.width = photo.currentImageData.width;
-            expCanvas.height = photo.currentImageData.height;
-            const ctx = expCanvas.getContext('2d');
-            ctx.putImageData(photo.currentImageData, 0, 0);
-            expCanvas.toBlob(blob => resolve(blob), format, quality);
-        });
-    }
 
     // Pure WebAssembly/JS TIFF & DNG (Digital Negative) Encoder
     encodeTiffOrDng(imageData, isDNG = false) {
