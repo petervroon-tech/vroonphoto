@@ -750,6 +750,12 @@ class VroonPhotoApp {
         this.sessionDirHandle = null;
         this.sessionTargetLocationName = '';
 
+        // Lokaal Aanpassingspenseel (Pen, Hand & Muis)
+        this.localBrushMode = 'brush'; // 'brush' of 'eraser'
+        this.showLocalMaskOverlay = true;
+        this.lastLocalPointerPos = null;
+        this.overlayCanvas = null;
+
         // Aangepast Automatisch Import Profiel (bv. ruisonderdrukking, rood licht, banding reductie)
         this.customImportPreset = this.loadCustomImportPreset();
     }
@@ -967,11 +973,65 @@ class VroonPhotoApp {
         document.getElementById('btn-upscale-2x')?.addEventListener('click', () => this.upscale(2));
         document.getElementById('btn-upscale-4x')?.addEventListener('click', () => this.upscale(4));
 
+        // Lokaal Aanpassingspenseel (Pen, Hand & Muis)
+        document.getElementById('tool-local-adjust')?.addEventListener('click', () => this.toggleLocalAdjustTool());
+        document.getElementById('btn-hdr-local-brush')?.addEventListener('click', () => this.toggleLocalAdjustTool());
+        document.getElementById('btn-local-brush-mode')?.addEventListener('click', () => this.setLocalBrushMode('brush'));
+        document.getElementById('btn-local-eraser-mode')?.addEventListener('click', () => this.setLocalBrushMode('eraser'));
+        document.getElementById('btn-local-toggle-overlay')?.addEventListener('click', () => this.toggleLocalMaskOverlay());
+        document.getElementById('btn-local-invert')?.addEventListener('click', () => this.invertLocalMask());
+        document.getElementById('btn-local-clear')?.addEventListener('click', () => this.clearLocalMask());
+        document.getElementById('btn-local-bake')?.addEventListener('click', () => this.bakeLocalAdjustments());
+
+        // Lokale Sliders
+        const localSizeSlider = document.getElementById('local-brush-size');
+        const localSizeVal = document.getElementById('local-brush-size-val');
+        localSizeSlider?.addEventListener('input', (e) => {
+            if (localSizeVal) localSizeVal.textContent = `${e.target.value}px`;
+        });
+
+        const localFeatherSlider = document.getElementById('local-brush-feather');
+        const localFeatherVal = document.getElementById('local-brush-feather-val');
+        localFeatherSlider?.addEventListener('input', (e) => {
+            if (localFeatherVal) localFeatherVal.textContent = `${e.target.value}%`;
+        });
+
+        ['local-exposure', 'local-contrast', 'local-highlights', 'local-temp', 'local-saturation', 'local-clarity'].forEach(id => {
+            const slider = document.getElementById(id);
+            const valSpan = document.getElementById(`${id}-val`);
+            const param = id.replace('local-', '');
+            slider?.addEventListener('input', (e) => {
+                const photo = this.getActivePhoto();
+                if (!photo) return;
+                this.ensurePhotoLocalMask(photo);
+                const val = parseFloat(e.target.value);
+                photo.localState[param] = val;
+                if (valSpan) valSpan.textContent = val;
+                this.renderActivePhoto();
+            });
+        });
+
+        document.getElementById('local-bw-select')?.addEventListener('change', (e) => {
+            const photo = this.getActivePhoto();
+            if (!photo) return;
+            this.ensurePhotoLocalMask(photo);
+            photo.localState.selectiveBW = e.target.value;
+            this.renderActivePhoto();
+        });
+
         // Object / Persoon Verwijderen Tool (Inpaint)
         document.getElementById('tool-inpaint')?.addEventListener('click', () => {
-            this.activeTool = this.activeTool === 'inpaint' ? 'adjust' : 'inpaint';
+            if (this.activeTool === 'inpaint') {
+                this.activeTool = 'adjust';
+            } else {
+                this.activeTool = 'inpaint';
+                document.getElementById('local-adjust-controls')?.classList.add('hidden');
+                document.getElementById('tool-local-adjust')?.classList.remove('active');
+                document.getElementById('btn-hdr-local-brush')?.classList.remove('active');
+            }
             const isActive = this.activeTool === 'inpaint';
-            document.getElementById('tool-inpaint').classList.toggle('active', isActive);
+            document.getElementById('tool-inpaint')?.classList.toggle('active', isActive);
+            document.getElementById('inpaint-controls')?.classList.toggle('hidden', !isActive);
             const circle = document.getElementById('brush-cursor-circle');
             if (circle && !isActive) circle.style.display = 'none';
         });
@@ -1146,22 +1206,35 @@ class VroonPhotoApp {
     updateInputMode(pointerType, pressure = 0) {
         this.activePointerType = pointerType || 'mouse';
         const badge = document.getElementById('input-mode-badge');
-        if (!badge) return;
+        const badge2 = document.getElementById('local-input-type-badge');
 
-        badge.classList.remove('pen-mode', 'touch-mode');
-        if (pointerType === 'pen') {
-            this.lastPenTime = Date.now();
-            badge.classList.add('pen-mode');
-            const pressTxt = pressure > 0 ? ` (${Math.round(pressure * 100)}%)` : '';
-            badge.textContent = `✏️ Pen / Stylus${pressTxt}`;
-            badge.title = 'Apple Pencil of stylus pen actief met drukgevoeligheid';
-        } else if (pointerType === 'touch') {
-            badge.classList.add('touch-mode');
-            badge.textContent = `👆 Hand / Touch`;
-            badge.title = 'Aanraakscherm / vingerbediening actief';
-        } else {
-            badge.textContent = `🖱️ Muis`;
-            badge.title = 'Muis of trackpad actief';
+        if (badge) {
+            badge.classList.remove('pen-mode', 'touch-mode');
+            if (pointerType === 'pen') {
+                this.lastPenTime = Date.now();
+                badge.classList.add('pen-mode');
+                const pressTxt = pressure > 0 ? ` (${Math.round(pressure * 100)}%)` : '';
+                badge.textContent = `✏️ Pen / Stylus${pressTxt}`;
+                badge.title = 'Apple Pencil of stylus pen actief met drukgevoeligheid';
+            } else if (pointerType === 'touch') {
+                badge.classList.add('touch-mode');
+                badge.textContent = `👆 Hand / Touch`;
+                badge.title = 'Aanraakscherm / vingerbediening actief';
+            } else {
+                badge.textContent = `🖱️ Muis`;
+                badge.title = 'Muis of trackpad actief';
+            }
+        }
+
+        if (badge2) {
+            if (pointerType === 'pen') {
+                const pressTxt = pressure > 0 ? ` (${Math.round(pressure * 100)}% Druk)` : '';
+                badge2.textContent = `✏️ Pen / Stylus${pressTxt}`;
+            } else if (pointerType === 'touch') {
+                badge2.textContent = `👆 Hand / Touch`;
+            } else {
+                badge2.textContent = `🖱️ Muis`;
+            }
         }
     }
 
@@ -1207,7 +1280,7 @@ class VroonPhotoApp {
         const updateCursorCircle = (clientX, clientY, pressure = 0.5) => {
             const circle = document.getElementById('brush-cursor-circle');
             if (!circle) return;
-            if (this.activeTool !== 'inpaint') {
+            if (this.activeTool !== 'inpaint' && this.activeTool !== 'local_adjust') {
                 circle.style.display = 'none';
                 return;
             }
@@ -1216,7 +1289,12 @@ class VroonPhotoApp {
                 circle.style.display = 'none';
                 return;
             }
-            const baseBrushSize = parseInt(document.getElementById('inpaint-brush-size')?.value || 35);
+            let baseBrushSize = 35;
+            if (this.activeTool === 'inpaint') {
+                baseBrushSize = parseInt(document.getElementById('inpaint-brush-size')?.value || 35, 10);
+            } else if (this.activeTool === 'local_adjust') {
+                baseBrushSize = parseInt(document.getElementById('local-brush-size')?.value || 35, 10);
+            }
             let brushSize = baseBrushSize;
             if (this.activePointerType === 'pen' && pressure > 0) {
                 brushSize = Math.max(4, baseBrushSize * (0.35 + 0.65 * pressure));
@@ -1228,6 +1306,7 @@ class VroonPhotoApp {
             circle.style.height = `${displayDiam}px`;
             circle.style.left = `${clientX}px`;
             circle.style.top = `${clientY}px`;
+            circle.style.borderColor = this.activeTool === 'local_adjust' ? '#38bdf8' : '#ef4444';
         };
 
         // Pointer Down
@@ -1257,8 +1336,11 @@ class VroonPhotoApp {
 
             if (this.activePointers.size === 1) {
                 this.lastPointerPos = null;
+                this.lastLocalPointerPos = null;
                 if (this.activeTool === 'inpaint') {
                     this.paintMaskStroke(e.clientX, e.clientY, e.pressure, true);
+                } else if (this.activeTool === 'local_adjust') {
+                    this.paintLocalStroke(e.clientX, e.clientY, e.pressure, true);
                 } else if (this.isBeforeAfterActive) {
                     const rect = this.canvas.getBoundingClientRect();
                     this.splitComparePos = Math.max(0.05, Math.min(0.95, (e.clientX - rect.left) / rect.width));
@@ -1267,6 +1349,7 @@ class VroonPhotoApp {
             } else if (this.activePointers.size === 2) {
                 // Twee vingers (hand) pinch-to-zoom start
                 this.lastPointerPos = null;
+                this.lastLocalPointerPos = null;
                 const pts = Array.from(this.activePointers.values());
                 this.initialPinchDist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
                 this.initialZoom = this.zoomLevel;
@@ -1285,6 +1368,8 @@ class VroonPhotoApp {
                 if (this.activePointers.size === 1) {
                     if (this.activeTool === 'inpaint') {
                         this.paintMaskStroke(e.clientX, e.clientY, e.pressure, false);
+                    } else if (this.activeTool === 'local_adjust') {
+                        this.paintLocalStroke(e.clientX, e.clientY, e.pressure, false);
                     } else if (this.isBeforeAfterActive) {
                         const rect = this.canvas.getBoundingClientRect();
                         this.splitComparePos = Math.max(0.05, Math.min(0.95, (e.clientX - rect.left) / rect.width));
@@ -1318,6 +1403,7 @@ class VroonPhotoApp {
             }
             if (this.activePointers.size === 0) {
                 this.lastPointerPos = null;
+                this.lastLocalPointerPos = null;
             }
         };
         window.addEventListener('pointerup', handlePointerUp);
@@ -1334,6 +1420,21 @@ class VroonPhotoApp {
             if (e.key === '\\') {
                 e.preventDefault();
                 document.getElementById('btn-compare-toggle')?.click();
+            } else if ((e.key === 'o' || e.key === 'O') && !e.target.matches('input, select, textarea')) {
+                e.preventDefault();
+                this.toggleLocalMaskOverlay();
+            } else if (e.key === '[' && !e.target.matches('input, select, textarea')) {
+                const s = document.getElementById(this.activeTool === 'local_adjust' ? 'local-brush-size' : 'inpaint-brush-size');
+                if (s) {
+                    s.value = Math.max(5, parseInt(s.value, 10) - 10);
+                    s.dispatchEvent(new Event('input'));
+                }
+            } else if (e.key === ']' && !e.target.matches('input, select, textarea')) {
+                const s = document.getElementById(this.activeTool === 'local_adjust' ? 'local-brush-size' : 'inpaint-brush-size');
+                if (s) {
+                    s.value = Math.min(180, parseInt(s.value, 10) + 10);
+                    s.dispatchEvent(new Event('input'));
+                }
             } else if (e.key === 'ArrowRight' && !e.target.matches('input, select')) {
                 this.selectNextPhoto();
             } else if (e.key === 'ArrowLeft' && !e.target.matches('input, select')) {
@@ -1439,7 +1540,19 @@ class VroonPhotoApp {
             state: this.getDefaultState(),
             rating: meta.rating !== undefined ? meta.rating : 0, // 0 = unrated, 1 t/m 7
             colorLabel: meta.colorLabel || 'none', // 'none', 'red', 'yellow', 'green', 'blue', 'purple'
-            hasStageRed: false
+            hasStageRed: false,
+            localMaskCanvas: null,
+            localMaskCtx: null,
+            hasLocalMask: false,
+            localState: {
+                exposure: 0,
+                contrast: 0,
+                highlights: 0,
+                temp: 0,
+                saturation: 0,
+                clarity: 0,
+                selectiveBW: 'none'
+            }
         };
 
         // Geen geforceerde bewerkingen bij inlezen: foto's openen 100% neutraal/origineel.
@@ -1491,6 +1604,10 @@ class VroonPhotoApp {
         if (alertBox) alertBox.classList.add('hidden');
 
         this.syncSliderUIFromPhoto(photo);
+        this.syncLocalUIFromPhoto(photo);
+        if (this.activeTool === 'local_adjust') {
+            this.ensurePhotoLocalMask(photo);
+        }
         if (photo.activePreset) {
             this.activePresetKey = photo.activePreset.key;
             this.activePresetAmount = photo.activePreset.amount ?? 100;
@@ -2274,6 +2391,11 @@ class VroonPhotoApp {
             );
         }
 
+        // 7. Lokale Aanpassingen (Pen, Hand/Touch of Muis op specifieke onderdelen van de foto)
+        if (photo.localMaskCanvas && photo.hasLocalMask) {
+            this.applyLocalAdjustmentsToImage(img, photo);
+        }
+
         photo.currentImageData = img;
         this.drawActiveCanvas();
         this.updateHistogram(img);
@@ -2317,6 +2439,25 @@ class VroonPhotoApp {
             this.ctx.save();
             this.ctx.globalAlpha = 0.45;
             this.ctx.drawImage(this.maskCanvas, 0, 0);
+            this.ctx.restore();
+        }
+
+        if (this.activeTool === 'local_adjust' && this.showLocalMaskOverlay && photo.localMaskCanvas && photo.hasLocalMask) {
+            this.ctx.save();
+            if (!this.overlayCanvas) {
+                this.overlayCanvas = document.createElement('canvas');
+            }
+            if (this.overlayCanvas.width !== w || this.overlayCanvas.height !== h) {
+                this.overlayCanvas.width = w; this.overlayCanvas.height = h;
+            }
+            const oCtx = this.overlayCanvas.getContext('2d');
+            oCtx.clearRect(0, 0, w, h);
+            oCtx.drawImage(photo.localMaskCanvas, 0, 0);
+            oCtx.globalCompositeOperation = 'source-in';
+            oCtx.fillStyle = 'rgba(239, 68, 68, 0.42)'; // Robijnrode overlay zoals Lightroom masker
+            oCtx.fillRect(0, 0, w, h);
+
+            this.ctx.drawImage(this.overlayCanvas, 0, 0);
             this.ctx.restore();
         }
     }
@@ -2381,6 +2522,325 @@ class VroonPhotoApp {
             this.renderActivePhoto();
             document.getElementById('loading-overlay')?.classList.add('hidden');
         }, 40);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  5.5 LOKAAL AANPASSINGSPENSEEL ENGINE (PEN, TOUCH & MUIS)
+    // ═══════════════════════════════════════════════════════
+
+    ensurePhotoLocalMask(photo) {
+        if (!photo) return null;
+        if (!photo.localMaskCanvas) {
+            photo.localMaskCanvas = document.createElement('canvas');
+            photo.localMaskCanvas.width = photo.originalImageData.width;
+            photo.localMaskCanvas.height = photo.originalImageData.height;
+            photo.localMaskCtx = photo.localMaskCanvas.getContext('2d', { willReadFrequently: true });
+        }
+        if (!photo.localState) {
+            photo.localState = {
+                exposure: 0,
+                contrast: 0,
+                highlights: 0,
+                temp: 0,
+                saturation: 0,
+                clarity: 0,
+                selectiveBW: 'none'
+            };
+        }
+        return photo.localMaskCanvas;
+    }
+
+    syncLocalUIFromPhoto(photo) {
+        if (!photo || !photo.localState) return;
+        const ls = photo.localState;
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            const txt = document.getElementById(`${id}-val`);
+            if (el) el.value = val;
+            if (txt) txt.textContent = val;
+        };
+        setVal('local-exposure', ls.exposure || 0);
+        setVal('local-contrast', ls.contrast || 0);
+        setVal('local-highlights', ls.highlights || 0);
+        setVal('local-temp', ls.temp || 0);
+        setVal('local-saturation', ls.saturation || 0);
+        setVal('local-clarity', ls.clarity || 0);
+        const bwSel = document.getElementById('local-bw-select');
+        if (bwSel) bwSel.value = ls.selectiveBW || 'none';
+    }
+
+    toggleLocalAdjustTool(forceState = null) {
+        const nextState = forceState !== null ? forceState : (this.activeTool !== 'local_adjust');
+        this.activeTool = nextState ? 'local_adjust' : 'adjust';
+
+        const panel = document.getElementById('local-adjust-controls');
+        const toolBtn = document.getElementById('tool-local-adjust');
+        const hdrBtn = document.getElementById('btn-hdr-local-brush');
+        const inpaintControls = document.getElementById('inpaint-controls');
+        const inpaintBtn = document.getElementById('tool-inpaint');
+
+        if (this.activeTool === 'local_adjust') {
+            panel?.classList.remove('hidden');
+            toolBtn?.classList.add('active');
+            hdrBtn?.classList.add('active');
+            inpaintControls?.classList.add('hidden');
+            inpaintBtn?.classList.remove('active');
+
+            const photo = this.getActivePhoto();
+            if (photo) {
+                this.ensurePhotoLocalMask(photo);
+                this.syncLocalUIFromPhoto(photo);
+            }
+        } else {
+            panel?.classList.add('hidden');
+            toolBtn?.classList.remove('active');
+            hdrBtn?.classList.remove('active');
+        }
+
+        const circle = document.getElementById('brush-cursor-circle');
+        if (circle && this.activeTool !== 'local_adjust' && this.activeTool !== 'inpaint') {
+            circle.style.display = 'none';
+        }
+
+        this.drawActiveCanvas();
+    }
+
+    setLocalBrushMode(mode) {
+        this.localBrushMode = mode;
+        const brushBtn = document.getElementById('btn-local-brush-mode');
+        const eraserBtn = document.getElementById('btn-local-eraser-mode');
+        if (mode === 'brush') {
+            brushBtn?.classList.remove('btn-secondary');
+            brushBtn?.classList.add('btn-primary');
+            eraserBtn?.classList.remove('btn-primary');
+            eraserBtn?.classList.add('btn-secondary');
+        } else {
+            eraserBtn?.classList.remove('btn-secondary');
+            eraserBtn?.classList.add('btn-primary');
+            brushBtn?.classList.remove('btn-primary');
+            brushBtn?.classList.add('btn-secondary');
+        }
+    }
+
+    toggleLocalMaskOverlay() {
+        this.showLocalMaskOverlay = !this.showLocalMaskOverlay;
+        const btn = document.getElementById('btn-local-toggle-overlay');
+        if (btn) {
+            btn.style.color = this.showLocalMaskOverlay ? '#ef4444' : '#64748b';
+            btn.style.borderColor = this.showLocalMaskOverlay ? '#ef4444' : 'var(--border-glow)';
+        }
+        this.drawActiveCanvas();
+    }
+
+    paintLocalStroke(clientX, clientY, pressure = 0.5, isStart = false) {
+        const photo = this.getActivePhoto();
+        if (!photo) return;
+        this.ensurePhotoLocalMask(photo);
+        const ctx = photo.localMaskCtx;
+        if (!ctx || !this.canvas) return;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const sx = this.canvas.width / rect.width;
+        const sy = this.canvas.height / rect.height;
+        const x = (clientX - rect.left) * sx;
+        const y = (clientY - rect.top) * sy;
+
+        const baseSize = parseInt(document.getElementById('local-brush-size')?.value || 35, 10);
+        const feather = parseInt(document.getElementById('local-brush-feather')?.value || 40, 10);
+        let effectiveRadius = baseSize;
+        if (this.activePointerType === 'pen' && pressure > 0) {
+            effectiveRadius = Math.max(3, baseSize * (0.35 + 0.65 * pressure));
+        }
+
+        const isEraser = this.localBrushMode === 'eraser';
+        ctx.save();
+        ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over';
+
+        const drawDot = (px, py, rad) => {
+            if (rad <= 1) rad = 1.5;
+            if (feather <= 5) {
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(px, py, rad, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                const grad = ctx.createRadialGradient(px, py, Math.max(0, rad * (1.0 - feather / 100.0)), px, py, rad);
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(px, py, rad, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        };
+
+        if (isStart || !this.lastLocalPointerPos) {
+            drawDot(x, y, effectiveRadius);
+        } else {
+            const dist = Math.hypot(x - this.lastLocalPointerPos.x, y - this.lastLocalPointerPos.y);
+            const step = Math.max(2, effectiveRadius * 0.25);
+            const steps = Math.ceil(dist / step);
+            for (let i = 1; i <= steps; i++) {
+                const t = i / steps;
+                const ix = this.lastLocalPointerPos.x + (x - this.lastLocalPointerPos.x) * t;
+                const iy = this.lastLocalPointerPos.y + (y - this.lastLocalPointerPos.y) * t;
+                drawDot(ix, iy, effectiveRadius);
+            }
+        }
+        ctx.restore();
+
+        this.lastLocalPointerPos = { x, y };
+        photo.hasLocalMask = true;
+        this.renderActivePhoto();
+    }
+
+    applyLocalAdjustmentsToImage(img, photo) {
+        if (!photo.localMaskCanvas || !photo.hasLocalMask) return;
+        const maskCtx = photo.localMaskCtx;
+        if (!maskCtx) return;
+
+        const w = img.width, h = img.height;
+        const maskData = maskCtx.getImageData(0, 0, w, h).data;
+        const data = img.data;
+        const ls = photo.localState || {};
+
+        const exp = ls.exposure !== 0 ? Math.pow(2.0, (ls.exposure / 50.0)) : 1.0;
+        const cont = ls.contrast !== 0 ? (ls.contrast + 100.0) / 100.0 : 1.0;
+        const hl = (ls.highlights || 0) / 100.0;
+        const temp = ((ls.temp || 0) / 100.0) * 40.0;
+        const sat = ls.saturation !== 0 ? (ls.saturation + 100.0) / 100.0 : 1.0;
+        const clarity = (ls.clarity || 0) / 100.0;
+        const sbw = ls.selectiveBW || 'none';
+
+        const hasAnyLocalAdjustment = (
+            ls.exposure !== 0 || ls.contrast !== 0 || ls.highlights !== 0 ||
+            ls.temp !== 0 || ls.saturation !== 0 || ls.clarity !== 0 || sbw !== 'none'
+        );
+
+        if (!hasAnyLocalAdjustment) return;
+
+        for (let i = 0; i < data.length; i += 4) {
+            const mVal = maskData[i + 3];
+            if (mVal < 2) {
+                if (sbw === 'color_splash') {
+                    const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                    data[i] = gray | 0;
+                    data[i + 1] = gray | 0;
+                    data[i + 2] = gray | 0;
+                }
+                continue;
+            }
+
+            const m = mVal / 255.0;
+            const r0 = data[i], g0 = data[i + 1], b0 = data[i + 2];
+            let r = r0, g = g0, b = b0;
+
+            if (sbw === 'painted_bw') {
+                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                r = gray; g = gray; b = gray;
+            }
+
+            if (exp !== 1.0) {
+                r *= exp; g *= exp; b *= exp;
+            }
+
+            if (temp !== 0) {
+                r += temp;
+                b -= temp;
+            }
+
+            if (cont !== 1.0) {
+                r = 128.0 + (r - 128.0) * cont;
+                g = 128.0 + (g - 128.0) * cont;
+                b = 128.0 + (b - 128.0) * cont;
+            }
+
+            if (hl !== 0) {
+                const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                const normLum = Math.max(0, Math.min(1, lum / 255.0));
+                const delta = hl > 0
+                    ? (normLum * normLum * hl * 45.0)
+                    : ((1.0 - normLum) * (1.0 - normLum) * hl * 45.0);
+                r += delta; g += delta; b += delta;
+            }
+
+            if (sat !== 1.0) {
+                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                r = gray + (r - gray) * sat;
+                g = gray + (g - gray) * sat;
+                b = gray + (b - gray) * sat;
+            }
+
+            if (clarity !== 0) {
+                const distR = (r - 128.0) / 128.0;
+                const distG = (g - 128.0) / 128.0;
+                const distB = (b - 128.0) / 128.0;
+                r += distR * Math.abs(distR) * clarity * 35.0;
+                g += distG * Math.abs(distG) * clarity * 35.0;
+                b += distB * Math.abs(distB) * clarity * 35.0;
+            }
+
+            data[i]     = Math.min(255, Math.max(0, (r0 * (1.0 - m) + r * m) | 0));
+            data[i + 1] = Math.min(255, Math.max(0, (g0 * (1.0 - m) + g * m) | 0));
+            data[i + 2] = Math.min(255, Math.max(0, (b0 * (1.0 - m) + b * m) | 0));
+        }
+    }
+
+    invertLocalMask() {
+        const photo = this.getActivePhoto();
+        if (!photo) return;
+        this.ensurePhotoLocalMask(photo);
+        const w = photo.localMaskCanvas.width, h = photo.localMaskCanvas.height;
+        const ctx = photo.localMaskCtx;
+        const imgD = ctx.getImageData(0, 0, w, h);
+        const d = imgD.data;
+        for (let i = 0; i < d.length; i += 4) {
+            const currentA = d[i + 3];
+            d[i] = 255;
+            d[i + 1] = 255;
+            d[i + 2] = 255;
+            d[i + 3] = 255 - currentA;
+        }
+        ctx.putImageData(imgD, 0, 0);
+        photo.hasLocalMask = true;
+        this.renderActivePhoto();
+    }
+
+    clearLocalMask() {
+        const photo = this.getActivePhoto();
+        if (!photo) return;
+        if (photo.localMaskCtx) {
+            photo.localMaskCtx.clearRect(0, 0, photo.localMaskCanvas.width, photo.localMaskCanvas.height);
+        }
+        photo.hasLocalMask = false;
+        if (photo.localState) {
+            photo.localState = {
+                exposure: 0,
+                contrast: 0,
+                highlights: 0,
+                temp: 0,
+                saturation: 0,
+                clarity: 0,
+                selectiveBW: 'none'
+            };
+        }
+        this.syncLocalUIFromPhoto(photo);
+        this.renderActivePhoto();
+    }
+
+    bakeLocalAdjustments() {
+        const photo = this.getActivePhoto();
+        if (!photo || !photo.hasLocalMask) {
+            alert("Er is nog geen onderdeel geschilderd of aangepast om toe te passen.");
+            return;
+        }
+        photo.originalImageData = new ImageData(
+            new Uint8ClampedArray(photo.currentImageData.data),
+            photo.currentImageData.width,
+            photo.currentImageData.height
+        );
+        this.clearLocalMask();
+        alert("✨ De lokale aanpassing is definitief toegepast op de foto! U kunt nu eventueel direct een volgend onderdeel schilderen en bewerken.");
     }
 
     // Presets (12 Lightroom & AI Presets + Proportionele Verhouding/Intensiteit 0% - 200%)
@@ -2456,6 +2916,10 @@ class VroonPhotoApp {
         if (s === 'bw') ['bwEnabled', 'bwRed', 'bwGreen', 'bwBlue', 'bwContrast', 'bwClarity', 'bwGrain'].forEach(k => photo.state[k] = d[k]);
         if (s === 'vignette') ['vignetteAmount', 'vignetteMidpoint', 'vignetteFeather'].forEach(k => photo.state[k] = d[k]);
         this.syncSliderUIFromPhoto(photo);
+        this.syncLocalUIFromPhoto(photo);
+        if (this.activeTool === 'local_adjust') {
+            this.ensurePhotoLocalMask(photo);
+        }
         if (photo.activePreset) {
             this.activePresetKey = photo.activePreset.key;
             this.activePresetAmount = photo.activePreset.amount ?? 100;

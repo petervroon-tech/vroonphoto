@@ -327,10 +327,12 @@ body {
 }
 
 .app-header .btn-secondary.active,
-.app-header button.btn-secondary.active {
-  background: var(--accent-cyan);
-  color: #080c14;
-  border-color: var(--accent-cyan);
+.app-header button.btn-secondary.active,
+.btn-secondary.active {
+  background: var(--accent-cyan) !important;
+  color: #080c14 !important;
+  border-color: var(--accent-cyan) !important;
+  font-weight: 700 !important;
 }
 
 /* Algemene styling voor eventuele selects in de header (voorkom wit vlak) */
