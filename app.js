@@ -1158,6 +1158,19 @@ class VroonPhotoApp {
             else this.loadSingleSample(e.target.value);
         });
 
+        // Google AI Punten & Gemini Modal
+        document.getElementById('btn-open-google-ai')?.addEventListener('click', () => this.openGoogleAIModal());
+        document.getElementById('btn-open-google-ai-empty')?.addEventListener('click', () => this.openGoogleAIModal());
+        document.getElementById('btn-close-google-ai-modal')?.addEventListener('click', () => document.getElementById('google-ai-modal')?.classList.add('hidden'));
+        document.getElementById('btn-close-google-ai-footer')?.addEventListener('click', () => document.getElementById('google-ai-modal')?.classList.add('hidden'));
+        document.getElementById('btn-toggle-show-ai-key')?.addEventListener('click', () => {
+            const input = document.getElementById('google-ai-key-input');
+            if (input) input.type = input.type === 'password' ? 'text' : 'password';
+        });
+        document.getElementById('btn-save-ai-key')?.addEventListener('click', () => this.saveGoogleAIKey());
+        document.getElementById('btn-test-google-ai')?.addEventListener('click', () => this.testGoogleAIConnection());
+        document.getElementById('btn-analyze-photo-gemini')?.addEventListener('click', () => this.analyzeCurrentPhotoWithGemini());
+
         // Help & Mogelijkheden Modal
         document.getElementById('btn-open-help')?.addEventListener('click', () => this.openHelpModal());
         document.getElementById('btn-open-help-empty')?.addEventListener('click', () => this.openHelpModal());
@@ -1758,6 +1771,172 @@ class VroonPhotoApp {
         this.updateGridUI();
         this.setActivePhoto(this.activePhotoIndex);
         alert(`✅ Culling voltooid! ${kept.length} geselecteerde foto('s) behouden in uw werkruimte. Originelen op bron blijven veilig bewaard.`);
+    }
+
+    openGoogleAIModal() {
+        const modal = document.getElementById('google-ai-modal');
+        if (!modal) return;
+        const storedKey = localStorage.getItem('vroonphoto_google_ai_key') || '';
+        const input = document.getElementById('google-ai-key-input');
+        const statusEl = document.getElementById('google-ai-key-status');
+        if (input) input.value = storedKey;
+        if (statusEl) {
+            if (storedKey) {
+                const masked = storedKey.substring(0, 6) + '...' + storedKey.slice(-4);
+                statusEl.textContent = `✅ API-sleutel gekoppeld (${masked}). Lokale tools zijn gratis; Cloud AI actief.`;
+                statusEl.style.color = '#34d399';
+            } else {
+                statusEl.textContent = 'Status: Nog geen API-sleutel ingevoerd. Lokale WASM tools draaien altijd gratis.';
+                statusEl.style.color = '#94a3b8';
+            }
+        }
+        modal.classList.remove('hidden');
+    }
+
+    saveGoogleAIKey() {
+        const input = document.getElementById('google-ai-key-input');
+        const statusEl = document.getElementById('google-ai-key-status');
+        const key = input ? input.value.trim() : '';
+        if (key) {
+            localStorage.setItem('vroonphoto_google_ai_key', key);
+            if (statusEl) {
+                const masked = key.substring(0, 6) + '...' + key.slice(-4);
+                statusEl.textContent = `✅ API-sleutel succesvol opgeslagen (${masked})!`;
+                statusEl.style.color = '#34d399';
+            }
+            alert("✅ Uw Google AI / Gemini API-sleutel is veilig opgeslagen in uw browser!");
+        } else {
+            localStorage.removeItem('vroonphoto_google_ai_key');
+            if (statusEl) {
+                statusEl.textContent = 'Status: API-sleutel gewist. Lokale WASM tools blijven 100% gratis beschikbaar.';
+                statusEl.style.color = '#94a3b8';
+            }
+            alert("Google AI API-sleutel is verwijderd.");
+        }
+    }
+
+    async testGoogleAIConnection() {
+        const input = document.getElementById('google-ai-key-input');
+        const statusEl = document.getElementById('google-ai-key-status');
+        const key = (input ? input.value.trim() : '') || localStorage.getItem('vroonphoto_google_ai_key') || '';
+        if (!key) {
+            alert("Voer eerst uw Google AI API-sleutel in om de verbinding en quota te testen.");
+            return;
+        }
+
+        if (statusEl) {
+            statusEl.textContent = "⏳ Bezig met controleren van Google Gemini verbinding & quota...";
+            statusEl.style.color = '#38bdf8';
+        }
+
+        try {
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`);
+            if (resp.ok) {
+                const data = await resp.json();
+                const count = Array.isArray(data.models) ? data.models.length : 0;
+                if (statusEl) {
+                    statusEl.textContent = `✅ Google Gemini API Verbinding 100% Actief! (${count} AI-modellen beschikbaar in uw plan).`;
+                    statusEl.style.color = '#34d399';
+                }
+                alert(`✅ Google AI Verbinding geslaagd!\n\nUw Google-account en API-sleutel zijn actief gekoppeld.\nBeschikbare modellen: o.a. Gemini 1.5 Flash & Pro.\nUw lokale bewerkingen blijven gratis, cloud AI is klaar voor gebruik.`);
+            } else {
+                const errData = await resp.json().catch(() => ({}));
+                const msg = errData?.error?.message || `HTTP ${resp.status} fout`;
+                if (statusEl) {
+                    statusEl.textContent = `❌ Fout bij Google: ${msg}`;
+                    statusEl.style.color = '#ef4444';
+                }
+                alert(`❌ Google API fout:\n${msg}\n\nControleer of de API-sleutel juist is en of 'Generative Language API' actief is in uw Google Cloud / AI Studio.`);
+            }
+        } catch (err) {
+            if (statusEl) {
+                statusEl.textContent = `❌ Netwerkfout: ${err.message}`;
+                statusEl.style.color = '#ef4444';
+            }
+            alert(`Netwerkfout bij verbinden met Google AI: ${err.message}`);
+        }
+    }
+
+    async analyzeCurrentPhotoWithGemini() {
+        if (!this.photos || this.photos.length === 0 || this.activePhotoIndex < 0) {
+            alert("Open eerst een foto om te laten analyseren door Google Gemini AI.");
+            return;
+        }
+        const currentPhoto = this.photos[this.activePhotoIndex];
+        const key = (document.getElementById('google-ai-key-input')?.value.trim()) || localStorage.getItem('vroonphoto_google_ai_key') || '';
+        if (!key) {
+            alert("Voer eerst uw Google AI / Gemini API-sleutel in en klik op 'Opslaan' om de fotoanalyse uit te voeren.");
+            return;
+        }
+
+        const outEl = document.getElementById('gemini-analysis-output');
+        const btn = document.getElementById('btn-analyze-photo-gemini');
+        if (outEl) {
+            outEl.style.display = 'block';
+            outEl.textContent = `⏳ Bezig met verzenden naar Google Gemini Vision AI... Foto analyseren...`;
+        }
+        if (btn) btn.disabled = true;
+
+        try {
+            // Maak een compacte 512px thumbnail voor snelle upload en minimaal tokenverbruik
+            const thumbCanvas = document.createElement('canvas');
+            const maxDim = 512;
+            let w = this.canvas.width;
+            let h = this.canvas.height;
+            if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+            } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+            }
+            thumbCanvas.width = Math.max(1, w);
+            thumbCanvas.height = Math.max(1, h);
+            const ctx = thumbCanvas.getContext('2d');
+            ctx.drawImage(this.canvas, 0, 0, w, h);
+            const dataUrl = thumbCanvas.toDataURL('image/jpeg', 0.85);
+            const base64Data = dataUrl.split(',')[1];
+
+            const reqBody = {
+                contents: [{
+                    parts: [
+                        { text: "Je bent een deskundige professionele fotograaf en beeldbewerker. Analyseer deze foto kort, to-the-point en constructief in het Nederlands:\n1. ☀️ Belichting & Contrast: Hoe is de belichting, hooglichten en schaduwen?\n2. 🎨 Kleur & Witbalans: Kleurzweem of sfeer?\n3. 🔍 Scherpte & Focus: Focuspunt en ruis?\n4. 🎛️ Aanbevolen Aanpassingen: Welke schuifregelaars (bijv. Belichting, Schaduwen, Kleurtemp, Contrast) raad je aan aan te passen?\n5. 🏷️ 5 Relevante Trefwoorden (Tags)." },
+                        {
+                            inline_data: {
+                                mime_type: "image/jpeg",
+                                data: base64Data
+                            }
+                        }
+                    ]
+                }]
+            };
+
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(key)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(reqBody)
+            });
+
+            if (resp.ok) {
+                const data = await resp.json();
+                const replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Geen analyse tekst ontvangen van Google Gemini.";
+                if (outEl) {
+                    outEl.textContent = `🤖 Google Gemini Vision Analyse voor '${currentPhoto.filename}':\n\n${replyText}`;
+                }
+            } else {
+                const errData = await resp.json().catch(() => ({}));
+                const msg = errData?.error?.message || `HTTP ${resp.status}`;
+                if (outEl) {
+                    outEl.textContent = `❌ Fout bij Google Gemini API:\n${msg}`;
+                }
+            }
+        } catch (err) {
+            if (outEl) {
+                outEl.textContent = `❌ Netwerkfout bij AI analyse: ${err.message}`;
+            }
+        } finally {
+            if (btn) btn.disabled = false;
+        }
     }
 
     async openHelpModal() {
