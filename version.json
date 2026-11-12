@@ -2,8 +2,8 @@
   "app_name": "vroonphoto",
   "version": "1.6.3",
   "build": 22,
-  "timestamp": "2026-11-12T19:01:01.311575+00:00",
-  "git_hash": "ead6d34",
+  "timestamp": "2026-11-12T19:01:23.963004+00:00",
+  "git_hash": "ec69dc7",
   "features": [
     "🚀 Versie v1.6.3: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
     "🎛️ Uniforme Knopafmetingen & Donkere Styling (v1.6.3): De SD-kaart knop en alle voorheen lichtblauwe knoppen zijn teruggebracht naar dezelfde compacte proporties en elegante donkere leisteen stijl als de rest van de knoppen. Geen overdreven grote of fel oplichtende knoppen meer, maar een rustige, strakke en perfect afgestemde navigatiebalk en interface.",
