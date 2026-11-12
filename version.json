@@ -1,10 +1,12 @@
 {
   "app_name": "vroonphoto",
-  "version": "1.5.0",
-  "build": 20,
-  "timestamp": "2026-11-12T11:59:58.887058+00:00",
-  "git_hash": "765c658",
+  "version": "1.5.1",
+  "build": 21,
+  "timestamp": "2026-11-12T12:01:55.614130+00:00",
+  "git_hash": "2e71d1a",
   "features": [
+    "🚀 Versie v1.5.1: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🎨 Uniforme Knopstyling (v1.5.1): '✨ Wis Object' en '↺ Wis Masker' uniform in hoogte (32px), breedte en kenmerkende donkere leisteen / neon cyaan kleuren.",
     "🔴 Automatisch Podium LED Interferentiestrepen Verwijderen (v1.5.0): Verwijdert hinderlijke periodieke rolling shutter en PWM LED interferentiestrepen bij concert- en podiumverlichting direct bij het laden.",
     "⚙️ Zelf Instelbare Automatische Import Preset (v1.5.0): Stel zelf een gepersonaliseerde bewerking in (ruisonderdrukking, scherpte, rood licht, etc.) die direct automatisch wordt toegepast zodra een foto wordt geopend of geïmporteerd.",
     "💾 Universele Export Formaten (v1.4.0): Kies bij opslaan zelf het gewenste bestandsformaat: converteer RAW naar JPEG (.jpg), professioneel drukwerk TIFF (.tif 100% Lossless), Adobe Digital Negative (.dng RAW container), PNG (.png) of WebP (.webp).",

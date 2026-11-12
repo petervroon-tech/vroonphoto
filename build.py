@@ -168,14 +168,77 @@ def verify_wasm_locally(wasm_path: str):
             print(f"Waarschuwing bij lokale WASM verificatie: {e}")
     return True
 
-def update_version_file(version_path: str, forced_sha: str = None, forced_build: str = None) -> dict:
+def bump_version(old_ver: str, bump_type: str = "patch") -> str:
+    """Verhoogt automatisch het semver versienummer na elke toevoeging/build."""
+    parts = old_ver.strip().replace("v", "").split(".")
+    while len(parts) < 3:
+        parts.append("0")
+    try:
+        major, minor, patch = int(parts[0]), int(parts[1]), int(parts[2])
+    except ValueError:
+        return old_ver
+
+    if bump_type == "major":
+        major += 1
+        minor = 0
+        patch = 0
+    elif bump_type == "minor":
+        minor += 1
+        patch = 0
+    else:  # patch (standaard na elke toevoeging)
+        patch += 1
+
+    return f"{major}.{minor}.{patch}"
+
+def sync_version_to_html(project_dir: str, new_ver: str):
+    """Synchroniseert het nieuwe versienummer direct in index.html zodat de UI altijd klopt."""
+    html_path = os.path.join(project_dir, "index.html")
+    if not os.path.exists(html_path):
+        return
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        import re
+        content = re.sub(r'(id="upd-ver">v?)[0-9.]+(<)', rf'\g<1>{new_ver}\2', content)
+        content = re.sub(r'(id="ver-txt">v?)[0-9.]+(<)', rf'\g<1>{new_ver}\2', content)
+
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(content)
+    except Exception as e:
+        print(f"Waarschuwing bij synchroniseren van index.html: {e}")
+
+def update_version_file(version_path: str, forced_ver: str = None, forced_sha: str = None, forced_build: str = None, auto_bump: bool = True) -> dict:
+    old_version = DEFAULT_VERSION
+    old_build = 0
+
+    if os.path.exists(version_path):
+        try:
+            with open(version_path, "r", encoding="utf-8") as f:
+                old = json.load(f)
+                old_version = old.get("version", DEFAULT_VERSION)
+                old_build = int(old.get("build", 0))
+        except Exception:
+            pass
+
+    if forced_ver:
+        new_version = forced_ver.replace("v", "")
+    elif auto_bump:
+        new_version = bump_version(old_version, "patch")
+    else:
+        new_version = old_version
+
+    new_build = int(forced_build) if forced_build else (old_build + 1)
+
     data = {
         "app_name": APP_NAME,
-        "version": DEFAULT_VERSION,
-        "build": 10,
+        "version": new_version,
+        "build": new_build,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "git_hash": forced_sha or get_git_hash(),
         "features": [
+            f"🚀 Versie v{new_version}: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+            "🎨 Uniforme Knopstyling (v1.5.1): '✨ Wis Object' en '↺ Wis Masker' uniform in hoogte (32px), breedte en kenmerkende donkere leisteen / neon cyaan kleuren.",
             "🔴 Automatisch Podium LED Interferentiestrepen Verwijderen (v1.5.0): Verwijdert hinderlijke periodieke rolling shutter en PWM LED interferentiestrepen bij concert- en podiumverlichting direct bij het laden.",
             "⚙️ Zelf Instelbare Automatische Import Preset (v1.5.0): Stel zelf een gepersonaliseerde bewerking in (ruisonderdrukking, scherpte, rood licht, etc.) die direct automatisch wordt toegepast zodra een foto wordt geopend of geïmporteerd.",
             "💾 Universele Export Formaten (v1.4.0): Kies bij opslaan zelf het gewenste bestandsformaat: converteer RAW naar JPEG (.jpg), professioneel drukwerk TIFF (.tif 100% Lossless), Adobe Digital Negative (.dng RAW container), PNG (.png) of WebP (.webp).",
@@ -189,19 +252,11 @@ def update_version_file(version_path: str, forced_sha: str = None, forced_build:
         ]
     }
 
-    if os.path.exists(version_path):
-        try:
-            with open(version_path, "r", encoding="utf-8") as f:
-                old = json.load(f)
-                data["version"] = DEFAULT_VERSION
-                data["build"] = int(forced_build) if forced_build else (int(old.get("build", 0)) + 1)
-                if not forced_sha:
-                    data["git_hash"] = get_git_hash()
-        except Exception:
-            pass
-
     with open(version_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+
+    project_dir = os.path.dirname(version_path)
+    sync_version_to_html(project_dir, new_version)
 
     return data
 
@@ -209,6 +264,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description="vroonphoto Build & Compiler")
     parser.add_argument("--ci", action="store_true", help="Draait in GitHub Actions CI")
+    parser.add_argument("--version", type=str, help="Specificeer expliciet versienummer (bv. 1.5.1)")
+    parser.add_argument("--no-bump", action="store_true", help="Versienummer niet automatisch ophogen")
     parser.add_argument("--sha", type=str, help="Specifieer git commit SHA")
     parser.add_argument("--build", type=str, help="Specifieer build nummer")
     args = parser.parse_args()
@@ -227,7 +284,14 @@ def main():
     if verify_wasm_locally(wasm_output):
         print("✅ WASM bytecode validatie geslaagd (JavaScriptCore WebAssembly runtime)")
 
-    version_info = update_version_file(version_output, forced_sha=args.sha, forced_build=args.build)
+    auto_bump = not args.no_bump and not args.version
+    version_info = update_version_file(
+        version_output,
+        forced_ver=args.version,
+        forced_sha=args.sha,
+        forced_build=args.build,
+        auto_bump=auto_bump
+    )
     print("✅ Versie-informatie bijgewerkt:")
     print(f"   • Versie:   v{version_info['version']}")
     print(f"   • Build:    #{version_info['build']}")

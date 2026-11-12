@@ -34,7 +34,7 @@ jobs:
       - name: 🔨 Bouw WebAssembly & update version.json
         run: |
           echo "Building vroonphoto WebAssembly & RAW Engine..."
-          python3 build.py --ci --sha "${{ github.sha }}" --build "${{ github.run_number }}"
+          python3 build.py --ci --no-bump --sha "${{ github.sha }}" --build "${{ github.run_number }}"
           echo "Build output:"
           ls -lh vroonphoto.wasm version.json
           cat version.json
