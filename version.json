@@ -2,8 +2,8 @@
   "app_name": "vroonphoto",
   "version": "1.6.4",
   "build": 23,
-  "timestamp": "2026-11-12T19:06:04.426937+00:00",
-  "git_hash": "1f33b14",
+  "timestamp": "2026-11-12T19:06:14.537662+00:00",
+  "git_hash": "cc59ae6",
   "features": [
     "🚀 Versie v1.6.4: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
     "🎨 Donkere Styling Keuzelijsten & Filters (v1.6.4): Het filter 'Toon Alle Foto's' en alle select-dropdowns zijn nu voorzien van dezelfde rustige donkere leisteen kleur, subtiele rand en witte tekst als de rest van de interface. Geen storende witte dropdowns of keuzelijsten meer.",
