@@ -120,28 +120,34 @@ body {
    2. Header & Navigatie (UNIFORME KNOPHOOGTE 34PX)
    ============================================================================== */
 .app-header {
-  height: 52px;
+  min-height: 52px;
+  height: auto;
   background: var(--bg-panel);
   backdrop-filter: var(--blur-panel);
   border-bottom: 1px solid var(--border-glow);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 8px 16px;
+  gap: 8px 12px;
   flex-shrink: 0;
   z-index: 50;
+  box-sizing: border-box;
 }
 
 .header-left, .header-center, .header-right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px 8px;
 }
 
 .app-brand {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px 8px;
 }
 
 .app-title {
@@ -1196,14 +1202,28 @@ button {
 }
 
 /* ==============================================================================
-   7. IPAD & TOUCHSCREEN OPTIMALISATIES
+   7. IPAD & TOUCHSCREEN OPTIMALISATIES & FLEXIBELE BOVENBALK
    ============================================================================== */
 @media (max-width: 1180px) {
+  .app-header {
+    padding: 6px 12px;
+    gap: 6px 10px;
+  }
   .sidebar-left { width: 230px; }
   .sidebar-right { width: 220px; }
 }
 
 @media (max-width: 960px) {
+  .app-header {
+    justify-content: flex-start;
+  }
+  .header-center {
+    order: 2;
+  }
+  .header-right {
+    order: 3;
+    margin-left: auto;
+  }
   .app-workspace { flex-direction: column; }
   .sidebar-left { display: none; }
   .sidebar-right {
@@ -1217,4 +1237,15 @@ button {
   .filmstrip-item, .filmstrip-add-card { width: 80px; height: 60px; }
   .param-slider { height: 8px; }
   .param-slider::-webkit-slider-thumb { width: 24px; height: 24px; }
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .header-left, .header-center, .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
 }

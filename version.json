@@ -1,11 +1,12 @@
 {
   "app_name": "vroonphoto",
-  "version": "1.5.5",
-  "build": 25,
-  "timestamp": "2026-11-12T12:25:19.939173+00:00",
-  "git_hash": "2bd3624",
+  "version": "1.5.6",
+  "build": 26,
+  "timestamp": "2026-11-12T12:28:37.909470+00:00",
+  "git_hash": "c9f832c",
   "features": [
-    "🚀 Versie v1.5.5: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🚀 Versie v1.5.6: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "📱 Flexibele Responsieve Bovenbalk (v1.5.6): Alle navigatieknoppen, gereedschappen, voorbeelden en exportknoppen blijven altijd 100% zichtbaar. Bij het verkleinen van het venster of op kleinere schermen/tablets vouwen de knoppen automatisch en ordelijk onder elkaar (flex-wrap) zonder overlap of afsnijden.",
     "⚡ 1-Klik Zwart-Wit Conversie & Pro B&W Tools (v1.5.5): Zet met 1 klik direct elke kleurenfoto om naar zwart-wit via de knoppenbalk of het rechterpaneel. Inclusief alle professionele tools om direct bij te stellen: Zone Contrast, Clarity Punch, Analoge Filmkorrel, Rood/Groen/Blauw Kleurfilter Mixer en 4 klassieke stijlen (Ansel Adams, Hoog Contrast, Film Noir, Straatfoto).",
     "🎛️ Neutrale Import & Zelf Kiezen (v1.5.4): Rood podiumlicht en interferentiestrepen worden niet meer automatisch geforceerd bij inlezen. Foto's openen 100% origineel/neutraal en u kiest altijd zelf via de schuifregelaars of en hoeveel correctie gewenst is.",
     "📐 Werkruimte & Layout Reorganisatie (v1.5.3): Alle functies (Topaz AI Vergroten, Curves & Histogram, Presets en Inpainting) verplaatst naar de linker zijbalk voor een aanzienlijk groter centraal werkscherm. Rechter zijbalk slank (240px) en exclusief ingericht voor schuifregelaars (Preset Verhouding bovenaan, Belichting & Kleur, Rood Licht, Focus, Ruis, Zwart-Wit).",
