@@ -22,7 +22,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.6.3</strong> beschikbaar &bull; <span id="upd-note">Uniforme knoppenstyling &amp; perfecte proporties voor SD-kaart en alle functieknoppen</span></span>
+      <span><strong id="upd-ver">v1.6.4</strong> beschikbaar &bull; <span id="upd-note">Donkere styling voor filter 'Toon Alle Foto's' en alle keuzelijsten conform de rest van de knoppen</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -43,7 +43,7 @@
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)"
           title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.6.3</span> 🔄
+          <span id="ver-txt">v1.6.4</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -197,7 +197,7 @@
             <div class="control-label-group">
               <span style="font-size: 10px;">⚡ Selectief Zwart-Wit</span>
             </div>
-            <select id="local-bw-select" class="form-select" style="font-size: 10px; padding: 4px 6px;">
+            <select id="local-bw-select" class="form-select" style="font-size: 10px; padding: 4px 6px; background: var(--bg-panel-sub); color: var(--text-main); border: 1px solid var(--border-glow); border-radius: var(--radius-sm);">
               <option value="none">Standaard Kleur</option>
               <option value="painted_bw">Maak dit onderdeel Zwart-Wit</option>
               <option value="color_splash">Color Splash (Alleen dit deel in kleur, rest Z/W)</option>
@@ -491,7 +491,7 @@
           <div class="culling-right">
             <div style="display: flex; align-items: center; gap: 4px;">
               <span style="font-size: 10.5px; color: var(--text-muted);">Filter:</span>
-              <select id="filmstrip-filter-select" class="form-select" style="font-size: 11px; padding: 3px 6px;">
+              <select id="filmstrip-filter-select" class="form-select" style="font-size: 11px; padding: 4px 8px; background: var(--bg-panel-sub); color: var(--text-main); border: 1px solid var(--border-glow); border-radius: var(--radius-sm);">
                 <option value="all">Toon Alle Foto's</option>
                 <option value="rated">⭐ Beoordeeld (Cijfer >= 1)</option>
                 <option value="stars3">⭐⭐⭐ 3 Sterren of hoger (>=3)</option>
@@ -911,7 +911,7 @@
 
         <label>
           <div style="margin-bottom: 4px; font-weight: 600;">Wat wil je opslaan:</div>
-          <select id="export-scope" class="form-select" style="width: 100%;">
+          <select id="export-scope" class="form-select" style="width: 100%; background: var(--bg-panel-sub); color: var(--text-main); border: 1px solid var(--border-glow); border-radius: var(--radius-sm); padding: 6px 8px;">
             <option value="all">Alle bewerkte foto's in één keer (Batch Export)</option>
             <option value="selected">⭐ Alleen beoordeelde / geselecteerde foto's (Culling Selectie)</option>
             <option value="current">Alleen de huidige actieve foto</option>
@@ -920,7 +920,7 @@
 
         <label>
           <div style="margin-bottom: 4px; font-weight: 600;">Bestandsformaat (Kies gewenst formaat):</div>
-          <select id="export-format" class="form-select" style="width: 100%;">
+          <select id="export-format" class="form-select" style="width: 100%; background: var(--bg-panel-sub); color: var(--text-main); border: 1px solid var(--border-glow); border-radius: var(--radius-sm); padding: 6px 8px;">
             <option value="image/jpeg">JPEG (.jpg) — Universeel voor web, print &amp; iPad</option>
             <option value="image/tiff">TIFF (.tif) — Ongecomprimeerd professioneel drukwerk (100% Lossless)</option>
             <option value="image/x-adobe-dng">Adobe DNG (.dng) — Digital Negative RAW Container</option>
@@ -931,7 +931,7 @@
 
         <label id="export-quality-group">
           <div style="margin-bottom: 4px; font-weight: 600;">Kwaliteit &amp; Compressie:</div>
-          <select id="export-quality" class="form-select" style="width: 100%;">
+          <select id="export-quality" class="form-select" style="width: 100%; background: var(--bg-panel-sub); color: var(--text-main); border: 1px solid var(--border-glow); border-radius: var(--radius-sm); padding: 6px 8px;">
             <option value="0.95">95% — Maximale Professionele Kwaliteit (Aanbevolen)</option>
             <option value="0.85">85% — Hoge Kwaliteit</option>
             <option value="0.75">75% — Compact</option>

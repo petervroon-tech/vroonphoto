@@ -335,20 +335,45 @@ body {
   box-shadow: 0 0 8px rgba(56, 189, 248, 0.25) !important;
 }
 
-/* Algemene styling voor eventuele selects in de header (voorkom wit vlak) */
+/* ALGEMENE STYLING VOOR ALLE SELECTS / DROPDOWNS (GEEN WITTE VLAKKEN, ZELFDE DONKERE KLEUR ALS DE REST) */
+select,
+.form-select,
 .app-header select,
-.app-header .form-select {
+.app-header .form-select,
+.culling-toolbar select,
+.culling-toolbar .form-select {
   background: var(--bg-panel-sub) !important;
   color: var(--text-main) !important;
   border: 1px solid var(--border-glow) !important;
   border-radius: var(--radius-sm) !important;
+  font-family: inherit !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 4px 8px !important;
   outline: none !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease !important;
 }
 
+select:hover,
+.form-select:hover {
+  background: var(--bg-panel-hover) !important;
+  border-color: var(--border-glow-active) !important;
+}
+
+select:focus,
+.form-select:focus {
+  border-color: var(--accent-cyan) !important;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.25) !important;
+}
+
+select option,
+.form-select option,
 .app-header select option,
-.app-header .form-select option {
+.app-header .form-select option,
+.culling-toolbar select option,
+.culling-toolbar .form-select option {
   background: #0f172a !important;
   color: #f8fafc !important;
 }
