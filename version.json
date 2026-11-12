@@ -2,8 +2,8 @@
   "app_name": "vroonphoto",
   "version": "1.6.5",
   "build": 24,
-  "timestamp": "2026-11-12T19:15:57.161957+00:00",
-  "git_hash": "570a0de",
+  "timestamp": "2026-11-12T19:16:09.494076+00:00",
+  "git_hash": "c44079d",
   "features": [
     "🚀 Versie v1.6.5: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
     "💾 Volledige RAW Export & Opslag (.cr2, .nef, .arw, .dng) (v1.6.5): RAW-bestanden kunnen nu ook direct als RAW worden opgeslagen! Behoud bij het exporteren of bij 1-klik submap opslag het originele camera RAW-bestand (bit-exact .cr2, .nef, .arw, .dng) of sla bewerkte foto's op als volwaardig Adobe DNG RAW containerbestand (.dng). Inclusief handige formaatkiezer in de culling-werkbalk en export-dialoog.",
