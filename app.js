@@ -10,7 +10,7 @@ const CFG = {
     appName: 'vroonphoto',
     versionFile: 'version.json',
     wasmFile: 'vroonphoto.wasm',
-    maxPhotos: 25
+    maxPhotos: Infinity
 };
 
 let currentVersion = null;
@@ -750,7 +750,7 @@ class VroonPhotoApp {
 
     getDefaultState() {
         return {
-            exposure: 0, contrast: 0, highlights: 0, shadows: 0,
+            exposure: 0, contrast: 0, highlights: 0, shadows: 0, whites: 0, blacks: 0,
             temp: 0, tint: 0, vibrance: 0, saturation: 0,
             stageRedFix: 0, colorBleedReduction: 0, skinProtection: 50, gamutCompress: 50,
             stageBandingReduction: 0,
@@ -1065,6 +1065,41 @@ class VroonPhotoApp {
             if (e.target.value === 'batch_5') this.loadSampleBatch();
             else this.loadSingleSample(e.target.value);
         });
+
+        // SD-Kaart / Externe Schijf Inlezen & Modal
+        document.getElementById('btn-import-sd')?.addEventListener('click', () => this.openSDImportModal());
+        document.getElementById('btn-import-sd-empty')?.addEventListener('click', () => this.openSDImportModal());
+        document.getElementById('btn-close-sd-modal')?.addEventListener('click', () => document.getElementById('sd-import-modal')?.classList.add('hidden'));
+        document.getElementById('btn-cancel-sd-import')?.addEventListener('click', () => document.getElementById('sd-import-modal')?.classList.add('hidden'));
+        document.getElementById('btn-confirm-sd-picker')?.addEventListener('click', () => this.confirmSDImport());
+        document.getElementById('sd-directory-fallback')?.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) this.loadMultipleFiles(e.target.files);
+            e.target.value = '';
+        });
+
+        // Culling & Beoordeling (1-7, Sterren, Kleuren, Filteren)
+        document.querySelectorAll('.culling-rate-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const r = parseInt(e.currentTarget.dataset.rate, 10);
+                this.rateActivePhoto(r);
+            });
+        });
+        document.querySelectorAll('.culling-color-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const c = e.currentTarget.dataset.color;
+                this.setColorLabelActivePhoto(c);
+            });
+        });
+        document.getElementById('filmstrip-filter-select')?.addEventListener('change', () => {
+            this.updateFilmstripUI();
+            this.updateGridUI();
+        });
+        document.getElementById('btn-cull-keep-selection')?.addEventListener('click', () => {
+            this.cullKeepSelection();
+        });
+        document.getElementById('btn-cull-export-subfolder')?.addEventListener('click', () => {
+            this.openExportModalWithScope('selected');
+        });
     }
 
     // Zoom & Pan Functies voor Hand (Touch), Pen en Muis
@@ -1295,6 +1330,9 @@ class VroonPhotoApp {
             } else if ((e.key === 'Delete' || e.key === 'Backspace') && !e.target.matches('input, select, textarea')) {
                 e.preventDefault();
                 this.removeActivePhoto();
+            } else if (['0', '1', '2', '3', '4', '5', '6', '7'].includes(e.key) && !e.target.matches('input, select, textarea')) {
+                const r = parseInt(e.key, 10);
+                this.rateActivePhoto(r);
             }
         });
     }
@@ -1310,21 +1348,14 @@ class VroonPhotoApp {
     }
 
     // ═══════════════════════════════════════════════════════
-    //  4. FOTO BEHEER (TOT 25 FOTO'S GELIJCKTIJDIG)
+    //  4. FOTO BEHEER (ONBEPERKT / ONEINDIG VEEL FOTO'S)
     // ═══════════════════════════════════════════════════════
 
     async loadMultipleFiles(fileList) {
         if (!fileList || fileList.length === 0) return;
         document.getElementById('loading-overlay')?.classList.remove('hidden');
 
-        const remainingSlots = CFG.maxPhotos - this.photos.length;
-        if (remainingSlots <= 0) {
-            alert(`Het maximum van ${CFG.maxPhotos} foto's is bereikt. Verwijder eerst een foto om nieuwe toe te voegen.`);
-            document.getElementById('loading-overlay')?.classList.add('hidden');
-            return;
-        }
-
-        const filesToLoad = Array.from(fileList).slice(0, remainingSlots);
+        const filesToLoad = Array.from(fileList);
         const startIndex = this.photos.length;
         let successCount = 0;
 
@@ -1354,7 +1385,7 @@ class VroonPhotoApp {
                     });
                     successCount++;
                 } catch (e2) {
-                    alert(`⚠️ Kon bestand '${file.name}' niet inlezen.`);
+                    console.warn(`Kon bestand '${file.name}' niet inlezen:`, e2);
                 }
             }
         }
@@ -1374,11 +1405,9 @@ class VroonPhotoApp {
     }
 
     addPhotoToSession(imageData, meta = {}) {
-        if (this.photos.length >= CFG.maxPhotos) return;
-
         // Maak kleine thumbnail voor de filmstrip
         const thumbCanvas = document.createElement('canvas');
-        const aspect = imageData.width / imageData.height;
+        const aspect = (imageData.width || 1) / (imageData.height || 1);
         thumbCanvas.width = 140;
         thumbCanvas.height = Math.round(140 / aspect);
         const tCtx = thumbCanvas.getContext('2d');
@@ -1397,6 +1426,8 @@ class VroonPhotoApp {
             currentImageData: new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height),
             thumbUrl: thumbUrl,
             state: this.getDefaultState(),
+            rating: meta.rating !== undefined ? meta.rating : 0, // 0 = unrated, 1 t/m 7
+            colorLabel: meta.colorLabel || 'none', // 'none', 'red', 'yellow', 'green', 'blue', 'purple'
             hasStageRed: false
         };
 
@@ -1457,15 +1488,176 @@ class VroonPhotoApp {
             this.activePresetAmount = 100;
         }
         this.syncPresetUI();
+        this.updateRatingUI(photo);
         this.renderActivePhoto();
         this.updateFilmstripUI();
         this.updateGridUI();
     }
 
+    rateActivePhoto(rating) {
+        const photo = this.getActivePhoto();
+        if (!photo) return;
+        photo.rating = (rating >= 0 && rating <= 7) ? rating : 0;
+        this.updateRatingUI(photo);
+        this.updateFilmstripUI();
+        this.updateGridUI();
+    }
+
+    setColorLabelActivePhoto(color) {
+        const photo = this.getActivePhoto();
+        if (!photo) return;
+        photo.colorLabel = color || 'none';
+        this.updateRatingUI(photo);
+        this.updateFilmstripUI();
+        this.updateGridUI();
+    }
+
+    updateRatingUI(photo = null) {
+        const p = photo || this.getActivePhoto();
+        if (!p) return;
+        const curRating = p.rating || 0;
+        const curColor = p.colorLabel || 'none';
+
+        // Update rating knoppen
+        document.querySelectorAll('.culling-rate-btn').forEach(btn => {
+            const r = parseInt(btn.dataset.rate, 10);
+            btn.classList.toggle('active', r === curRating);
+        });
+
+        // Update kleurlabel knoppen
+        document.querySelectorAll('.culling-color-btn').forEach(btn => {
+            const c = btn.dataset.color;
+            btn.classList.toggle('active', c === curColor);
+        });
+    }
+
+    getColorCode(color) {
+        const map = {
+            'red': '#ef4444',
+            'yellow': '#eab308',
+            'green': '#22c55e',
+            'blue': '#3b82f6',
+            'purple': '#a855f7'
+        };
+        return map[color] || '';
+    }
+
+    cullKeepSelection() {
+        if (this.photos.length === 0) return;
+        const kept = this.photos.filter(p => (p.rating && p.rating > 0) || (p.colorLabel && p.colorLabel !== 'none'));
+        const discardedCount = this.photos.length - kept.length;
+
+        if (discardedCount === 0) {
+            alert("Alle foto's in uw sessie hebben al een cijfer, ster of kleurlabel. Er zijn geen overige foto's om te wissen.");
+            return;
+        }
+
+        if (kept.length === 0) {
+            alert("Geef eerst minimaal 1 foto een cijfer (1 t/m 7), sterretje of kleurlabel voordat u de overige foto's verwijdert.");
+            return;
+        }
+
+        const confirmed = confirm(
+            `🧹 CULLING BEVESTIGEN:\n\n` +
+            `• Geselecteerde foto's om te bewerken: ${kept.length}\n` +
+            `• Foto's die uit het werkgeheugen worden gewist: ${discardedCount}\n\n` +
+            `🛡️ VEILIGHEIDSGARANTIE: Uw originele foto's op de SD-kaart, camera of harde schijf blijven 100% onaangeroerd!\n\n` +
+            `Wilt u doorgaan met culling?`
+        );
+
+        if (!confirmed) return;
+
+        this.photos = kept;
+        this.activePhotoIndex = Math.min(this.activePhotoIndex, this.photos.length - 1);
+        this.updateFilmstripUI();
+        this.updateGridUI();
+        this.setActivePhoto(this.activePhotoIndex);
+        alert(`✅ Culling voltooid! ${kept.length} geselecteerde foto('s) behouden in uw werkruimte. Originelen op bron blijven veilig bewaard.`);
+    }
+
+    openSDImportModal() {
+        const modal = document.getElementById('sd-import-modal');
+        const input = document.getElementById('sd-session-name-input');
+        if (modal) {
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const defaultName = `Fotosessie_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+            if (input) input.value = defaultName;
+            modal.classList.remove('hidden');
+        }
+    }
+
+    async confirmSDImport() {
+        const input = document.getElementById('sd-session-name-input');
+        const sessionName = input ? (input.value.trim() || 'Sessie_SD') : 'Sessie_SD';
+        this.activeSessionName = sessionName;
+
+        document.getElementById('sd-import-modal')?.classList.add('hidden');
+
+        // Probeert Native showDirectoryPicker (Chrome / Edge / Opera / moderne browsers)
+        if ('showDirectoryPicker' in window) {
+            try {
+                document.getElementById('loading-overlay')?.classList.remove('hidden');
+                const loadingText = document.getElementById('loading-text');
+                if (loadingText) loadingText.textContent = `SD-Kaart map selecteren voor sessie '${sessionName}'...`;
+
+                const dirHandle = await window.showDirectoryPicker();
+                if (loadingText) loadingText.textContent = `Bezig met scannen van foto's op SD-kaart/schijf...`;
+
+                const validExts = ['jpg', 'jpeg', 'png', 'webp', 'raw', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'rw2', 'raf', 'orf', 'pef', 'tiff', 'tif'];
+                const filesFound = [];
+
+                async function scanDirectory(dh, depth = 0) {
+                    if (depth > 4) return;
+                    for await (const entry of dh.values()) {
+                        if (entry.kind === 'file') {
+                            const ext = entry.name.toLowerCase().split('.').pop();
+                            if (validExts.includes(ext)) {
+                                try {
+                                    const file = await entry.getFile();
+                                    filesFound.push(file);
+                                } catch (fe) {}
+                            }
+                        } else if (entry.kind === 'directory') {
+                            await scanDirectory(entry, depth + 1);
+                        }
+                    }
+                }
+
+                await scanDirectory(dirHandle);
+
+                if (filesFound.length === 0) {
+                    document.getElementById('loading-overlay')?.classList.add('hidden');
+                    alert(`Geen ondersteunde foto's (RAW, DNG, JPG, PNG) gevonden in de geselecteerde map.`);
+                    return;
+                }
+
+                if (loadingText) loadingText.textContent = `${filesFound.length} foto's inlezen in sessie '${sessionName}'...`;
+                await this.loadMultipleFiles(filesFound);
+                return;
+            } catch (err) {
+                document.getElementById('loading-overlay')?.classList.add('hidden');
+                if (err.name === 'AbortError') return;
+                console.warn('DirectoryPicker error of niet toegestaan, gebruik fallback:', err);
+            }
+        }
+
+        // Fallback voor Safari/Firefox/iPad via webkitdirectory input
+        const fallback = document.getElementById('sd-directory-fallback');
+        if (fallback) fallback.click();
+    }
+
+    openExportModalWithScope(targetScope = 'all') {
+        const modal = document.getElementById('export-modal');
+        const sel = document.getElementById('export-scope');
+        if (sel) sel.value = targetScope;
+        modal?.classList.remove('hidden');
+    }
+
     showEmptyState() {
         this.activePhotoIndex = -1;
         const badge = document.getElementById('photo-counter-badge');
-        if (badge) badge.textContent = `0 / ${CFG.maxPhotos} Foto's`;
+        if (badge) badge.textContent = `0 Foto's`;
 
         const info = document.getElementById('photo-info-display');
         if (info) info.textContent = 'Geen foto geopend';
@@ -1563,67 +1755,119 @@ class VroonPhotoApp {
         if (isGrid) this.updateGridUI();
     }
 
-    // Filmstrip UI rendering
+    getFilteredPhotos() {
+        const filter = document.getElementById('filmstrip-filter-select')?.value || 'all';
+        let items = this.photos.map((p, idx) => ({ photo: p, originalIndex: idx }));
+
+        if (filter === 'rated') {
+            items = items.filter(it => (it.photo.rating > 0) || (it.photo.colorLabel && it.photo.colorLabel !== 'none'));
+        } else if (filter === 'stars3') {
+            items = items.filter(it => it.photo.rating >= 3);
+        } else if (filter === 'stars5') {
+            items = items.filter(it => it.photo.rating >= 5);
+        } else if (filter.startsWith('rate_')) {
+            const targetR = parseInt(filter.replace('rate_', ''), 10);
+            items = items.filter(it => it.photo.rating === targetR);
+        } else if (filter.startsWith('color_')) {
+            const targetC = filter.replace('color_', '');
+            items = items.filter(it => it.photo.colorLabel === targetC);
+        }
+
+        return items;
+    }
+
+    // Filmstrip UI rendering met culling & oneindig veel foto's
     updateFilmstripUI() {
         const container = document.getElementById('filmstrip-scroll');
         const countTxt = document.getElementById('filmstrip-count-txt');
         if (!container) return;
-        if (countTxt) countTxt.textContent = `${this.photos.length} / ${CFG.maxPhotos}`;
+
+        const visibleItems = this.getFilteredPhotos();
+        if (countTxt) {
+            countTxt.textContent = visibleItems.length === this.photos.length
+                ? `${this.photos.length} Foto's`
+                : `${visibleItems.length} van ${this.photos.length} Foto's`;
+        }
 
         container.innerHTML = '';
 
-        this.photos.forEach((photo, idx) => {
+        visibleItems.forEach(({ photo, originalIndex }) => {
             const item = document.createElement('div');
-            item.className = `filmstrip-item ${idx === this.activePhotoIndex ? 'active' : ''}`;
-            item.title = `${photo.filename} (Foto ${idx + 1})`;
-            item.onclick = () => this.setActivePhoto(idx);
+            item.className = `filmstrip-item ${originalIndex === this.activePhotoIndex ? 'active' : ''}`;
+            item.title = `${photo.filename} (Foto ${originalIndex + 1}) - Score: ${photo.rating || 0}`;
+            item.onclick = () => this.setActivePhoto(originalIndex);
+
+            let ratingBadge = '';
+            if (photo.rating && photo.rating > 0) {
+                ratingBadge = `<span class="filmstrip-rating-badge">⭐${photo.rating}</span>`;
+            }
+
+            const colorCode = this.getColorCode(photo.colorLabel);
+            const colorBarStyle = colorCode ? `border-bottom: 3.5px solid ${colorCode} !important;` : '';
 
             item.innerHTML = `
-                <img src="${photo.thumbUrl}" alt="Thumb ${idx + 1}">
-                <span class="filmstrip-badge">#${idx + 1}</span>
-                <span class="filmstrip-close" title="Verwijder foto #${idx + 1} (${photo.filename})" onclick="vroonApp.removePhoto(${idx}, event)">✕</span>
+                <img src="${photo.thumbUrl}" alt="Thumb ${originalIndex + 1}">
+                <span class="filmstrip-badge">#${originalIndex + 1}</span>
+                ${ratingBadge}
+                <span class="filmstrip-close" title="Verwijder foto #${originalIndex + 1} (${photo.filename})" onclick="vroonApp.removePhoto(${originalIndex}, event)">✕</span>
             `;
+            if (colorBarStyle) item.style.cssText += colorBarStyle;
             container.appendChild(item);
         });
 
-        // Voeg '+' toe als er nog ruimte is voor 25 foto's
-        if (this.photos.length < CFG.maxPhotos) {
-            const addCard = document.createElement('label');
-            addCard.className = 'filmstrip-add-card';
-            addCard.title = "Voeg foto's toe (tot 25)";
-            addCard.innerHTML = `
-                <span style="font-size: 16px;">➕</span>
-                <span>Toevoegen</span>
-                <input type="file" multiple accept="image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display:none;" onchange="vroonApp.loadMultipleFiles(this.files); this.value='';">
-            `;
-            container.appendChild(addCard);
-        }
+        // Voeg '+' toe (oneindig / onbeperkt foto's toevoegen)
+        const addCard = document.createElement('label');
+        addCard.className = 'filmstrip-add-card';
+        addCard.title = "Voeg foto's toe (onbeperkt)";
+        addCard.innerHTML = `
+            <span style="font-size: 16px;">➕</span>
+            <span>Toevoegen</span>
+            <input type="file" multiple accept="image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display:none;" onchange="vroonApp.loadMultipleFiles(this.files); this.value='';">
+        `;
+        container.appendChild(addCard);
     }
 
-    // Raster Overzicht UI rendering (25 foto's overzichtelijk scherm)
+    // Raster Overzicht UI rendering (onbeperkt foto's overzichtelijk scherm)
     updateGridUI() {
         const grid = document.getElementById('photos-grid');
         const countTxt = document.getElementById('grid-count-txt');
         if (!grid) return;
-        if (countTxt) countTxt.textContent = `${this.photos.length} / ${CFG.maxPhotos}`;
+
+        const visibleItems = this.getFilteredPhotos();
+        if (countTxt) {
+            countTxt.textContent = visibleItems.length === this.photos.length
+                ? `${this.photos.length} Foto's`
+                : `${visibleItems.length} van ${this.photos.length} Foto's`;
+        }
 
         grid.innerHTML = '';
 
-        this.photos.forEach((photo, idx) => {
+        visibleItems.forEach(({ photo, originalIndex }) => {
             const card = document.createElement('div');
-            card.className = `grid-photo-card ${idx === this.activePhotoIndex ? 'active' : ''}`;
+            card.className = `grid-photo-card ${originalIndex === this.activePhotoIndex ? 'active' : ''}`;
             card.onclick = () => {
-                this.setActivePhoto(idx);
+                this.setActivePhoto(originalIndex);
                 this.toggleGridMode(false);
             };
 
+            let ratingHtml = '';
+            if (photo.rating && photo.rating > 0) {
+                ratingHtml = `<span style="color:#fbbf24; font-weight:800;">⭐ ${photo.rating}</span>`;
+            }
+
+            const colorCode = this.getColorCode(photo.colorLabel);
+            if (colorCode) {
+                card.style.borderBottom = `4px solid ${colorCode}`;
+            }
+
             card.innerHTML = `
-                <img class="grid-photo-thumb" src="${photo.thumbUrl}" alt="Photo ${idx + 1}">
-                <span class="grid-photo-delete-btn" title="Verwijder foto #${idx + 1} (${photo.filename})" onclick="vroonApp.removePhoto(${idx}, event)">🗑️</span>
+                <img class="grid-photo-thumb" src="${photo.thumbUrl}" alt="Photo ${originalIndex + 1}">
+                <span class="grid-photo-delete-btn" title="Verwijder foto #${originalIndex + 1} (${photo.filename})" onclick="vroonApp.removePhoto(${originalIndex}, event)">🗑️</span>
                 <div class="grid-photo-meta">
-                    <span class="grid-photo-title">#${idx + 1} ${photo.filename}</span>
+                    <span class="grid-photo-title">#${originalIndex + 1} ${photo.filename}</span>
                     <span class="grid-photo-sub">
                         <span>${photo.filesize}</span>
+                        ${ratingHtml}
                         ${photo.state.bwEnabled ? '<span style="color:#fff;">⚡ Zwart-Wit</span>' : ''}
                         ${photo.state.stageRedFix > 0 ? '<span style="color:#ef4444;">🔴 Rood Fix</span>' : ''}
                     </span>
@@ -1792,22 +2036,38 @@ class VroonPhotoApp {
             );
         }
 
-        // 4. Lightroom Basics
+        // 4. Lightroom Basics (Belichting, Contrast, Highlights, Shadows, Whites, Blacks, Temp, Tint, Vibrance, Saturation)
         const exp = Math.pow(2.0, photo.state.exposure / 2.0);
         const cont = (photo.state.contrast + 100.0) / 100.0;
         const temp = (photo.state.temp / 100.0) * 35.0;
         const tint = (photo.state.tint / 100.0) * 20.0;
         const sat = (photo.state.saturation + 100.0) / 100.0;
         const vib = (photo.state.vibrance / 100.0);
+        const hl = (photo.state.highlights || 0) / 100.0;
+        const sh = (photo.state.shadows || 0) / 100.0;
+        const wh = (photo.state.whites || 0) / 100.0;
+        const bl = (photo.state.blacks || 0) / 100.0;
 
         for (let i = 0; i < data.length; i += 4) {
             let r = data[i] * exp + temp + tint * 0.25;
             let g = data[i + 1] * exp - tint * 0.5;
             let b = data[i + 2] * exp - temp + tint * 0.25;
 
+            // Contrast
             r = 128.0 + (r - 128.0) * cont;
             g = 128.0 + (g - 128.0) * cont;
             b = 128.0 + (b - 128.0) * cont;
+
+            // Highlights, Shadows, Whites, Blacks
+            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+            const normLum = Math.max(0, Math.min(1, lum / 255.0));
+            const shadowWeight = (1.0 - normLum) * (1.0 - normLum);
+            const highlightWeight = normLum * normLum;
+            const toneDelta = (sh * shadowWeight * 50.0) + (hl * highlightWeight * 50.0) + (wh * highlightWeight * 25.0) + (bl * shadowWeight * 25.0);
+
+            r += toneDelta;
+            g += toneDelta;
+            b += toneDelta;
 
             const gray = 0.299 * r + 0.587 * g + 0.114 * b;
             const maxC = Math.max(r, g, b), minC = Math.min(r, g, b);
@@ -1981,7 +2241,7 @@ class VroonPhotoApp {
         const factor = amount / 100.0;
 
         const presetKeys = [
-            'exposure', 'contrast', 'highlights', 'shadows',
+            'exposure', 'contrast', 'highlights', 'shadows', 'whites', 'blacks',
             'temp', 'tint', 'vibrance', 'saturation',
             'stageRedFix', 'colorBleedReduction', 'skinProtection', 'gamutCompress',
             'smartDeblur', 'deblurSkinProtect',
@@ -2008,7 +2268,7 @@ class VroonPhotoApp {
 
                 if (key === 'exposure') {
                     scaled = Math.max(-5, Math.min(5, Math.round(scaled * 10) / 10));
-                } else if (['contrast', 'temp', 'tint', 'vibrance', 'saturation', 'bwRed', 'bwGreen', 'bwBlue', 'vignetteAmount'].includes(key)) {
+                } else if (['contrast', 'highlights', 'shadows', 'whites', 'blacks', 'temp', 'tint', 'vibrance', 'saturation', 'bwRed', 'bwGreen', 'bwBlue', 'vignetteAmount'].includes(key)) {
                     scaled = Math.max(-100, Math.min(100, Math.round(scaled)));
                 } else {
                     scaled = Math.max(0, Math.min(100, Math.round(scaled)));
@@ -2028,7 +2288,7 @@ class VroonPhotoApp {
         if (s === 'stage_red') ['stageRedFix', 'colorBleedReduction', 'skinProtection', 'gamutCompress', 'stageBandingReduction'].forEach(k => photo.state[k] = d[k]);
         if (s === 'deblur') ['smartDeblur', 'deblurSkinProtect'].forEach(k => photo.state[k] = d[k]);
         if (s === 'denoise') ['denoiseLuma', 'denoiseChroma', 'denoiseDetail'].forEach(k => photo.state[k] = d[k]);
-        if (s === 'tone') ['exposure', 'contrast', 'highlights', 'shadows', 'temp', 'tint', 'vibrance', 'saturation'].forEach(k => photo.state[k] = d[k]);
+        if (s === 'tone') ['exposure', 'contrast', 'highlights', 'shadows', 'whites', 'blacks', 'temp', 'tint', 'vibrance', 'saturation'].forEach(k => photo.state[k] = d[k]);
         if (s === 'bw_filters') ['bwRed', 'bwGreen', 'bwBlue'].forEach(k => photo.state[k] = d[k]);
         if (s === 'bw') ['bwEnabled', 'bwRed', 'bwGreen', 'bwBlue', 'bwContrast', 'bwClarity', 'bwGrain'].forEach(k => photo.state[k] = d[k]);
         if (s === 'vignette') ['vignetteAmount', 'vignetteMidpoint', 'vignetteFeather'].forEach(k => photo.state[k] = d[k]);
@@ -2225,7 +2485,19 @@ class VroonPhotoApp {
         else if (format === 'image/tiff') ext = 'tif';
         else if (format === 'image/x-adobe-dng') ext = 'dng';
 
-        const photosToExport = scope === 'all' ? this.photos : [this.getActivePhoto()];
+        let photosToExport;
+        if (scope === 'all') {
+            photosToExport = this.photos;
+        } else if (scope === 'selected') {
+            photosToExport = this.photos.filter(p => (p.rating && p.rating > 0) || (p.colorLabel && p.colorLabel !== 'none'));
+            if (photosToExport.length === 0) {
+                alert("Er zijn geen beoordeelde of gelabelde foto's geselecteerd om te exporteren.");
+                document.getElementById('loading-overlay')?.classList.add('hidden');
+                return;
+            }
+        } else {
+            photosToExport = [this.getActivePhoto()];
+        }
         if (photosToExport.length === 0 || !photosToExport[0]) return;
 
         document.getElementById('export-modal')?.classList.add('hidden');

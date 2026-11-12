@@ -1,11 +1,12 @@
 {
   "app_name": "vroonphoto",
-  "version": "1.5.8",
-  "build": 17,
-  "timestamp": "2026-11-12T12:40:51.560915+00:00",
-  "git_hash": "623c89d",
+  "version": "1.5.9",
+  "build": 18,
+  "timestamp": "2026-11-12T18:21:15.899992+00:00",
+  "git_hash": "68cf959",
   "features": [
-    "🚀 Versie v1.5.8: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🚀 Versie v1.5.9: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "💳 SD-Kaart Ingest, Oneindig Veel Foto's & Culling Beheer (v1.5.9): Lees onbeperkt foto's in vanaf een SD-kaart of externe schijf met unieke sessie/mapnaam. Beoordeel foto's razendsnel met cijfers 1-7, sterren en 5 kleurenlabels (inclusief sneltoetsen 1-7). Verplaats geselecteerde foto's naar een (sub)map en wis niet-geselecteerde foto's uit de werkruimte terwijl originelen op de SD-kaart/schijf 100% onaangeroerd blijven. Inclusief complete Lightroom tone sliders: Hooglichten, Schaduwen, Witte & Zwarte punten.",
     "🌌 Preset Blauwe Uur (v1.5.8): Authentieke schemering/twilight preset met diepe indigo- en kobaltblauwe lucht, magentatoets, sfeervol contrast, ruisonderdrukking voor nacht/low-light, subtiel vignet en traploze schuifregelaar.",
     "🎞️ Vignettering naar Zowel Donker als Licht (v1.5.7): Volledige creatieve vignettering met traploze schuifregelaar van donker/diep zwart (-100) tot helder/high-key wit (+100). Inclusief fijnafstelling voor Middelpunt (reikwijdte) en Zachtheid (feather), snelle stijlknoppen en razendsnelle hardware-versnelde WebAssembly verwerking.",
     "📱 Flexibele Responsieve Bovenbalk (v1.5.6): Alle navigatieknoppen, gereedschappen, voorbeelden en exportknoppen blijven altijd 100% zichtbaar. Bij het verkleinen van het venster of op kleinere schermen/tablets vouwen de knoppen automatisch en ordelijk onder elkaar (flex-wrap) zonder overlap of afsnijden.",
@@ -22,7 +23,7 @@
     "🪄 Objecten & Personen Verwijderen: Schilder over in de weg staande objecten (prullenbakken, lantaarnpalen, kabels, voorbijgangers) om ze direct en naadloos te wissen via contextuele achtergrondsynthese.",
     "🎨 13 Populaire Lightroom Presets: Gouden Uur, Blauwe Uur, Vintage Matte Film, Architectuur HDR, Zacht Portret, Moody Teal & Orange, Herfst Amber, Winter Koud, Ansel Adams B&W en Stage Red Fix.",
     "🖼️ Volledige JPG & RAW Ondersteuning: Bewerk en exporteer JPG-foto's net zo snel en krachtig als RAW en DNG, met uniforme knoppenbalk.",
-    "🎞️ 25-Foto Batch Beheer & Filmstrip: Bewerk tot 25 foto's tegelijkertijd met onafhankelijke bewerkingsstaten per foto, filmstrip onderaan en rasteroverzicht.",
+    "🎞️ Onbeperkt Foto Batch Beheer & Filmstrip: Bewerk onbeperkt foto's met onafhankelijke bewerkingsstaten per foto, filmstrip onderaan en rasteroverzicht.",
     "📁 Zelf Opslaglocatie Kiezen op Apparaat: Kies zelf elke gewenste map via de native Directory Picker op Mac/Windows/laptops of via 'Bewaar in Bestanden' op iPad."
   ]
 }

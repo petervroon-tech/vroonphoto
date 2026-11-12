@@ -1,24 +1,28 @@
 <!DOCTYPE html>
 <html lang="nl">
+
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="vroonphoto – Professionele WebAssembly RAW & JPG Fotobewerker met 12 Lightroom Presets, Gezichtsbehoud Deblur, Firefly Objectverwijdering, 25-Foto Beheer, Rood Licht Herstel en Topaz Super-Resolution">
+  <meta name="description"
+    content="vroonphoto – Professionele WebAssembly RAW & JPG Fotobewerker met 12 Lightroom Presets, Gezichtsbehoud Deblur, Firefly Objectverwijdering, 25-Foto Beheer, Rood Licht Herstel en Topaz Super-Resolution">
   <title>vroonphoto — WASM Fotobewerker (JPG & RAW | 12 Presets | Deblur & Inpaint)</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="favicon.svg">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
   <!-- Update Banner (Automatische Versie Detectie) -->
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.5.8</strong> beschikbaar &bull; <span id="upd-note">Nieuwe Preset: Blauwe Uur voor magische diepblauwe schemering en schemerfoto's</span></span>
+      <span><strong id="upd-ver">v1.5.9</strong> beschikbaar &bull; <span id="upd-note">Onbeperkt foto's inlezen, SD-kaart ingest, culling met 1-7 cijfers, sterren &amp; kleuren, selectie naar submap en complete Lightroom bewerking</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -33,33 +37,45 @@
         <span style="font-size: 20px;">📸</span>
         <span class="app-title">&lt;vroonphoto&gt;</span>
         <span class="badge-wasm">WASM Core</span>
-        <span id="input-mode-badge" class="badge-input" title="Invoermethode: Muis, Hand (Touch) of Pen (Apple Pencil / Stylus)">🖱️ Muis</span>
+        <span id="input-mode-badge" class="badge-input"
+          title="Invoermethode: Muis, Hand (Touch) of Pen (Apple Pencil / Stylus)">🖱️ Muis</span>
         <span id="photo-counter-badge" class="badge-count">1 / 1 Foto's</span>
-        <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)" title="Klik om te controleren op updates / geforceerd te herladen">
+        <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)"
+          title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.5.8</span> 🔄
+          <span id="ver-txt">v1.5.9</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
 
-      <label class="btn-primary" title="Voeg foto's toe (JPG, RAW, DNG, PNG, etc. tot 25 foto's)">
+      <button id="btn-import-sd" class="btn-primary" style="background: linear-gradient(135deg, #059669, #047857); border-color: #34d399;" title="Lees foto's rechtstreeks in vanaf een SD-kaart, camera of externe schijf">
+        <span>💳 SD-Kaart / Schijf Inlezen</span>
+      </button>
+
+      <label class="btn-primary" title="Voeg foto's toe (JPG, RAW, DNG, PNG, etc. - Onbeperkt)">
         <span>📂 Foto's Openen</span>
-        <input type="file" id="file-upload-input" multiple accept="image/jpeg,image/png,image/webp,image/*,.jpg,.jpeg,.png,.webp,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;">
+        <input type="file" id="file-upload-input" multiple
+          accept="image/jpeg,image/png,image/webp,image/*,.jpg,.jpeg,.png,.webp,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif"
+          style="display: none;">
       </label>
 
-      <button id="btn-load-sample-batch" class="btn-secondary" title="Laad 5 voorbeeldfoto's om direct alle functies te testen (Concert rood licht &amp; banding, Hoge ISO ruis, Zwart-wit landschap, Portret, Strand)">
+      <button id="btn-load-sample-batch" class="btn-secondary"
+        title="Laad 5 voorbeeldfoto's om direct alle functies te testen (Concert rood licht &amp; banding, Hoge ISO ruis, Zwart-wit landschap, Portret, Strand)">
         <span>📸 5 Voorbeeldfoto's</span>
       </button>
     </div>
 
     <div class="header-center">
-      <button id="btn-toggle-grid" class="btn-secondary" title="Wissel tussen Rasteroverzicht en Enkele Foto Bewerkscherm">
-        <span>🔲 Raster (25)</span>
+      <button id="btn-toggle-grid" class="btn-secondary"
+        title="Wissel tussen Rasteroverzicht en Enkele Foto Bewerkscherm">
+        <span>🔲 Raster</span>
       </button>
-      <button id="btn-sync-all" class="btn-secondary" title="Kopieer de huidige bewerkingsinstellingen naar alle geladen foto's">
+      <button id="btn-sync-all" class="btn-secondary"
+        title="Kopieer de huidige bewerkingsinstellingen naar alle geladen foto's">
         <span>⚡ Sync naar Alle</span>
       </button>
-      <button id="btn-hdr-bw-toggle" class="btn-secondary" style="font-weight: 700;" title="Zet huidige foto met 1 klik om naar Zwart-Wit (of terug naar kleur)">
+      <button id="btn-hdr-bw-toggle" class="btn-secondary" style="font-weight: 700;"
+        title="Zet huidige foto met 1 klik om naar Zwart-Wit (of terug naar kleur)">
         <span id="btn-hdr-bw-icon">⚡</span> <span id="btn-hdr-bw-txt">Zwart-Wit</span>
       </button>
       <button id="btn-compare-toggle" class="btn-secondary" title="Voor / Na vergelijken (Sneltoets: \)">
@@ -72,7 +88,8 @@
       <button id="btn-next-photo" class="btn-icon" title="Volgende foto (▶)">▶</button>
       <button id="btn-rotate-left" class="btn-icon" title="90° Links draaien">↺</button>
       <button id="btn-rotate-right" class="btn-icon" title="90° Rechts draaien">↻</button>
-      <button id="btn-delete-active-photo" class="btn-icon btn-danger-icon" title="Verwijder huidige foto uit sessie (Del / Backspace)">🗑️</button>
+      <button id="btn-delete-active-photo" class="btn-icon btn-danger-icon"
+        title="Verwijder huidige foto uit sessie (Del / Backspace)">🗑️</button>
       <button id="btn-open-export" class="btn-primary" title="Foto's opslaan op apparaat">
         <span>💾 Opslaan &amp; Exporteren</span>
       </button>
@@ -81,18 +98,21 @@
 
   <!-- Hoofd Workspace -->
   <main class="app-workspace">
-    
+
     <!-- Linker Zijbalk: Alle Functies, Tools, Presets & Curves -->
     <aside class="sidebar-left">
       <div class="sidebar-section">
         <div class="sidebar-title">Gereedschappen</div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          <button id="tool-inpaint" class="btn-secondary" style="width: 100%; text-align: left;" title="Schilder over ongewenste objecten of mensen om ze te wissen">
+          <button id="tool-inpaint" class="btn-secondary" style="width: 100%; text-align: left;"
+            title="Schilder over ongewenste objecten of mensen om ze te wissen">
             🪄 Object / Persoon Verwijderen
           </button>
-          <div id="inpaint-controls" style="display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(9, 14, 24, 0.85); border-radius: 4px; border: 1px solid var(--border-glow);">
+          <div id="inpaint-controls"
+            style="display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(9, 14, 24, 0.85); border-radius: 4px; border: 1px solid var(--border-glow);">
             <div style="font-size: 10.5px; color: var(--text-muted); line-height: 1.35; margin-bottom: 2px;">
-              Schilder over in de weg staande objecten (prullenbakken, palen, kabels of voorbijgangers) en klik op 'Wis Object'.
+              Schilder over in de weg staande objecten (prullenbakken, palen, kabels of voorbijgangers) en klik op 'Wis
+              Object'.
             </div>
             <div class="control-label-group">
               <span>Penseelgrootte</span>
@@ -100,16 +120,20 @@
             </div>
             <input type="range" id="inpaint-brush-size" min="5" max="120" value="35" class="param-slider">
             <div style="display: flex; gap: 8px; margin-top: 6px;">
-              <button id="btn-apply-heal" class="btn-primary" style="flex: 1;" title="Wis gemarkeerde objecten via contextuele synthese">✨ Wis Object</button>
-              <button id="btn-clear-heal" class="btn-secondary" style="flex: 1;" title="Wis het gemarkeerde schildermasker">↺ Wis Masker</button>
+              <button id="btn-apply-heal" class="btn-primary" style="flex: 1;"
+                title="Wis gemarkeerde objecten via contextuele synthese">✨ Wis Object</button>
+              <button id="btn-clear-heal" class="btn-secondary" style="flex: 1;"
+                title="Wis het gemarkeerde schildermasker">↺ Wis Masker</button>
             </div>
           </div>
 
           <!-- Topaz Super-Resolution (Vergroten) -->
-          <div style="padding: 8px; background: rgba(9, 14, 24, 0.85); border-radius: 4px; border: 1px solid var(--border-glow); display: flex; flex-direction: column; gap: 6px;">
+          <div
+            style="padding: 8px; background: rgba(9, 14, 24, 0.85); border-radius: 4px; border: 1px solid var(--border-glow); display: flex; flex-direction: column; gap: 6px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 11px; font-weight: 700; color: #fff;">🚀 Topaz AI Vergroten</span>
-              <span id="upscale-sharpness-val" style="font-size: 10px; color: var(--accent-cyan); font-weight: 700;">50%</span>
+              <span id="upscale-sharpness-val"
+                style="font-size: 10px; color: var(--accent-cyan); font-weight: 700;">50%</span>
             </div>
             <div style="font-size: 10px; color: var(--text-muted); line-height: 1.3;">
               Vergroot foto's 2x of 4x met AI edge-directed interpolatie.
@@ -119,8 +143,10 @@
             </div>
             <input type="range" id="upscale-sharpness" min="0" max="100" value="50" class="param-slider">
             <div style="display: flex; gap: 6px; margin-top: 4px;">
-              <button id="btn-upscale-2x" class="btn-primary" style="flex: 1; font-size: 11px; padding: 6px 4px;">🔍 2x</button>
-              <button id="btn-upscale-4x" class="btn-secondary" style="flex: 1; font-size: 11px; padding: 6px 4px;">🔎 4x</button>
+              <button id="btn-upscale-2x" class="btn-primary" style="flex: 1; font-size: 11px; padding: 6px 4px;">🔍
+                2x</button>
+              <button id="btn-upscale-4x" class="btn-secondary" style="flex: 1; font-size: 11px; padding: 6px 4px;">🔎
+                4x</button>
             </div>
           </div>
         </div>
@@ -134,7 +160,8 @@
             <span>🌅</span>
             <span>Gouden Uur</span>
           </div>
-          <div class="preset-card" data-preset="blue_hour" title="Magisch diepblauw schemeruur met indigo-tinten en sfeervol contrast">
+          <div class="preset-card" data-preset="blue_hour"
+            title="Magisch diepblauw schemeruur met indigo-tinten en sfeervol contrast">
             <span>🌌</span>
             <span>Blauwe Uur</span>
           </div>
@@ -162,7 +189,8 @@
             <span>❄️</span>
             <span>Winter Koud</span>
           </div>
-          <div class="preset-card highlight-focus" data-preset="smart_focus_deblur" title="Herstelt onscherpe fotos naar scherp met gezichtsbehoud">
+          <div class="preset-card highlight-focus" data-preset="smart_focus_deblur"
+            title="Herstelt onscherpe fotos naar scherp met gezichtsbehoud">
             <span>🔍</span>
             <span>Focus &amp; Gezichtsbehoud</span>
           </div>
@@ -194,13 +222,16 @@
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <div>
             <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 3px;">RGB + Luma Histogram</div>
-            <canvas id="histogram-canvas" width="222" height="70" style="width: 100%; height: 70px; background: #050811; border-radius: var(--radius-sm); border: 1px solid rgba(56, 189, 248, 0.2); display: block;"></canvas>
+            <canvas id="histogram-canvas" width="222" height="70"
+              style="width: 100%; height: 70px; background: #050811; border-radius: var(--radius-sm); border: 1px solid rgba(56, 189, 248, 0.2); display: block;"></canvas>
           </div>
           <div>
             <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 3px;">Tone Curve Editor</div>
-            <canvas id="curve-canvas" width="222" height="120" style="width: 100%; height: 120px; background: #050811; border-radius: var(--radius-sm); border: 1px solid rgba(56, 189, 248, 0.2); display: block;"></canvas>
+            <canvas id="curve-canvas" width="222" height="120"
+              style="width: 100%; height: 120px; background: #050811; border-radius: var(--radius-sm); border: 1px solid rgba(56, 189, 248, 0.2); display: block;"></canvas>
             <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
-              <button id="btn-reset-curve" class="btn-secondary" style="font-size: 10px; padding: 4px 8px;">Curve Resetten</button>
+              <button id="btn-reset-curve" class="btn-secondary" style="font-size: 10px; padding: 4px 8px;">Curve
+                Resetten</button>
             </div>
           </div>
         </div>
@@ -211,23 +242,28 @@
         <div class="sidebar-title">⚙️ Automatisch Import Profiel</div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <p style="font-size: 10.5px; color: var(--text-muted); line-height: 1.35; margin: 0;">
-            Stel je eigen standaardbewerking in (bv. ruisonderdrukking, scherpte of rood licht) die direct automatisch op elke geopende foto wordt toegepast.
+            Stel je eigen standaardbewerking in (bv. ruisonderdrukking, scherpte of rood licht) die direct automatisch
+            op elke geopende foto wordt toegepast.
           </p>
           <label style="cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #fff;">
             <input type="checkbox" id="toggle-auto-import-preset">
             <span>Auto-toepassen bij openen foto's</span>
           </label>
-          <div id="import-preset-summary" style="font-size: 10px; color: var(--accent-cyan); background: rgba(56, 189, 248, 0.08); padding: 5px 8px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.2); line-height: 1.3;">
+          <div id="import-preset-summary"
+            style="font-size: 10px; color: var(--accent-cyan); background: rgba(56, 189, 248, 0.08); padding: 5px 8px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.2); line-height: 1.3;">
             Standaard: Foto's openen 100% neutraal (origineel). Kies zelf gewenste bewerkingen.
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <button id="btn-save-as-import-preset" class="btn-primary" style="width: 100%;" title="Sla huidige schuifregelaars op als jouw standaardprofiel">
+            <button id="btn-save-as-import-preset" class="btn-primary" style="width: 100%;"
+              title="Sla huidige schuifregelaars op als jouw standaardprofiel">
               💾 Bewaar als Import Profiel
             </button>
-            <button id="btn-apply-import-preset-all" class="btn-secondary" style="width: 100%;" title="Pas je standaardprofiel direct toe op alle geladen foto's">
+            <button id="btn-apply-import-preset-all" class="btn-secondary" style="width: 100%;"
+              title="Pas je standaardprofiel direct toe op alle geladen foto's">
               ⚡ Toepassen op alle foto's
             </button>
-            <button id="btn-reset-import-preset" class="btn-reset-section" style="font-size: 10px; align-self: flex-start; cursor: pointer;">
+            <button id="btn-reset-import-preset" class="btn-reset-section"
+              style="font-size: 10px; align-self: flex-start; cursor: pointer;">
               ↺ Herstel fabrieksinstellingen
             </button>
           </div>
@@ -240,25 +276,29 @@
           Geen foto geopend
         </div>
         <div style="font-size: 10px; color: var(--text-dim); margin-top: 6px;">
-          Batch support: tot 25 foto's tegelijk (JPG, PNG, WebP, RAW, DNG, CR2, NEF, ARW)
+          Batch &amp; SD support: Onbeperkt / Oneindig veel foto's tegelijk (JPG, PNG, WebP, RAW, DNG, CR2, NEF, ARW, TIFF)
         </div>
       </div>
     </aside>
 
     <!-- Midden Canvas Viewport & Filmstrip -->
     <section class="viewport-container" id="viewport-dropzone">
-      
-      <!-- RASTER OVERZICHT (GRID MODE VOOR TOT 25 FOTO'S) -->
+
+      <!-- RASTER OVERZICHT (GRID MODE VOOR ONBEPERKT VEEL FOTO'S) -->
       <div id="grid-overview-container" class="grid-overview-container hidden">
         <div class="grid-topbar">
           <div>
-            <h2 style="font-size: 16px; font-weight: 700; color: #fff;">📸 Geladen Foto's Overzicht (<span id="grid-count-txt">1 / 25</span>)</h2>
-            <p style="font-size: 11px; color: var(--text-muted);">Tik op een foto om direct naar het bewerkscherm van die foto te gaan.</p>
+            <h2 style="font-size: 16px; font-weight: 700; color: #fff;">📸 Geladen Foto's Overzicht (<span
+                id="grid-count-txt">1 Foto's</span>)</h2>
+            <p style="font-size: 11px; color: var(--text-muted);">Tik op een foto om direct naar het bewerkscherm van
+              die foto te gaan.</p>
           </div>
           <div style="display: flex; gap: 8px;">
             <label class="btn-primary" style="cursor: pointer;">
               <span>➕ Voeg Meer Foto's Toe</span>
-              <input type="file" id="grid-add-file-input" multiple accept="image/jpeg,image/png,image/webp,image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;">
+              <input type="file" id="grid-add-file-input" multiple
+                accept="image/jpeg,image/png,image/webp,image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif"
+                style="display: none;">
             </label>
             <button id="btn-close-grid" class="btn-secondary">Sluit Overzicht ✕</button>
           </div>
@@ -278,14 +318,21 @@
           <!-- Lege Sessie Weergave (als alle foto's verwijderd zijn) -->
           <div id="empty-session-state" class="empty-session-state hidden">
             <span style="font-size: 52px; margin-bottom: 12px;">🖼️</span>
-            <h2 style="font-size: 19px; font-weight: 700; color: #fff; margin-bottom: 6px;">Geen foto's in de sessie</h2>
-            <p style="font-size: 13px; color: var(--text-muted); max-width: 440px; line-height: 1.5; margin-bottom: 18px;">
+            <h2 style="font-size: 19px; font-weight: 700; color: #fff; margin-bottom: 6px;">Geen foto's in de sessie
+            </h2>
+            <p
+              style="font-size: 13px; color: var(--text-muted); max-width: 440px; line-height: 1.5; margin-bottom: 18px;">
               Sleep hier foto's naartoe (RAW, DNG, CR2, NEF, ARW, JPG, PNG, TIFF) of open ze via de knoppen:
             </p>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+              <button id="btn-import-sd-empty" class="btn-primary" style="background: linear-gradient(135deg, #059669, #047857); border-color: #34d399;">
+                <span>💳 SD-Kaart / Schijf Inlezen</span>
+              </button>
               <label class="btn-primary" style="cursor: pointer;">
                 <span>📂 Foto's Openen</span>
-                <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;" onchange="vroonApp.loadMultipleFiles(this.files); this.value='';">
+                <input type="file" multiple
+                  accept="image/jpeg,image/png,image/webp,image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif"
+                  style="display: none;" onchange="vroonApp.loadMultipleFiles(this.files); this.value='';">
               </label>
               <button class="btn-secondary" onclick="vroonApp.loadSampleBatch()">
                 <span>📸 5 Voorbeeldfoto's</span>
@@ -302,15 +349,78 @@
           </div>
         </div>
 
-        <!-- FILMSTRIP ONDERAAN (SCROLLBARE LIJST TOT 25 FOTO'S) -->
+        <!-- CULLING & BEOORDELINGSBALK (1-7, STERREN, KLEUREN & SELECTIE FILTER) -->
+        <div class="culling-toolbar">
+          <div class="culling-left">
+            <span style="font-size: 11px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 4px;">
+              ⭐ Beoordeel Foto:
+            </span>
+            <div class="culling-rate-group">
+              <button class="culling-rate-btn" data-rate="0" title="Geen score (Wis cijfer / ster - Sneltoets: 0)">✕</button>
+              <button class="culling-rate-btn" data-rate="1" title="Cijfer 1 / ★ (Sneltoets: 1)">1 ★</button>
+              <button class="culling-rate-btn" data-rate="2" title="Cijfer 2 / ★★ (Sneltoets: 2)">2 ★★</button>
+              <button class="culling-rate-btn" data-rate="3" title="Cijfer 3 / ★★★ (Sneltoets: 3)">3 ★★★</button>
+              <button class="culling-rate-btn" data-rate="4" title="Cijfer 4 / ★★★★ (Sneltoets: 4)">4 ★★★★</button>
+              <button class="culling-rate-btn" data-rate="5" title="Cijfer 5 / ★★★★★ (Sneltoets: 5)">5 ★★★★★</button>
+              <button class="culling-rate-btn" data-rate="6" title="Cijfer 6 (Sneltoets: 6)">6</button>
+              <button class="culling-rate-btn" data-rate="7" title="Cijfer 7 (Sneltoets: 7)">7</button>
+            </div>
+
+            <div class="culling-color-group" style="display: flex; gap: 3px; margin-left: 6px;">
+              <button class="culling-color-btn color-red" data-color="red" title="Kleur: Rood">🔴</button>
+              <button class="culling-color-btn color-yellow" data-color="yellow" title="Kleur: Geel">🟡</button>
+              <button class="culling-color-btn color-green" data-color="green" title="Kleur: Groen">🟢</button>
+              <button class="culling-color-btn color-blue" data-color="blue" title="Kleur: Blauw">🔵</button>
+              <button class="culling-color-btn color-purple" data-color="purple" title="Kleur: Paars">🟣</button>
+              <button class="culling-color-btn" data-color="none" title="Geen kleurlabel">⚪</button>
+            </div>
+          </div>
+
+          <div class="culling-right">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span style="font-size: 10.5px; color: var(--text-muted);">Filter:</span>
+              <select id="filmstrip-filter-select" class="form-select" style="font-size: 11px; padding: 3px 6px;">
+                <option value="all">Toon Alle Foto's</option>
+                <option value="rated">⭐ Beoordeeld (Cijfer >= 1)</option>
+                <option value="stars3">⭐⭐⭐ 3 Sterren of hoger (>=3)</option>
+                <option value="stars5">⭐⭐⭐⭐⭐ Top Score (5+)</option>
+                <option value="rate_1">Cijfer 1</option>
+                <option value="rate_2">Cijfer 2</option>
+                <option value="rate_3">Cijfer 3</option>
+                <option value="rate_4">Cijfer 4</option>
+                <option value="rate_5">Cijfer 5</option>
+                <option value="rate_6">Cijfer 6</option>
+                <option value="rate_7">Cijfer 7</option>
+                <option value="color_red">🔴 Rood label</option>
+                <option value="color_yellow">🟡 Geel label</option>
+                <option value="color_green">🟢 Groen label</option>
+                <option value="color_blue">🔵 Blauw label</option>
+                <option value="color_purple">🟣 Paars label</option>
+              </select>
+            </div>
+
+            <button id="btn-cull-keep-selection" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #f59e0b; border-color: rgba(245, 158, 11, 0.4);" title="Houd alleen de geselecteerde / beoordeelde foto's en wis de overige uit het werkgeheugen (Originelen op SD/schijf blijven 100% veilig bewaard!)">
+              🧹 Culling: Wis Onbeoordeeld
+            </button>
+            <button id="btn-cull-export-subfolder" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;" title="Plaats de geselecteerde foto's in een submap om te bewerken">
+              📁 Selectie naar Submap
+            </button>
+          </div>
+        </div>
+
+        <!-- FILMSTRIP ONDERAAN (SCROLLBARE LIJST MET ONEINDIG VEEL FOTO'S) -->
         <div class="filmstrip-bar">
           <div class="filmstrip-header">
-            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
-              🎞️ Filmstrip (<span id="filmstrip-count-txt">1 / 25</span>)
+            <span
+              style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+              🎞️ Filmstrip (<span id="filmstrip-count-txt">1 Foto's</span>)
             </span>
             <div style="display: flex; gap: 8px;">
-              <button id="btn-filmstrip-delete-current" class="btn-reset-section" style="cursor: pointer; color: #ef4444; border-color: rgba(239, 68, 68, 0.35);" title="Verwijder huidige geselecteerde foto uit de sessie">🗑️ Foto Verwijderen</button>
-              <button id="btn-filmstrip-sync" class="btn-reset-section" style="cursor: pointer;">⚡ Kopieer instellingen naar alle foto's</button>
+              <button id="btn-filmstrip-delete-current" class="btn-reset-section"
+                style="cursor: pointer; color: #ef4444; border-color: rgba(239, 68, 68, 0.35);"
+                title="Verwijder huidige geselecteerde foto uit de sessie">🗑️ Foto Verwijderen</button>
+              <button id="btn-filmstrip-sync" class="btn-reset-section" style="cursor: pointer;">⚡ Kopieer instellingen
+                naar alle foto's</button>
             </div>
           </div>
           <div class="filmstrip-scroll" id="filmstrip-scroll">
@@ -322,21 +432,29 @@
       <!-- Laad Spinner Overlay -->
       <div id="loading-overlay" class="loading-overlay hidden">
         <div class="spinner"></div>
-        <div id="loading-text" style="font-size: 13px; font-weight: 600; color: #e2e8f0;">Foto wordt verwerkt met WebAssembly...</div>
+        <div id="loading-text" style="font-size: 13px; font-weight: 600; color: #e2e8f0;">Foto wordt verwerkt met
+          WebAssembly...</div>
       </div>
     </section>
 
     <!-- Rechter Zijbalk: Slanke Schuifregelaars (Compact, Perfect in Verhouding) -->
     <aside class="sidebar-right">
-      
+
       <!-- PRESET SCHUIFREGELAAR VOOR VERHOUDING / INTENSITEIT (DIRECT BOVENAAN!) -->
-      <div id="preset-amount-container" class="preset-amount-panel" style="margin: 8px 8px 6px; padding: 8px 10px; background: rgba(15, 23, 42, 0.85); border-radius: var(--radius-sm); border: 1px solid var(--border-glow);">
-        <div class="control-label-group" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
-          <span style="font-size: 11px; font-weight: 600; color: var(--text-main);">Preset: <strong id="active-preset-name" style="color: var(--accent-cyan); margin-left: 2px;">Geen preset actief</strong></span>
-          <span id="slider-preset-amount-val" style="color: var(--accent-cyan); font-weight: 700; font-size: 11.5px;">100%</span>
+      <div id="preset-amount-container" class="preset-amount-panel"
+        style="margin: 8px 8px 6px; padding: 8px 10px; background: rgba(15, 23, 42, 0.85); border-radius: var(--radius-sm); border: 1px solid var(--border-glow);">
+        <div class="control-label-group"
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+          <span style="font-size: 11px; font-weight: 600; color: var(--text-main);">Preset: <strong
+              id="active-preset-name" style="color: var(--accent-cyan); margin-left: 2px;">Geen preset
+              actief</strong></span>
+          <span id="slider-preset-amount-val"
+            style="color: var(--accent-cyan); font-weight: 700; font-size: 11.5px;">100%</span>
         </div>
-        <input type="range" id="slider-preset-amount" min="0" max="200" value="100" class="param-slider" title="Pas de verhouding en intensiteit van de gekozen preset aan (0% = origineel, 100% = standaard, 200% = extra krachtig)">
-        <div style="display: flex; justify-content: space-between; font-size: 9px; color: var(--text-dim); margin-top: 1px;">
+        <input type="range" id="slider-preset-amount" min="0" max="200" value="100" class="param-slider"
+          title="Pas de verhouding en intensiteit van de gekozen preset aan (0% = origineel, 100% = standaard, 200% = extra krachtig)">
+        <div
+          style="display: flex; justify-content: space-between; font-size: 9px; color: var(--text-dim); margin-top: 1px;">
           <span>0% Origineel</span>
           <span>100% Normaal</span>
           <span>200% Extra</span>
@@ -352,11 +470,33 @@
         <div class="panel-content">
           <div class="control-row">
             <div class="control-label-group"><span>Belichting (EV)</span><span id="slider-exp-val">0.0</span></div>
-            <input type="range" id="slider-exp" data-param="exposure" min="-5" max="5" step="0.1" value="0" class="param-slider">
+            <input type="range" id="slider-exp" data-param="exposure" min="-5" max="5" step="0.1" value="0"
+              class="param-slider">
           </div>
           <div class="control-row">
             <div class="control-label-group"><span>Contrast</span><span id="slider-cont-val">0</span></div>
-            <input type="range" id="slider-cont" data-param="contrast" min="-100" max="100" value="0" class="param-slider">
+            <input type="range" id="slider-cont" data-param="contrast" min="-100" max="100" value="0"
+              class="param-slider">
+          </div>
+          <div class="control-row">
+            <div class="control-label-group"><span>Hooglichten (Highlights)</span><span id="slider-high-val">0</span></div>
+            <input type="range" id="slider-high" data-param="highlights" min="-100" max="100" value="0"
+              class="param-slider" title="Herstel uitgebeten lucht of versterk lichte delen">
+          </div>
+          <div class="control-row">
+            <div class="control-label-group"><span>Schaduwen (Shadows)</span><span id="slider-shad-val">0</span></div>
+            <input type="range" id="slider-shad" data-param="shadows" min="-100" max="100" value="0"
+              class="param-slider" title="Haal details op uit donkere schaduwpartijen">
+          </div>
+          <div class="control-row">
+            <div class="control-label-group"><span>Witte Tinten (Whites)</span><span id="slider-white-val">0</span></div>
+            <input type="range" id="slider-white" data-param="whites" min="-100" max="100" value="0"
+              class="param-slider" title="Bepaal het witte knippunt">
+          </div>
+          <div class="control-row">
+            <div class="control-label-group"><span>Zwarte Tinten (Blacks)</span><span id="slider-black-val">0</span></div>
+            <input type="range" id="slider-black" data-param="blacks" min="-100" max="100" value="0"
+              class="param-slider" title="Verdiep het diepste zwartpunt">
           </div>
           <div class="control-row">
             <div class="control-label-group"><span>Temperatuur (Kleur)</span><span id="slider-temp-val">0</span></div>
@@ -368,11 +508,13 @@
           </div>
           <div class="control-row">
             <div class="control-label-group"><span>Levendigheid</span><span id="slider-vib-val">0</span></div>
-            <input type="range" id="slider-vib" data-param="vibrance" min="-100" max="100" value="0" class="param-slider">
+            <input type="range" id="slider-vib" data-param="vibrance" min="-100" max="100" value="0"
+              class="param-slider">
           </div>
           <div class="control-row">
             <div class="control-label-group"><span>Verzadiging</span><span id="slider-sat-val">0</span></div>
-            <input type="range" id="slider-sat" data-param="saturation" min="-100" max="100" value="0" class="param-slider">
+            <input type="range" id="slider-sat" data-param="saturation" min="-100" max="100" value="0"
+              class="param-slider">
           </div>
         </div>
       </div>
@@ -381,21 +523,27 @@
       <div class="accordion-panel" id="section-bw-panel">
         <div class="panel-header highlight-bw">
           <span>⚡ Zwart-Wit Engine</span>
-          <button id="btn-toggle-bw-pill" class="btn-secondary" style="font-size: 10px; padding: 2px 8px; border-radius: 12px;">Omzetten</button>
+          <button id="btn-toggle-bw-pill" class="btn-secondary"
+            style="font-size: 10px; padding: 2px 8px; border-radius: 12px;">Omzetten</button>
         </div>
         <div id="bw-mixer-panel" class="panel-content disabled">
           <!-- 1-KLIK GROTE KNOP -->
-          <button id="btn-toggle-bw-big" class="btn-primary" style="width: 100%; justify-content: center; font-size: 11px; font-weight: 700; padding: 7px 10px;">
+          <button id="btn-toggle-bw-big" class="btn-primary"
+            style="width: 100%; justify-content: center; font-size: 11px; font-weight: 700; padding: 7px 10px;">
             ⚡ 1-Klik: Zet om naar Zwart-Wit
           </button>
 
           <!-- 4 SNELLE ANALOGE / ZONE SYSTEM PROFIELEN -->
           <div style="font-size: 9.5px; color: var(--text-dim); margin-top: 1px;">Klassieke B&amp;W Stijlen:</div>
           <div class="bw-preset-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-            <button class="bw-preset-btn" data-preset="ansel_adams" style="font-size: 10px; padding: 5px;">🏞️ Ansel Adams</button>
-            <button class="bw-preset-btn" data-preset="knallend_contrast" style="font-size: 10px; padding: 5px;">⚡ Hoog Contrast</button>
-            <button class="bw-preset-btn" data-preset="film_noir" style="font-size: 10px; padding: 5px;">🎬 Film Noir</button>
-            <button class="bw-preset-btn" data-preset="dramatic_street" style="font-size: 10px; padding: 5px;">📷 Straatfoto</button>
+            <button class="bw-preset-btn" data-preset="ansel_adams" style="font-size: 10px; padding: 5px;">🏞️ Ansel
+              Adams</button>
+            <button class="bw-preset-btn" data-preset="knallend_contrast" style="font-size: 10px; padding: 5px;">⚡ Hoog
+              Contrast</button>
+            <button class="bw-preset-btn" data-preset="film_noir" style="font-size: 10px; padding: 5px;">🎬 Film
+              Noir</button>
+            <button class="bw-preset-btn" data-preset="dramatic_street" style="font-size: 10px; padding: 5px;">📷
+              Straatfoto</button>
           </div>
 
           <!-- SCHUIFJES VOOR BIJSTELLEN IN ZWART-WIT -->
@@ -404,39 +552,50 @@
               <span>Zone Contrast (Diep Zwart)</span>
               <span id="slider-bw-contrast-val">35</span>
             </div>
-            <input type="range" id="slider-bw-contrast" data-param="bwContrast" min="0" max="100" value="35" class="param-slider">
+            <input type="range" id="slider-bw-contrast" data-param="bwContrast" min="0" max="100" value="35"
+              class="param-slider">
           </div>
           <div class="control-row">
             <div class="control-label-group">
               <span>Clarity Punch (Micro-Contrast)</span>
               <span id="slider-bw-clarity-val">45</span>
             </div>
-            <input type="range" id="slider-bw-clarity" data-param="bwClarity" min="0" max="100" value="45" class="param-slider">
+            <input type="range" id="slider-bw-clarity" data-param="bwClarity" min="0" max="100" value="45"
+              class="param-slider">
           </div>
           <div class="control-row">
             <div class="control-label-group">
               <span>Analoge Filmkorrel</span>
               <span id="slider-bw-grain-val">10</span>
             </div>
-            <input type="range" id="slider-bw-grain" data-param="bwGrain" min="0" max="100" value="10" class="param-slider">
+            <input type="range" id="slider-bw-grain" data-param="bwGrain" min="0" max="100" value="10"
+              class="param-slider">
           </div>
 
           <!-- KLEURFILTER MIXER -->
-          <div style="font-size: 10.5px; font-weight: 700; color: var(--text-main); margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
+          <div
+            style="font-size: 10.5px; font-weight: 700; color: var(--text-main); margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
             <span>Kleurfilter Mixer</span>
-            <button class="btn-reset-section" data-section="bw_filters" style="font-size: 9.5px; padding: 1px 5px;">Reset</button>
+            <button class="btn-reset-section" data-section="bw_filters"
+              style="font-size: 9.5px; padding: 1px 5px;">Reset</button>
           </div>
           <div class="control-row">
-            <div class="control-label-group"><span>Rood Filter (Donkere lucht/witte wolken)</span><span id="slider-bw-red-val">40</span></div>
-            <input type="range" id="slider-bw-red" data-param="bwRed" min="-100" max="100" value="40" class="param-slider">
+            <div class="control-label-group"><span>Rood Filter (Donkere lucht/witte wolken)</span><span
+                id="slider-bw-red-val">40</span></div>
+            <input type="range" id="slider-bw-red" data-param="bwRed" min="-100" max="100" value="40"
+              class="param-slider">
           </div>
           <div class="control-row">
-            <div class="control-label-group"><span>Groen Filter (Gebladerte &amp; huid)</span><span id="slider-bw-green-val">10</span></div>
-            <input type="range" id="slider-bw-green" data-param="bwGreen" min="-100" max="100" value="10" class="param-slider">
+            <div class="control-label-group"><span>Groen Filter (Gebladerte &amp; huid)</span><span
+                id="slider-bw-green-val">10</span></div>
+            <input type="range" id="slider-bw-green" data-param="bwGreen" min="-100" max="100" value="10"
+              class="param-slider">
           </div>
           <div class="control-row">
-            <div class="control-label-group"><span>Blauw Filter (Mist &amp; nevel)</span><span id="slider-bw-blue-val">-10</span></div>
-            <input type="range" id="slider-bw-blue" data-param="bwBlue" min="-100" max="100" value="-10" class="param-slider">
+            <div class="control-label-group"><span>Blauw Filter (Mist &amp; nevel)</span><span
+                id="slider-bw-blue-val">-10</span></div>
+            <input type="range" id="slider-bw-blue" data-param="bwBlue" min="-100" max="100" value="-10"
+              class="param-slider">
           </div>
         </div>
       </div>
@@ -450,11 +609,16 @@
         <div class="panel-content">
           <!-- SNELLE VIGNET KEUZES -->
           <div style="font-size: 9.5px; color: var(--text-dim); margin-bottom: 2px;">Snelle vignet keuzes:</div>
-          <div class="vignette-quick-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 6px;">
-            <button class="vignette-quick-btn btn-secondary" data-amount="-40" style="font-size: 10px; padding: 4px 6px;">⚫ Donker (-40)</button>
-            <button class="vignette-quick-btn btn-secondary" data-amount="40" style="font-size: 10px; padding: 4px 6px;">⚪ Wit (+40)</button>
-            <button class="vignette-quick-btn btn-secondary" data-amount="-75" style="font-size: 10px; padding: 4px 6px;">🎬 Diep Zwart (-75)</button>
-            <button class="vignette-quick-btn btn-secondary" data-amount="75" style="font-size: 10px; padding: 4px 6px;">✨ High-Key (+75)</button>
+          <div class="vignette-quick-grid"
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 6px;">
+            <button class="vignette-quick-btn btn-secondary" data-amount="-40"
+              style="font-size: 10px; padding: 4px 6px;">⚫ Donker (-40)</button>
+            <button class="vignette-quick-btn btn-secondary" data-amount="40"
+              style="font-size: 10px; padding: 4px 6px;">⚪ Wit (+40)</button>
+            <button class="vignette-quick-btn btn-secondary" data-amount="-75"
+              style="font-size: 10px; padding: 4px 6px;">🎬 Diep Zwart (-75)</button>
+            <button class="vignette-quick-btn btn-secondary" data-amount="75"
+              style="font-size: 10px; padding: 4px 6px;">✨ High-Key (+75)</button>
           </div>
 
           <div class="control-row">
@@ -462,8 +626,10 @@
               <span>Hoeveelheid (Donker ◄► Licht)</span>
               <span id="slider-vignette-amount-val">0</span>
             </div>
-            <input type="range" id="slider-vignette-amount" data-param="vignetteAmount" min="-100" max="100" value="0" class="param-slider" title="Naar links voor donker/zwart vignet, naar rechts voor helder/wit vignet">
-            <div style="display: flex; justify-content: space-between; font-size: 8.5px; color: var(--text-dim); margin-top: 1px;">
+            <input type="range" id="slider-vignette-amount" data-param="vignetteAmount" min="-100" max="100" value="0"
+              class="param-slider" title="Naar links voor donker/zwart vignet, naar rechts voor helder/wit vignet">
+            <div
+              style="display: flex; justify-content: space-between; font-size: 8.5px; color: var(--text-dim); margin-top: 1px;">
               <span>-100 Zwart</span>
               <span>0 Neutraal</span>
               <span>+100 Wit</span>
@@ -475,7 +641,8 @@
               <span>Middelpunt (Reikwijdte)</span>
               <span id="slider-vignette-midpoint-val">50</span>
             </div>
-            <input type="range" id="slider-vignette-midpoint" data-param="vignetteMidpoint" min="10" max="90" value="50" class="param-slider">
+            <input type="range" id="slider-vignette-midpoint" data-param="vignetteMidpoint" min="10" max="90" value="50"
+              class="param-slider">
           </div>
 
           <div class="control-row">
@@ -483,7 +650,8 @@
               <span>Zachtheid (Vloeiend verloop)</span>
               <span id="slider-vignette-feather-val">50</span>
             </div>
-            <input type="range" id="slider-vignette-feather" data-param="vignetteFeather" min="10" max="100" value="50" class="param-slider">
+            <input type="range" id="slider-vignette-feather" data-param="vignetteFeather" min="10" max="100" value="50"
+              class="param-slider">
           </div>
         </div>
       </div>
@@ -500,35 +668,40 @@
               <span>Rood Licht Herstel</span>
               <span id="slider-stage-red-val">0</span>
             </div>
-            <input type="range" id="slider-stage-red" data-param="stageRedFix" min="0" max="100" value="0" class="param-slider">
+            <input type="range" id="slider-stage-red" data-param="stageRedFix" min="0" max="100" value="0"
+              class="param-slider">
           </div>
           <div class="control-row">
             <div class="control-label-group">
               <span>Bleed Reductie</span>
               <span id="slider-bleed-red-val">0</span>
             </div>
-            <input type="range" id="slider-bleed-red" data-param="colorBleedReduction" min="0" max="100" value="0" class="param-slider">
+            <input type="range" id="slider-bleed-red" data-param="colorBleedReduction" min="0" max="100" value="0"
+              class="param-slider">
           </div>
           <div class="control-row">
             <div class="control-label-group">
               <span>Huidskleur Behoud</span>
               <span id="slider-skin-protect-val">50</span>
             </div>
-            <input type="range" id="slider-skin-protect" data-param="skinProtection" min="0" max="100" value="50" class="param-slider">
+            <input type="range" id="slider-skin-protect" data-param="skinProtection" min="0" max="100" value="50"
+              class="param-slider">
           </div>
           <div class="control-row">
             <div class="control-label-group">
               <span>Gamut Compressie</span>
               <span id="slider-gamut-val">50</span>
             </div>
-            <input type="range" id="slider-gamut" data-param="gamutCompress" min="0" max="100" value="50" class="param-slider">
+            <input type="range" id="slider-gamut" data-param="gamutCompress" min="0" max="100" value="50"
+              class="param-slider">
           </div>
           <div class="control-row">
             <div class="control-label-group">
               <span>LED Banding Herstel</span>
               <span id="slider-stage-banding-val">0</span>
             </div>
-            <input type="range" id="slider-stage-banding" data-param="stageBandingReduction" min="0" max="100" value="0" class="param-slider">
+            <input type="range" id="slider-stage-banding" data-param="stageBandingReduction" min="0" max="100" value="0"
+              class="param-slider">
           </div>
         </div>
       </div>
@@ -545,14 +718,16 @@
               <span>Deblur (Scherpte)</span>
               <span id="slider-smart-deblur-val">0</span>
             </div>
-            <input type="range" id="slider-smart-deblur" data-param="smartDeblur" min="0" max="100" value="0" class="param-slider">
+            <input type="range" id="slider-smart-deblur" data-param="smartDeblur" min="0" max="100" value="0"
+              class="param-slider">
           </div>
           <div class="control-row">
             <div class="control-label-group">
               <span>Gezichtsbehoud</span>
               <span id="slider-deblur-skin-val">75</span>
             </div>
-            <input type="range" id="slider-deblur-skin" data-param="deblurSkinProtect" min="0" max="100" value="75" class="param-slider">
+            <input type="range" id="slider-deblur-skin" data-param="deblurSkinProtect" min="0" max="100" value="75"
+              class="param-slider">
           </div>
         </div>
       </div>
@@ -569,21 +744,24 @@
               <span>Luminantie Ruis</span>
               <span id="slider-denoise-luma-val">0</span>
             </div>
-            <input type="range" id="slider-denoise-luma" data-param="denoiseLuma" min="0" max="100" value="0" class="param-slider">
+            <input type="range" id="slider-denoise-luma" data-param="denoiseLuma" min="0" max="100" value="0"
+              class="param-slider">
           </div>
           <div class="control-row">
             <div class="control-label-group">
               <span>Kleurruis (Chroma)</span>
               <span id="slider-denoise-chroma-val">0</span>
             </div>
-            <input type="range" id="slider-denoise-chroma" data-param="denoiseChroma" min="0" max="100" value="0" class="param-slider">
+            <input type="range" id="slider-denoise-chroma" data-param="denoiseChroma" min="0" max="100" value="0"
+              class="param-slider">
           </div>
           <div class="control-row">
             <div class="control-label-group">
               <span>Detail Behoud</span>
               <span id="slider-denoise-detail-val">50</span>
             </div>
-            <input type="range" id="slider-denoise-detail" data-param="denoiseDetail" min="0" max="100" value="50" class="param-slider">
+            <input type="range" id="slider-denoise-detail" data-param="denoiseDetail" min="0" max="100" value="50"
+              class="param-slider">
           </div>
         </div>
       </div>
@@ -599,13 +777,15 @@
         <button id="btn-close-export" class="btn-icon">✕</button>
       </div>
       <div class="modal-body">
-        
+
         <div class="dest-choice-box">
           <div style="font-weight: 700; color: var(--accent-cyan); display: flex; align-items: center; gap: 6px;">
             <span>📁 Zelf Opslaglocatie Kiezen op Apparaat</span>
           </div>
           <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
-            Op Mac, Windows en laptops opent de native bestandsverkenner waarin je zelf elke gewenste map kunt selecteren. Op iPad opent het officiële <strong>"Bewaar in Bestanden"</strong> menu (iCloud Drive / Op mijn iPad).
+            Op Mac, Windows en laptops opent de native bestandsverkenner waarin je zelf elke gewenste map kunt
+            selecteren. Op iPad opent het officiële <strong>"Bewaar in Bestanden"</strong> menu (iCloud Drive / Op mijn
+            iPad).
           </p>
         </div>
 
@@ -613,6 +793,7 @@
           <div style="margin-bottom: 4px; font-weight: 600;">Wat wil je opslaan:</div>
           <select id="export-scope" class="form-select" style="width: 100%;">
             <option value="all">Alle bewerkte foto's in één keer (Batch Export)</option>
+            <option value="selected">⭐ Alleen beoordeelde / geselecteerde foto's (Culling Selectie)</option>
             <option value="current">Alleen de huidige actieve foto</option>
           </select>
         </label>
@@ -646,7 +827,45 @@
     </div>
   </div>
 
+  <!-- SD-KAART & EXTERNE SCHIJF INLEZEN MODAL -->
+  <div id="sd-import-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <span>💳 Foto's Inlezen vanaf SD-Kaart / Externe Schijf</span>
+        <button id="btn-close-sd-modal" class="btn-icon">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(52, 211, 153, 0.4); border-radius: 6px; padding: 12px; margin-bottom: 14px; font-size: 11.5px; line-height: 1.45; color: #e2e8f0;">
+          <strong style="color: #34d399;">🛡️ 100% Veilig &amp; Niet-Destructief:</strong><br>
+          Uw originele foto's op de SD-kaart, camera of externe schijf blijven <strong>volledig onaangeroerd</strong>. Foto's worden alleen veilig ingelezen in de razendsnelle WebAssembly werkruimte.
+        </div>
+
+        <label>
+          <div style="margin-bottom: 5px; font-weight: 700; font-size: 12px; color: var(--text-main);">Unieke Sessienaam / Mapnaam:</div>
+          <input type="text" id="sd-session-name-input" class="form-input" style="width: 100%; font-size: 12.5px; padding: 8px 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--border-glow); border-radius: 4px; color: #fff;" placeholder="bijv. Fotosessie_2026-11-12">
+        </label>
+        <p style="font-size: 10.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.4;">
+          Deze naam wordt gebruikt om uw sessie te bundelen en om later geselecteerde foto's georganiseerd in een submap op te slaan.
+        </p>
+
+        <div style="margin-top: 12px; font-size: 11px; color: var(--text-dim); line-height: 1.4;">
+          Klik hieronder om de gewenste map op uw SD-kaart (zoals <code>DCIM</code>) of externe schijf te kiezen. Alle RAW, DNG, JPG en PNG foto's worden direct ingelezen.
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; gap: 8px;">
+        <button id="btn-cancel-sd-import" class="btn-secondary" style="flex: 1;">Annuleren</button>
+        <button id="btn-confirm-sd-picker" class="btn-primary" style="flex: 2; justify-content: center; font-weight: 700; background: linear-gradient(135deg, #059669, #047857); border-color: #34d399;">
+          📂 Kies Map op SD-Kaart &amp; Start Inlezen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verborgen fallback input voor directory selection in browsers zonder File System Access API -->
+  <input type="file" id="sd-directory-fallback" webkitdirectory directory multiple style="display: none;">
+
   <!-- Hoofd applicatie script -->
   <script src="app.js"></script>
 </body>
+
 </html>

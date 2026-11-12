@@ -658,6 +658,90 @@ body {
   font-weight: 700;
 }
 
+.filmstrip-rating-badge {
+  position: absolute;
+  bottom: 2px;
+  left: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fbbf24;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  z-index: 4;
+}
+
+/* CULLING & BEOORDELINGSBALK */
+.culling-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(10, 16, 28, 0.96);
+  border-top: 1px solid var(--border-glow);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.culling-left, .culling-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.culling-rate-group {
+  display: flex;
+  gap: 2px;
+}
+
+.culling-rate-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.culling-rate-btn:hover {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: #f59e0b;
+}
+
+.culling-rate-btn.active {
+  background: #f59e0b;
+  color: #000000;
+  border-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.culling-color-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  padding: 2px;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.culling-color-btn:hover {
+  transform: scale(1.2);
+}
+
+.culling-color-btn.active {
+  transform: scale(1.25);
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.8));
+}
+
 .filmstrip-close {
   position: absolute;
   top: 3px;
