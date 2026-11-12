@@ -2,8 +2,8 @@
   "app_name": "vroonphoto",
   "version": "1.6.6",
   "build": 25,
-  "timestamp": "2026-11-12T19:38:10.931003+00:00",
-  "git_hash": "df26dc7",
+  "timestamp": "2026-11-12T19:38:27.385667+00:00",
+  "git_hash": "c6d663a",
   "features": [
     "🚀 Versie v1.6.6: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
     "🛠️ Volledig Herstel Fotoweergave & Inlezen (v1.6.6): Directe reparatie van de afbeeldingslader en voorbeeldfoto-engine. Zowel de 5 voorbeeldfoto's als geopende of vanaf SD-kaart ingelezen RAW-, DNG- en JPG-foto's worden direct feilloos weergegeven op het hoofdscherm.",
