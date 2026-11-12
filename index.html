@@ -22,7 +22,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.6.8</strong> beschikbaar &bull; <span id="upd-note">Google AI Punten &amp; Gemini API beheer, live quota &amp; saldo controle en automatische AI fotoanalyse</span></span>
+      <span><strong id="upd-ver">v1.6.9</strong> beschikbaar &bull; <span id="upd-note">Schone interface &amp; 100% lokale bewerkingen zonder externe AI-knoppen</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -43,7 +43,7 @@
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)"
           title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.6.8</span> 🔄
+          <span id="ver-txt">v1.6.9</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -88,10 +88,6 @@
     </div>
 
     <div class="header-right">
-      <button id="btn-open-google-ai" class="btn-secondary" style="font-size: 11px; padding: 4px 9px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.45);"
-        title="Bekijk Google AI Punten, API-sleutel en saldo / quota in Google">
-        <span>✨ Google AI Punten</span>
-      </button>
       <button id="btn-open-help" class="btn-secondary"
         title="Bekijk de complete handleiding en alle mogelijkheden van vroonphoto">
         <span>❓ Help</span>
@@ -452,9 +448,6 @@
               </button>
               <button id="btn-open-help-empty" class="btn-secondary" title="Bekijk alle functies en de handleiding van vroonphoto">
                 <span>❓ Help &amp; Mogelijkheden</span>
-              </button>
-              <button id="btn-open-google-ai-empty" class="btn-secondary" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.45);" title="Bekijk Google AI Punten, API-sleutel en saldo / quota in Google">
-                <span>✨ Google AI Punten</span>
               </button>
             </div>
           </div>
@@ -1018,96 +1011,13 @@
     </div>
   </div>
 
-  <!-- GOOGLE AI PUNTEN & API KOPPELING MODAL -->
-  <div id="google-ai-modal" class="modal-overlay hidden">
-    <div class="modal-card" style="max-width: 600px; max-height: 90vh; display: flex; flex-direction: column;">
-      <div class="modal-header">
-        <span style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 19px;">✨</span>
-          <strong>Google AI Punten, Saldo &amp; Gemini Koppeling</strong>
-        </span>
-        <button id="btn-close-google-ai-modal" class="btn-icon">✕</button>
-      </div>
-      <div class="modal-body" style="overflow-y: auto; padding: 16px 18px; font-size: 12px; line-height: 1.5; color: #cbd5e1;">
-        <!-- Status Box -->
-        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 6px; padding: 12px; margin-bottom: 14px;">
-          <div style="font-weight: 700; color: #38bdf8; font-size: 13px; margin-bottom: 4px;">
-            💡 Hoe werken Google AI Punten in &lt;vroonphoto&gt;?
-          </div>
-          <div style="font-size: 11.5px; color: #e2e8f0; line-height: 1.45;">
-            • <strong>Lokale Bewerkingen (100% Gratis &amp; Zonder Puntenverbruik):</strong> Alle fotobewerkingen in dit programma (onscherpte herstel, inpainting, Topaz AI vergroten, presets, curves en RAW-ontwikkeling) draaien lokaal via hardware-versnelde WebAssembly op uw computer. Dit kost <strong>0 AI punten</strong> en vereist geen tegoed.<br>
-            • <strong>Google Cloud AI Functies:</strong> Heeft u bij Google AI punten, Gemini tokens of Google Cloud API tegoed aangeschaft? Koppel hieronder uw Google AI sleutel om live uw quota in te zien en automatische AI fotoanalyses uit te voeren.
-          </div>
-        </div>
-
-        <!-- Google AI API Sleutel invoer -->
-        <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; padding: 12px; margin-bottom: 14px;">
-          <label style="display: block; font-weight: 700; font-size: 12px; color: #fff; margin-bottom: 6px;">
-            🔑 Uw Google AI / Gemini API-sleutel:
-          </label>
-          <div style="display: flex; gap: 6px;">
-            <input type="password" id="google-ai-key-input" class="form-input" style="flex: 1; font-size: 12px; padding: 7px 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--border-glow); border-radius: 4px; color: #fff;" placeholder="Plak hier uw Google AI Studio API-sleutel (begint meestal met AIzaSy...)">
-            <button id="btn-toggle-show-ai-key" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;" title="Toon/verberg sleutel">👁️</button>
-            <button id="btn-save-ai-key" class="btn-secondary" style="font-size: 11px; padding: 4px 12px; color: #34d399; font-weight: 700; border-color: rgba(52, 211, 153, 0.45);">Opslaan</button>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-            <span id="google-ai-key-status" style="font-size: 11px; color: #94a3b8;">
-              Status: Nog geen API-sleutel opgeslagen in uw browser.
-            </span>
-            <button id="btn-test-google-ai" class="btn-secondary" style="font-size: 10.5px; padding: 3px 8px;">
-              🔄 Test Verbinding &amp; Quota
-            </button>
-          </div>
-        </div>
-
-        <!-- AI Punten & Saldo Informatie bij Google -->
-        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; padding: 12px; margin-bottom: 14px;">
-          <div style="font-weight: 700; font-size: 12px; color: #fbbf24; margin-bottom: 6px;">
-            📊 Uw Gekochte Google AI Punten &amp; Facturatie Saldo:
-          </div>
-          <p style="font-size: 11.5px; color: #cbd5e1; margin-bottom: 8px; line-height: 1.45;">
-            Google houdt uw aangeschafte AI-punten, Gemini Advanced tokens en facturatie direct bij in uw Google-account. Klik hieronder om direct uw actuele saldo, resterende quota en facturen in te zien:
-          </p>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <a href="https://aistudio.google.com/app/plan_information" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; color: #38bdf8; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-              🌐 Google AI Studio Quota &amp; Plan ↗
-            </a>
-            <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; color: #34d399; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-              💳 Google Cloud Facturatie &amp; Saldo ↗
-            </a>
-            <a href="https://one.google.com/" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; color: #a78bfa; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-              ⭐ Google One AI Premium ↗
-            </a>
-          </div>
-        </div>
-
-        <!-- Gemini Vision AI Foto Analyse -->
-        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; padding: 12px;">
-          <div style="font-weight: 700; font-size: 12px; color: #34d399; margin-bottom: 6px;">
-            🤖 Huidige Foto Analyseren met Google Gemini AI:
-          </div>
-          <p style="font-size: 11.5px; color: #cbd5e1; margin-bottom: 8px; line-height: 1.45;">
-            Laat Google Gemini Vision de geopende foto analyseren op belichting, compositie, kleurstelling en bewerkingstips:
-          </p>
-          <button id="btn-analyze-photo-gemini" class="btn-secondary" style="font-size: 11px; padding: 5px 12px; color: #38bdf8; font-weight: 700; border-color: rgba(56, 189, 248, 0.5);">
-            🔍 Analyseer Huidige Foto met Gemini AI
-          </button>
-          <div id="gemini-analysis-output" style="margin-top: 10px; font-size: 11.5px; line-height: 1.45; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.5); border: 1px solid var(--border-glow); border-radius: 4px; padding: 10px; display: none; color: #e2e8f0; white-space: pre-wrap;"></div>
-        </div>
-      </div>
-      <div class="modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--border-glow); display: flex; justify-content: flex-end;">
-        <button id="btn-close-google-ai-footer" class="btn-secondary" style="font-size: 11px; padding: 5px 14px;">Sluiten</button>
-      </div>
-    </div>
-  </div>
-
   <!-- HELP & MOGELIJKHEDEN MODAL (ALTIJD GEAUTOMATISEERD BIJGEWERKT NAAR NIEUWSTE SITUATIE) -->
   <div id="help-modal" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 780px; max-height: 88vh; display: flex; flex-direction: column;">
       <div class="modal-header">
         <span style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 19px;">💡</span>
-          <strong>Handleiding &amp; Mogelijkheden van &lt;vroonphoto&gt; (<span id="help-modal-ver">v1.6.8</span>)</strong>
+          <strong>Handleiding &amp; Mogelijkheden van &lt;vroonphoto&gt; (<span id="help-modal-ver">v1.6.9</span>)</strong>
         </span>
         <button id="btn-close-help-modal" class="btn-icon">✕</button>
       </div>
@@ -1231,17 +1141,6 @@
               <div><code>◀</code> / <code>▶</code>: Vorige / Volgende foto</div>
               <div><code>Del / Backspace</code>: Foto verwijderen</div>
               <div><code>2 Vingers</code>: Knijpen/spreiden voor zoom &amp; pan</div>
-            </div>
-          </div>
-
-          <!-- 10. Google AI Punten & Gemini Koppeling -->
-          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 6px; padding: 10px 12px;">
-            <div style="font-weight: 700; color: #38bdf8; font-size: 12px; margin-bottom: 3px;">
-              ✨ 10. Google AI Punten, Saldo &amp; Gemini Koppeling
-            </div>
-            <div style="color: #cbd5e1; font-size: 11.5px;">
-              <strong>Wat kan het:</strong> Uw aangeschafte Google AI credits/tokens koppelen en live inzien waar uw saldo staat.<br>
-              <strong>Hoe werkt het:</strong> Klik in de bovenbalk op <code>✨ Google AI Punten</code>. Alle lokale bewerkingen (focus herstel, inpainting, presets, curves) zijn en blijven 100% gratis en verbruiken geen punten. Wilt u Google Gemini Cloud AI gebruiken voor automatische fotoanalyse en belichtingsadvies, voer dan uw Google API-sleutel in of open met 1 klik de directe links naar Google AI Studio Quota of Google Cloud Billing om uw gekochte tegoed direct in te zien.
             </div>
           </div>
         </div>
