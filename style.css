@@ -305,20 +305,44 @@ body {
   box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
 }
 
-.app-header .btn-secondary {
+.app-header .btn-secondary,
+.app-header button.btn-secondary {
   background: var(--bg-panel-sub);
   color: var(--text-main);
+  border: 1px solid var(--border-glow);
+  cursor: pointer;
 }
 
-.app-header .btn-secondary:hover {
+.app-header .btn-secondary:hover,
+.app-header button.btn-secondary:hover {
   background: var(--bg-panel-hover);
   border-color: var(--border-glow-active);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
 }
 
-.app-header .btn-secondary.active {
+.app-header .btn-secondary.active,
+.app-header button.btn-secondary.active {
   background: var(--accent-cyan);
   color: #080c14;
   border-color: var(--accent-cyan);
+}
+
+/* Algemene styling voor eventuele selects in de header (voorkom wit vlak) */
+.app-header select,
+.app-header .form-select {
+  background: var(--bg-panel-sub) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-glow) !important;
+  border-radius: var(--radius-sm) !important;
+  outline: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+.app-header select option,
+.app-header .form-select option {
+  background: #0f172a !important;
+  color: #f8fafc !important;
 }
 
 .app-header .btn-icon {

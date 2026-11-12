@@ -776,7 +776,10 @@ class VroonPhotoApp {
             if (e.target.files) this.loadMultipleFiles(e.target.files);
         });
 
-        // Voorbeelden selectie
+        // Voorbeelden laden (Uniforme knop '📸 5 Voorbeeldfoto's')
+        document.getElementById('btn-load-sample-batch')?.addEventListener('click', () => {
+            this.loadSampleBatch();
+        });
         document.getElementById('sample-photos-select')?.addEventListener('change', (e) => {
             if (e.target.value === 'batch_5') this.loadSampleBatch();
             else this.loadSingleSample(e.target.value);

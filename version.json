@@ -1,9 +1,9 @@
 {
   "app_name": "vroonphoto",
   "version": "1.5.0",
-  "build": 17,
-  "timestamp": "2026-11-12T11:42:25.202776+00:00",
-  "git_hash": "603e2a3",
+  "build": 18,
+  "timestamp": "2026-11-12T11:47:23.708760+00:00",
+  "git_hash": "8d31a42",
   "features": [
     "🔴 Automatisch Podium LED Interferentiestrepen Verwijderen (v1.5.0): Verwijdert hinderlijke periodieke rolling shutter en PWM LED interferentiestrepen bij concert- en podiumverlichting direct bij het laden.",
     "⚙️ Zelf Instelbare Automatische Import Preset (v1.5.0): Stel zelf een gepersonaliseerde bewerking in (ruisonderdrukking, scherpte, rood licht, etc.) die direct automatisch wordt toegepast zodra een foto wordt geopend of geïmporteerd.",
