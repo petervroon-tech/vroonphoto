@@ -848,7 +848,10 @@ class VroonPhotoApp {
             });
         });
 
-        // Zwart-Wit Presets & Toggle
+        // 1-Klik Zwart-Wit Omzetten & Tools
+        document.getElementById('btn-hdr-bw-toggle')?.addEventListener('click', () => this.toggleBWMode());
+        document.getElementById('btn-toggle-bw-big')?.addEventListener('click', () => this.toggleBWMode());
+        document.getElementById('btn-toggle-bw-pill')?.addEventListener('click', () => this.toggleBWMode());
         document.querySelectorAll('.bw-preset-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.applyBWPreset(e.currentTarget.dataset.preset));
         });
@@ -869,11 +872,7 @@ class VroonPhotoApp {
         }
         const bwToggle = document.getElementById('toggle-bw-mode');
         bwToggle?.addEventListener('change', (e) => {
-            const photo = this.getActivePhoto();
-            if (!photo) return;
-            photo.state.bwEnabled = e.target.checked;
-            document.getElementById('bw-mixer-panel')?.classList.toggle('disabled', !photo.state.bwEnabled);
-            this.renderActivePhoto();
+            this.toggleBWMode(e.target.checked);
         });
 
         // Topaz Super-Resolution
@@ -1563,7 +1562,73 @@ class VroonPhotoApp {
         });
         const bwToggle = document.getElementById('toggle-bw-mode');
         if (bwToggle) bwToggle.checked = photo.state.bwEnabled;
-        document.getElementById('bw-mixer-panel')?.classList.toggle('disabled', !photo.state.bwEnabled);
+        this.syncBWUI(photo);
+    }
+
+    syncBWUI(photo) {
+        if (!photo) return;
+        const isBW = !!photo.state.bwEnabled;
+
+        // Header knop
+        const hdrBtn = document.getElementById('btn-hdr-bw-toggle');
+        const hdrIcon = document.getElementById('btn-hdr-bw-icon');
+        const hdrTxt = document.getElementById('btn-hdr-bw-txt');
+        if (hdrBtn) {
+            hdrBtn.classList.toggle('btn-bw-active', isBW);
+            if (hdrIcon) hdrIcon.textContent = isBW ? '🌈' : '⚡';
+            if (hdrTxt) hdrTxt.textContent = isBW ? 'Kleur Herstellen' : 'Zwart-Wit';
+        }
+
+        // Grote 1-klik knop in paneel
+        const bigBtn = document.getElementById('btn-toggle-bw-big');
+        if (bigBtn) {
+            bigBtn.classList.toggle('btn-bw-active', isBW);
+            bigBtn.innerHTML = isBW ? '🌈 Zwart-Wit Actief (Klik voor Kleur)' : '⚡ 1-Klik: Zet om naar Zwart-Wit';
+        }
+
+        // Pil-knop in sectiekop
+        const pill = document.getElementById('btn-toggle-bw-pill');
+        if (pill) {
+            pill.textContent = isBW ? 'Aan ✕' : 'Omzetten';
+            pill.classList.toggle('btn-primary', isBW);
+            pill.classList.toggle('btn-secondary', !isBW);
+        }
+
+        const panel = document.getElementById('bw-mixer-panel');
+        if (panel) {
+            panel.classList.toggle('bw-active-glow', isBW);
+            panel.classList.toggle('disabled', !isBW);
+        }
+    }
+
+    toggleBWMode(forceState = null) {
+        const photo = this.getActivePhoto();
+        if (!photo) return;
+
+        if (forceState !== null) {
+            photo.state.bwEnabled = forceState;
+        } else {
+            photo.state.bwEnabled = !photo.state.bwEnabled;
+        }
+
+        if (photo.state.bwEnabled) {
+            if (!photo.state.bwContrast && !photo.state.bwClarity) {
+                photo.state.bwContrast = 35;
+                photo.state.bwClarity = 45;
+                photo.state.bwGrain = 10;
+                photo.state.bwRed = 40;
+                photo.state.bwGreen = 10;
+                photo.state.bwBlue = -10;
+            }
+        }
+
+        this.syncSliderUIFromPhoto(photo);
+        this.renderActivePhoto();
+        this.updateFilmstripUI();
+
+        if (photo.state.bwEnabled) {
+            document.getElementById('section-bw-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
 
     syncPresetUI() {
@@ -1871,6 +1936,8 @@ class VroonPhotoApp {
         if (s === 'deblur') ['smartDeblur', 'deblurSkinProtect'].forEach(k => photo.state[k] = d[k]);
         if (s === 'denoise') ['denoiseLuma', 'denoiseChroma', 'denoiseDetail'].forEach(k => photo.state[k] = d[k]);
         if (s === 'tone') ['exposure', 'contrast', 'highlights', 'shadows', 'temp', 'tint', 'vibrance', 'saturation'].forEach(k => photo.state[k] = d[k]);
+        if (s === 'bw_filters') ['bwRed', 'bwGreen', 'bwBlue'].forEach(k => photo.state[k] = d[k]);
+        if (s === 'bw') ['bwEnabled', 'bwRed', 'bwGreen', 'bwBlue', 'bwContrast', 'bwClarity', 'bwGrain'].forEach(k => photo.state[k] = d[k]);
         this.syncSliderUIFromPhoto(photo);
         if (photo.activePreset) {
             this.activePresetKey = photo.activePreset.key;

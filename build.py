@@ -238,6 +238,7 @@ def update_version_file(version_path: str, forced_ver: str = None, forced_sha: s
         "git_hash": forced_sha or get_git_hash(),
         "features": [
             f"🚀 Versie v{new_version}: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+            "⚡ 1-Klik Zwart-Wit Conversie & Pro B&W Tools (v1.5.5): Zet met 1 klik direct elke kleurenfoto om naar zwart-wit via de knoppenbalk of het rechterpaneel. Inclusief alle professionele tools om direct bij te stellen: Zone Contrast, Clarity Punch, Analoge Filmkorrel, Rood/Groen/Blauw Kleurfilter Mixer en 4 klassieke stijlen (Ansel Adams, Hoog Contrast, Film Noir, Straatfoto).",
             "🎛️ Neutrale Import & Zelf Kiezen (v1.5.4): Rood podiumlicht en interferentiestrepen worden niet meer automatisch geforceerd bij inlezen. Foto's openen 100% origineel/neutraal en u kiest altijd zelf via de schuifregelaars of en hoeveel correctie gewenst is.",
             "📐 Werkruimte & Layout Reorganisatie (v1.5.3): Alle functies (Topaz AI Vergroten, Curves & Histogram, Presets en Inpainting) verplaatst naar de linker zijbalk voor een aanzienlijk groter centraal werkscherm. Rechter zijbalk slank (240px) en exclusief ingericht voor schuifregelaars (Preset Verhouding bovenaan, Belichting & Kleur, Rood Licht, Focus, Ruis, Zwart-Wit).",
             "🎚️ Lightroom & AI Presets Schuifregelaar (v1.5.2): Traploze verhouding- en intensiteitsregelaar per preset (0% = origineel/neutraal, 100% = standaard preset, tot 200% = dubbele intensiteit) met real-time live preview.",

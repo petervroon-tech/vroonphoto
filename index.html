@@ -18,7 +18,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.5.4</strong> beschikbaar &bull; <span id="upd-note">Rood podiumlicht &amp; interferentiestrepen niet meer geforceerd bij inlezen &bull; 100% zelf kiezen</span></span>
+      <span><strong id="upd-ver">v1.5.5</strong> beschikbaar &bull; <span id="upd-note">1-Klik Zwart-Wit conversie &amp; alle tools om in zwart-wit bij te stellen (Zone Contrast, Clarity, Filters, Grain)</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -37,7 +37,7 @@
         <span id="photo-counter-badge" class="badge-count">1 / 1 Foto's</span>
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)" title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.5.4</span> 🔄
+          <span id="ver-txt">v1.5.5</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -58,6 +58,9 @@
       </button>
       <button id="btn-sync-all" class="btn-secondary" title="Kopieer de huidige bewerkingsinstellingen naar alle geladen foto's">
         <span>⚡ Sync naar Alle</span>
+      </button>
+      <button id="btn-hdr-bw-toggle" class="btn-secondary" style="font-weight: 700;" title="Zet huidige foto met 1 klik om naar Zwart-Wit (of terug naar kleur)">
+        <span id="btn-hdr-bw-icon">⚡</span> <span id="btn-hdr-bw-txt">Zwart-Wit</span>
       </button>
       <button id="btn-compare-toggle" class="btn-secondary" title="Voor / Na vergelijken (Sneltoets: \)">
         <span>Voor / Na (\)</span>
@@ -370,6 +373,70 @@
         </div>
       </div>
 
+      <!-- SECTIE 2: ZWART-WIT ENGINE MET 1-KLIK CONVERSIE & ALLE TOOLS -->
+      <div class="accordion-panel" id="section-bw-panel">
+        <div class="panel-header highlight-bw">
+          <span>⚡ Zwart-Wit Engine</span>
+          <button id="btn-toggle-bw-pill" class="btn-secondary" style="font-size: 10px; padding: 2px 8px; border-radius: 12px;">Omzetten</button>
+        </div>
+        <div id="bw-mixer-panel" class="panel-content disabled">
+          <!-- 1-KLIK GROTE KNOP -->
+          <button id="btn-toggle-bw-big" class="btn-primary" style="width: 100%; justify-content: center; font-size: 11px; font-weight: 700; padding: 7px 10px;">
+            ⚡ 1-Klik: Zet om naar Zwart-Wit
+          </button>
+
+          <!-- 4 SNELLE ANALOGE / ZONE SYSTEM PROFIELEN -->
+          <div style="font-size: 9.5px; color: var(--text-dim); margin-top: 1px;">Klassieke B&amp;W Stijlen:</div>
+          <div class="bw-preset-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+            <button class="bw-preset-btn" data-preset="ansel_adams" style="font-size: 10px; padding: 5px;">🏞️ Ansel Adams</button>
+            <button class="bw-preset-btn" data-preset="knallend_contrast" style="font-size: 10px; padding: 5px;">⚡ Hoog Contrast</button>
+            <button class="bw-preset-btn" data-preset="film_noir" style="font-size: 10px; padding: 5px;">🎬 Film Noir</button>
+            <button class="bw-preset-btn" data-preset="dramatic_street" style="font-size: 10px; padding: 5px;">📷 Straatfoto</button>
+          </div>
+
+          <!-- SCHUIFJES VOOR BIJSTELLEN IN ZWART-WIT -->
+          <div class="control-row" style="margin-top: 4px;">
+            <div class="control-label-group">
+              <span>Zone Contrast (Diep Zwart)</span>
+              <span id="slider-bw-contrast-val">35</span>
+            </div>
+            <input type="range" id="slider-bw-contrast" data-param="bwContrast" min="0" max="100" value="35" class="param-slider">
+          </div>
+          <div class="control-row">
+            <div class="control-label-group">
+              <span>Clarity Punch (Micro-Contrast)</span>
+              <span id="slider-bw-clarity-val">45</span>
+            </div>
+            <input type="range" id="slider-bw-clarity" data-param="bwClarity" min="0" max="100" value="45" class="param-slider">
+          </div>
+          <div class="control-row">
+            <div class="control-label-group">
+              <span>Analoge Filmkorrel</span>
+              <span id="slider-bw-grain-val">10</span>
+            </div>
+            <input type="range" id="slider-bw-grain" data-param="bwGrain" min="0" max="100" value="10" class="param-slider">
+          </div>
+
+          <!-- KLEURFILTER MIXER -->
+          <div style="font-size: 10.5px; font-weight: 700; color: var(--text-main); margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
+            <span>Kleurfilter Mixer</span>
+            <button class="btn-reset-section" data-section="bw_filters" style="font-size: 9.5px; padding: 1px 5px;">Reset</button>
+          </div>
+          <div class="control-row">
+            <div class="control-label-group"><span>Rood Filter (Donkere lucht/witte wolken)</span><span id="slider-bw-red-val">40</span></div>
+            <input type="range" id="slider-bw-red" data-param="bwRed" min="-100" max="100" value="40" class="param-slider">
+          </div>
+          <div class="control-row">
+            <div class="control-label-group"><span>Groen Filter (Gebladerte &amp; huid)</span><span id="slider-bw-green-val">10</span></div>
+            <input type="range" id="slider-bw-green" data-param="bwGreen" min="-100" max="100" value="10" class="param-slider">
+          </div>
+          <div class="control-row">
+            <div class="control-label-group"><span>Blauw Filter (Mist &amp; nevel)</span><span id="slider-bw-blue-val">-10</span></div>
+            <input type="range" id="slider-bw-blue" data-param="bwBlue" min="-100" max="100" value="-10" class="param-slider">
+          </div>
+        </div>
+      </div>
+
       <!-- SECTIE 2: ROOD LICHT & KLEURDOORLOOP HERSTEL -->
       <div class="accordion-panel">
         <div class="panel-header highlight-red">
@@ -466,52 +533,6 @@
               <span id="slider-denoise-detail-val">50</span>
             </div>
             <input type="range" id="slider-denoise-detail" data-param="denoiseDetail" min="0" max="100" value="50" class="param-slider">
-          </div>
-        </div>
-      </div>
-
-      <!-- SECTIE 5: ZWART-WIT ENGINE -->
-      <div class="accordion-panel">
-        <div class="panel-header highlight-bw">
-          <span>⚡ Zwart-Wit Mix</span>
-          <label style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: normal; font-size: 11px;">
-            <input type="checkbox" id="toggle-bw-mode">
-            <span>Aan</span>
-          </label>
-        </div>
-        <div id="bw-mixer-panel" class="panel-content disabled">
-          <div class="control-row">
-            <div class="control-label-group">
-              <span>Zone Contrast</span>
-              <span id="slider-bw-contrast-val">35</span>
-            </div>
-            <input type="range" id="slider-bw-contrast" data-param="bwContrast" min="0" max="100" value="35" class="param-slider">
-          </div>
-          <div class="control-row">
-            <div class="control-label-group">
-              <span>Clarity Punch</span>
-              <span id="slider-bw-clarity-val">45</span>
-            </div>
-            <input type="range" id="slider-bw-clarity" data-param="bwClarity" min="0" max="100" value="45" class="param-slider">
-          </div>
-          <div class="control-row">
-            <div class="control-label-group">
-              <span>Filmkorrel</span>
-              <span id="slider-bw-grain-val">10</span>
-            </div>
-            <input type="range" id="slider-bw-grain" data-param="bwGrain" min="0" max="100" value="10" class="param-slider">
-          </div>
-          <div class="control-row">
-            <div class="control-label-group"><span>Rood Filter</span><span id="slider-bw-red-val">40</span></div>
-            <input type="range" id="slider-bw-red" data-param="bwRed" min="-100" max="100" value="40" class="param-slider">
-          </div>
-          <div class="control-row">
-            <div class="control-label-group"><span>Groen Filter</span><span id="slider-bw-green-val">10</span></div>
-            <input type="range" id="slider-bw-green" data-param="bwGreen" min="-100" max="100" value="10" class="param-slider">
-          </div>
-          <div class="control-row">
-            <div class="control-label-group"><span>Blauw Filter</span><span id="slider-bw-blue-val">-10</span></div>
-            <input type="range" id="slider-bw-blue" data-param="bwBlue" min="-100" max="100" value="-10" class="param-slider">
           </div>
         </div>
       </div>
