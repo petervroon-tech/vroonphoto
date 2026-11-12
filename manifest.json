@@ -1,0 +1,12 @@
+{
+  "name": "vroonphoto – WASM RAW & Fotobewerker",
+  "short_name": "vroonphoto",
+  "description": "Professionele WebAssembly fotobewerker met Rood Licht Herstel, Ruisonderdrukking, Knallend Zwart-Wit en Topaz Super-Resolution.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#080c14",
+  "theme_color": "#0284c7",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

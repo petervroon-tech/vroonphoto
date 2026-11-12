@@ -108,3 +108,4 @@ class Histogram {
 }
 
 window.Histogram = Histogram;
+

@@ -70,3 +70,4 @@ class SmartInpainter {
 }
 
 window.SmartInpainter = SmartInpainter;
+

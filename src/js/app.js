@@ -853,3 +853,4 @@ window.addEventListener('DOMContentLoaded', () => {
     window.vroonApp = new VroonPhotoApp();
     window.vroonApp.init();
 });
+

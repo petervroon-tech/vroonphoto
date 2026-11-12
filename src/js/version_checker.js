@@ -145,3 +145,4 @@ class VersionChecker {
 }
 
 window.versionChecker = new VersionChecker();
+

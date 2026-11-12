@@ -20,3 +20,4 @@ print('✅ WASM Kernel gecompileerd en gevalideerd! Geëxporteerde functies: ' +
 "
 
 echo "✨ Build succesvol afgerond!"
+

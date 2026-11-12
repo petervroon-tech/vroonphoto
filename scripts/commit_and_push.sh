@@ -45,3 +45,4 @@ else
     echo "  git remote add origin https://github.com/<jouw-gebruikersnaam>/vroonphoto.git"
     echo "  git push -u origin $CURRENT_BRANCH"
 fi
+

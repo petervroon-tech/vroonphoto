@@ -1,19 +1,15 @@
-name: Deploy vroonphoto to GitHub Pages
+name: Deploy vroonphoto naar GitHub Pages
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: ["main", "master"]
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow one concurrent deployment
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -25,26 +21,32 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: 📥 Repository ophalen
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
+      - name: ⚙️ Python instellen
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Verify WASM Binary & Files
+      - name: 🔨 Bouw WebAssembly & update version.json
         run: |
-          echo "Verifying vroonphoto distribution files..."
-          ls -la
-          test -f src/wasm/vroonphoto_core.wasm || python3 scripts/build_wasm.py
-          test -f index.html
-          test -f version.json
-          echo "Files verified successfully!"
+          echo "Building vroonphoto WebAssembly & RAW Engine..."
+          python3 build.py --ci --sha "${{ github.sha }}" --build "${{ github.run_number }}"
+          echo "Build output:"
+          ls -lh vroonphoto.wasm version.json
+          cat version.json
 
-      - name: Upload Pages artifact
+      - name: 🌐 GitHub Pages configureren
+        uses: actions/configure-pages@v5
+
+      - name: 📦 Upload site artefact
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
 
-      - name: Deploy to GitHub Pages
+      - name: 🚀 Publiceren naar GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

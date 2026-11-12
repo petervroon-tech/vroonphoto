@@ -34,3 +34,4 @@ class SuperResolution {
 }
 
 window.SuperResolution = SuperResolution;
+

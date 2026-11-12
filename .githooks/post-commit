@@ -1,0 +1,45 @@
+#!/bin/sh
+# ==============================================================================
+# vroonphoto - Automatische Git Push na Commit Hook
+# ==============================================================================
+# Dit script wordt automatisch uitgevoerd zodra er een 'git commit' plaatsvindt.
+# Het pusht de gecommitte wijzigingen direct naar de externe remote repository.
+# ==============================================================================
+
+# Haal de huidige branch op
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+if [ -z "$CURRENT_BRANCH" ]; then
+    CURRENT_BRANCH="main"
+fi
+
+echo ""
+echo "🚀 [vroonphoto Hook] Automatische push geactiveerd na commit!"
+echo "📍 Huidige branch: $CURRENT_BRANCH"
+
+# Controleer of remote 'origin' is geconfigureerd
+if ! git remote | grep -q "^origin$"; then
+    echo "⚠️  [vroonphoto Hook] Geen remote 'origin' gevonden."
+    echo "💡 Configureer uw repository met: git remote add origin <url>"
+    exit 0
+fi
+
+REMOTE_URL=$(git remote get-url origin 2>/dev/null)
+echo "🌐 Externe remote: $REMOTE_URL"
+echo "📦 Bezig met pushen naar origin/$CURRENT_BRANCH..."
+
+# Voer git push uit
+git push origin "$CURRENT_BRANCH" 2>&1
+PUSH_STATUS=$?
+
+if [ $PUSH_STATUS -eq 0 ]; then
+    echo "✅ [vroonphoto Hook] Automatische push succesvol voltooid!"
+    echo "🌍 Uw wijzigingen staan online en worden automatisch uitgerold via GitHub Actions."
+else
+    echo "⚠️  [vroonphoto Hook] Push kon niet direct worden voltooid (status: $PUSH_STATUS)."
+    echo "💡 Mogelijk bent u offline of is er authenticatie nodig."
+    echo "👉 U kunt altijd handmatig pushen met: git push origin $CURRENT_BRANCH"
+fi
+
+echo ""
+exit 0

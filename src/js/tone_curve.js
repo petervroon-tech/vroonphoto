@@ -194,3 +194,4 @@ class ToneCurve {
 }
 
 window.ToneCurve = ToneCurve;
+

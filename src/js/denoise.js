@@ -38,3 +38,4 @@ class DenoiseProcessor {
 }
 
 window.DenoiseProcessor = DenoiseProcessor;
+

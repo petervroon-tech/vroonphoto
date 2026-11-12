@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>vroonphoto Reset & Cache Purge</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    body {
+      background: #080c14;
+      color: #38bdf8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      text-align: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 16px;
+      padding: 32px 24px;
+      max-width: 440px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
+    }
+    .icon { font-size: 3rem; margin-bottom: 12px; }
+    h2 { margin: 0 0 12px 0; color: #fff; font-size: 1.4rem; }
+    p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin: 0 0 18px 0; }
+    .status {
+      color: #4ade80;
+      font-weight: 600;
+      font-size: 1rem;
+      padding: 10px;
+      background: rgba(74, 222, 128, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(74, 222, 128, 0.25);
+    }
+    .btn {
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      font-size: 1rem;
+      font-weight: bold;
+      padding: 14px 28px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 20px;
+      text-decoration: none;
+      display: inline-block;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #0369a1; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🧹</div>
+    <h2>vroonphoto Geheugen &amp; Cache Reset</h2>
+    <p>Alle oude gecachte WASM-modules, browser-opslag en Service Workers worden nu definitief gewist van uw toestel...</p>
+    <div id="status" class="status">⏳ Bezig met geheugen leegmaken...</div>
+    <a id="btn-go" class="btn" href="./" style="display:none;">Open Schone App ➔</a>
+  </div>
+
+  <script>
+    async function purgeAndReset() {
+      // 1. Verwijder alle Service Worker registraties
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const reg of registrations) {
+            await reg.unregister();
+          }
+        }
+      } catch (e) {}
+
+      // 2. Verwijder alle CacheStorage caches
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (const k of keys) {
+            await caches.delete(k);
+          }
+        }
+      } catch (e) {}
+
+      // 3. Wis alle lokale opslag
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {}
+
+      // 4. Verwijder eventuele IndexedDB databases
+      try {
+        if (window.indexedDB && indexedDB.databases) {
+          const dbs = await indexedDB.databases();
+          for (const db of dbs) {
+            if (db.name) indexedDB.deleteDatabase(db.name);
+          }
+        }
+      } catch (e) {}
+
+      const stat = document.getElementById('status');
+      stat.textContent = '✅ Cache 100% leeggemaakt! Schone app wordt geopend...';
+      const btn = document.getElementById('btn-go');
+      btn.style.display = 'inline-block';
+
+      // 5. Herlaad automatisch naar een unieke URL die gegarandeerd vers van het netwerk komt
+      setTimeout(function() {
+        window.location.replace('index.html?v=' + Date.now() + '&clean=true');
+      }, 750);
+    }
+
+    purgeAndReset();
+  </script>
+</body>
+</html>

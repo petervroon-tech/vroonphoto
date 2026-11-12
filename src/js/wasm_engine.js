@@ -381,3 +381,4 @@ class WasmEngine {
 
 // Global singleton instance
 window.vroonWasm = new WasmEngine();
+
