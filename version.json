@@ -1,17 +1,19 @@
 {
   "app_name": "vroonphoto",
-  "version": "1.0.0",
-  "build": 4,
-  "timestamp": "2026-11-12T10:29:07.311875+00:00",
-  "git_hash": "960d66c",
+  "version": "1.1.0",
+  "build": 7,
+  "timestamp": "2026-11-12T10:36:34.564831+00:00",
+  "git_hash": "d47bb80",
   "features": [
-    "WASM Hardware-Accelerated Image Kernel",
-    "Stage Red Light & Bleed Recovery",
-    "Dual Bilateral & Chroma Noise Reduction",
-    "Knallend Zwart-Wit Engine with Zone Contrast & Film Grain",
-    "Topaz AI 2x/4x Super-Resolution Upscaling",
-    "Adobe Firefly Style Inpainting & Spot Healing",
-    "Full RAW, DNG, CR2, NEF, ARW, TIFF Support",
-    "Automatic New Version Detection & PWA Support"
+    "🎞️ 25-Foto Batch Beheer & Filmstrip (v1.1.0): Bewerk tot 25 foto's tegelijkertijd met onafhankelijke bewerkingsstaten per foto, vloeiende filmstrip onderaan en overzichtelijk schermvullend rasteroverzicht.",
+    "📁 Zelf Opslaglocatie Kiezen op Apparaat (v1.1.0): Kies zelf elke gewenste map via de native Directory Picker op Mac/Windows/laptops of via de officiële 'Bewaar in Bestanden' share sheet op iPad (iCloud Drive / Op mijn iPad).",
+    "📱 iPad & Touchscreen Optimalisatie (v1.1.0): 44px+ aanraakdoelen voor vingers, vergrote slider-knoppen, touch-drag voor Voor/Na vergelijking en interactief Firefly inpaint penseel.",
+    "⚡ Batch Synchronisatie: Kopieer met één klik alle bewerkingsinstellingen (zoals rood podiumlicht herstel of zwart-wit) van de actieve foto naar alle andere foto's in de sessie.",
+    "🔴 Rood Licht & Kleurdoorloop Herstel: Reconstructie van verloren details bij overbelicht concert podiumlicht via groene/blauwe luminantiediffusie en gamut compressie.",
+    "🛡️ Dual-Engine Ruisonderdrukking: Hardware-versnelde bilaterale ruimtelijke filtering voor luminantie en guided YCbCr filtering voor kleurruis-spikkels.",
+    "⚡ Knallend Zwart-Wit Engine: 6-kanaals analoge filter mixer, Ansel Adams Zone System contrastcurve, micro-contrast punch (clarity) en natuurgetrouwe filmkorrel.",
+    "🚀 Topaz Labs Super-Resolution: 2x en 4x vergroten met edge-directed gradient interpolatie en unsharp textuurscherpte zonder kartels.",
+    "🪄 Adobe Firefly Smart Retouch: Interactief vlekken- en objectenherstel met contextuele achtergrondtextuursynthese.",
+    "📁 Universele RAW & DNG Ondersteuning: Ingebouwde parser voor DNG, CR2, NEF, ARW, RW2, RAF, ORF, TIFF en alle moderne rasterformaten."
   ]
 }

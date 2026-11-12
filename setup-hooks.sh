@@ -21,3 +21,4 @@ if [ -d ".git/hooks" ]; then
 fi
 
 echo "✅ Git hooks geconfigureerd! Elke 'git commit' zal automatisch 'git push' uitvoeren."
+

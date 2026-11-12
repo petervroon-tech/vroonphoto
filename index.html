@@ -2,10 +2,13 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="vroonphoto – Professionele WebAssembly RAW & Fotobewerker met Rood Licht Herstel, Ruisonderdrukking, Knallend Zwart-Wit en Topaz Super-Resolution">
-  <title>vroonphoto — WASM Fotobewerker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="vroonphoto – Professionele WebAssembly RAW & Fotobewerker met 25-Foto Beheer, Rood Licht Herstel, Ruisonderdrukking, Knallend Zwart-Wit en Topaz Super-Resolution">
+  <title>vroonphoto — WASM Fotobewerker (Tot 25 Foto's)</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="favicon.svg">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -15,7 +18,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.0.0</strong> beschikbaar &bull; <span id="upd-note">Rood licht &amp; doorloop herstel, Ruisonderdrukking en Knallend Zwart-Wit</span></span>
+      <span><strong id="upd-ver">v1.1.0</strong> beschikbaar &bull; <span id="upd-note">25-Foto batch beheer, opslagmap kiezen & iPad touch-ondersteuning</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -30,36 +33,45 @@
         <span style="font-size: 20px;">📸</span>
         <span class="app-title">&lt;vroonphoto&gt;</span>
         <span class="badge-wasm">WASM Core</span>
+        <span id="photo-counter-badge" class="badge-count">1 / 1 Foto's</span>
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)" title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.0.0</span> 🔄
+          <span id="ver-txt">v1.1.0</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
 
-      <label class="btn-primary" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-        <span>📂 Foto Openen</span>
-        <input type="file" id="file-upload-input" accept="image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;">
+      <label class="btn-primary" style="cursor: pointer;" title="Voeg tot 25 foto's toe (RAW, DNG, JPG, etc.)">
+        <span>📂 Foto's Openen</span>
+        <input type="file" id="file-upload-input" multiple accept="image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;">
       </label>
 
       <select id="sample-photos-select" class="form-select" title="Voorbeeldfoto's laden">
+        <option value="batch_5">📸 Laad 5 Voorbeeldfoto's (Batch Test)</option>
         <option value="concert_red">🔴 Voorbeeld: Podium Rood Licht &amp; Doorloop</option>
         <option value="noisy_night">🌌 Voorbeeld: Hoge ISO Ruisopname</option>
-        <option value="landscape">🏔️ Voorbeeld: Berglandschap (Zwart-Wit Test)</option>
+        <option value="landscape">🏔️ Voorbeeld: Berglandschap (Zwart-Wit)</option>
       </select>
     </div>
 
     <div class="header-center">
+      <button id="btn-toggle-grid" class="btn-secondary" title="Wissel tussen Rasteroverzicht en Enkele Foto Bewerkscherm">
+        <span>🔲 Raster (25)</span>
+      </button>
+      <button id="btn-sync-all" class="btn-secondary" title="Kopieer de huidige bewerkingsinstellingen naar alle geladen foto's">
+        <span>⚡ Sync naar Alle</span>
+      </button>
       <button id="btn-compare-toggle" class="btn-secondary" title="Voor / Na vergelijken (Sneltoets: \)">
         <span>Voor / Na (\)</span>
       </button>
     </div>
 
     <div class="header-right">
+      <button id="btn-prev-photo" class="btn-icon" title="Vorige foto (◀)">◀</button>
+      <button id="btn-next-photo" class="btn-icon" title="Volgende foto (▶)">▶</button>
       <button id="btn-rotate-left" class="btn-icon" title="90° Links draaien">↺</button>
       <button id="btn-rotate-right" class="btn-icon" title="90° Rechts draaien">↻</button>
-      <button id="btn-flip-h" class="btn-icon" title="Horizontaal spiegelen">⇆</button>
-      <button id="btn-open-export" class="btn-primary">💾 Exporteren</button>
+      <button id="btn-open-export" class="btn-primary">💾 Opslaan &amp; Exporteren</button>
     </div>
   </header>
 
@@ -116,17 +128,55 @@
           Geen foto geopend
         </div>
         <div style="font-size: 10px; color: var(--text-dim); margin-top: 6px;">
-          Ondersteunt: RAW, DNG, CR2, NEF, ARW, RW2, RAF, TIFF, JPG, PNG, WebP
+          Batch support: tot 25 foto's tegelijk (RAW, DNG, CR2, NEF, ARW, JPG, PNG)
         </div>
       </div>
     </aside>
 
-    <!-- Midden Canvas Viewport -->
+    <!-- Midden Canvas Viewport & Filmstrip -->
     <section class="viewport-container" id="viewport-dropzone">
-      <div id="stage-red-detected-alert" class="stage-red-alert hidden"></div>
+      
+      <!-- RASTER OVERZICHT (GRID MODE VOOR TOT 25 FOTO'S) -->
+      <div id="grid-overview-container" class="grid-overview-container hidden">
+        <div class="grid-topbar">
+          <div>
+            <h2 style="font-size: 16px; font-weight: 700; color: #fff;">📸 Geladen Foto's Overzicht (<span id="grid-count-txt">1 / 25</span>)</h2>
+            <p style="font-size: 11px; color: var(--text-muted);">Tik op een foto om direct naar het bewerkscherm van die foto te gaan.</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <label class="btn-primary" style="cursor: pointer;">
+              <span>➕ Voeg Meer Foto's Toe</span>
+              <input type="file" id="grid-add-file-input" multiple accept="image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;">
+            </label>
+            <button id="btn-close-grid" class="btn-secondary">Sluit Overzicht ✕</button>
+          </div>
+        </div>
+        <div id="photos-grid" class="photos-grid"></div>
+      </div>
 
-      <div class="canvas-wrapper">
-        <canvas id="main-canvas"></canvas>
+      <!-- BEWERKSCHERM (DEVELOP MODE) -->
+      <div id="develop-viewport" style="flex: 1; display: flex; flex-direction: column; width: 100%; height: 100%;">
+        <div class="canvas-area">
+          <div id="stage-red-detected-alert" class="stage-red-alert hidden"></div>
+          <div class="canvas-wrapper">
+            <canvas id="main-canvas"></canvas>
+          </div>
+        </div>
+
+        <!-- FILMSTRIP ONDERAAN (SCROLLBARE LIJST TOT 25 FOTO'S) -->
+        <div class="filmstrip-bar">
+          <div class="filmstrip-header">
+            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+              🎞️ Filmstrip (<span id="filmstrip-count-txt">1 / 25</span>)
+            </span>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-filmstrip-sync" class="btn-reset-section" style="cursor: pointer;">⚡ Kopieer instellingen naar alle foto's</button>
+            </div>
+          </div>
+          <div class="filmstrip-scroll" id="filmstrip-scroll">
+            <!-- Dynamisch gevulde thumbnails -->
+          </div>
+        </div>
       </div>
 
       <!-- Laad Spinner Overlay -->
@@ -136,7 +186,7 @@
       </div>
     </section>
 
-    <!-- Rechter Zijbalk: Lightroom Tuning Controls -->
+    <!-- Rechter Zijbalk: Lightroom Tuning Controls (Per Foto Bewerking) -->
     <aside class="sidebar-right">
       
       <!-- Histogram -->
@@ -382,18 +432,36 @@
     </aside>
   </main>
 
-  <!-- Export Modal -->
+  <!-- EXPORT & OPSLAAN MODAL (MET DIRECTORY / MAP KEUZE OP APPARAAT) -->
   <div id="export-modal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <span>Foto Exporteren</span>
+        <span>💾 Foto's Opslaan op Apparaat</span>
         <button id="btn-close-export" class="btn-icon">✕</button>
       </div>
       <div class="modal-body">
+        
+        <div class="dest-choice-box">
+          <div style="font-weight: 700; color: var(--accent-cyan); display: flex; align-items: center; gap: 6px;">
+            <span>📁 Zelf Opslaglocatie Kiezen op Apparaat</span>
+          </div>
+          <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+            Op Mac, Windows en laptops opent de native bestandsverkenner waarin je zelf elke gewenste map kunt selecteren. Op iPad opent het officiële <strong>"Bewaar in Bestanden"</strong> menu (iCloud Drive / Op mijn iPad).
+          </p>
+        </div>
+
+        <label>
+          <div style="margin-bottom: 4px; font-weight: 600;">Wat wil je opslaan:</div>
+          <select id="export-scope" class="form-select" style="width: 100%;">
+            <option value="all">Alle bewerkte foto's in één keer (Batch Export)</option>
+            <option value="current">Alleen de huidige actieve foto</option>
+          </select>
+        </label>
+
         <label>
           <div style="margin-bottom: 4px; font-weight: 600;">Bestandsformaat:</div>
           <select id="export-format" class="form-select" style="width: 100%;">
-            <option value="image/jpeg">JPEG (.jpg) - Optimaal voor web &amp; print</option>
+            <option value="image/jpeg">JPEG (.jpg) - Optimaal voor web, print &amp; iPad</option>
             <option value="image/png">PNG (.png) - Zonder kwaliteitsverlies (Lossless)</option>
             <option value="image/webp">WebP (.webp) - Modern ultra-compact</option>
           </select>
@@ -408,8 +476,11 @@
           </select>
         </label>
       </div>
+
       <div class="modal-footer">
-        <button id="btn-confirm-export" class="btn-primary">Downloaden</button>
+        <button id="btn-choose-folder-export" class="btn-primary" style="flex: 1; justify-content: center;">
+          📁 Kies Map &amp; Opslaan op Apparaat
+        </button>
       </div>
     </div>
   </div>

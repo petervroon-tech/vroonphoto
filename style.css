@@ -1,6 +1,7 @@
 /* ==============================================================================
    vroonphoto - Modern Cyberpunk Glassmorphic Stylesheet
    Geïnspireerd op Peters eerdere WebAssembly applicaties (PetersWorld)
+   Geoptimaliseerd voor laptops én iPads / Touchscreens met 25-foto workflow
    ============================================================================== */
 
 :root {
@@ -33,6 +34,7 @@
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
 }
 
 body {
@@ -97,35 +99,28 @@ body {
   border: none;
   font-weight: 700;
   font-size: 0.78rem;
-  padding: 5px 14px;
+  padding: 6px 14px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s ease;
 }
 
-.btn-upd:hover {
-  background: #e2e8f0;
-}
+.btn-upd:hover { background: #e2e8f0; }
 
 .btn-dismiss {
   background: rgba(255, 255, 255, 0.18);
   color: #ffffff;
   border: none;
   font-size: 0.85rem;
-  padding: 5px 10px;
+  padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
-}
-
-.btn-dismiss:hover {
-  background: rgba(255, 255, 255, 0.3);
 }
 
 /* ==============================================================================
    2. Header & Navigatie
    ============================================================================== */
 .app-header {
-  height: 52px;
+  height: 54px;
   background: var(--bg-panel);
   backdrop-filter: var(--blur-panel);
   border-bottom: 1px solid var(--border-glow);
@@ -165,11 +160,23 @@ body {
   background: rgba(2, 132, 199, 0.3);
   color: var(--accent-cyan);
   border: 1px solid rgba(56, 189, 248, 0.4);
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: 12px;
 }
 
-/* Versie Pill met knipperend lampje */
+/* Actieve Foto Badge */
+.badge-count {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--accent-cyan);
+  border: 1px solid var(--border-glow);
+  padding: 3px 9px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+/* Versie Pill */
 .ver-pill {
   display: inline-flex;
   align-items: center;
@@ -178,7 +185,7 @@ body {
   font-family: var(--font-mono);
   background: rgba(15, 23, 42, 0.9);
   border: 1px solid var(--border-glow);
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 12px;
   color: var(--text-muted);
   cursor: pointer;
@@ -219,11 +226,14 @@ body {
   text-decoration: none;
   font-size: 11px;
   font-weight: 600;
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 6px;
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.25);
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .btn-reset-header:hover {
@@ -302,16 +312,24 @@ body {
   background-color: var(--bg-primary);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   position: relative;
   overflow: hidden;
 }
 
+.canvas-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 12px;
+}
+
 .canvas-wrapper {
   position: relative;
-  max-width: 95%;
-  max-height: 92%;
+  max-width: 98%;
+  max-height: 96%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -324,36 +342,228 @@ body {
 
 #main-canvas {
   max-width: 100%;
-  max-height: 85vh;
+  max-height: 70vh;
   object-fit: contain;
   display: block;
   cursor: crosshair;
 }
 
-.stage-red-alert {
-  position: absolute;
-  top: 16px;
-  background: rgba(239, 68, 68, 0.9);
+/* ==============================================================================
+   4. FILMSTRIP (25 FOTO'S ONDERAAN HET SCHERM)
+   ============================================================================== */
+.filmstrip-bar {
+  height: 110px;
+  background: rgba(11, 17, 30, 0.95);
   backdrop-filter: var(--blur-panel);
-  color: #ffffff;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 12px;
+  border-top: 1px solid var(--border-glow);
+  display: flex;
+  flex-direction: column;
+  padding: 6px 12px;
+  flex-shrink: 0;
+  z-index: 30;
+}
+
+.filmstrip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.filmstrip-scroll {
   display: flex;
   align-items: center;
   gap: 8px;
-  z-index: 20;
-  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  animation: pulseRed 2s infinite;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 80px;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-glow) transparent;
 }
 
-@keyframes pulseRed {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.02); opacity: 0.88; }
+.filmstrip-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.filmstrip-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-glow);
+  border-radius: 2px;
 }
 
-/* Rechter Zijbalk (Lightroom Tuner) */
+.filmstrip-item {
+  position: relative;
+  width: 95px;
+  height: 70px;
+  border-radius: var(--radius-sm);
+  border: 2px solid rgba(56, 189, 248, 0.2);
+  background: #040711;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.filmstrip-item:hover {
+  border-color: var(--border-glow-active);
+  transform: translateY(-2px);
+}
+
+.filmstrip-item.active {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+  transform: scale(1.04);
+}
+
+.filmstrip-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.filmstrip-badge {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--accent-cyan);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+
+.filmstrip-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.85);
+  color: #fff;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.filmstrip-item:hover .filmstrip-close {
+  opacity: 1;
+}
+
+.filmstrip-add-card {
+  width: 95px;
+  height: 70px;
+  border-radius: var(--radius-sm);
+  border: 2px dashed rgba(56, 189, 248, 0.4);
+  background: rgba(15, 23, 42, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--accent-cyan);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.filmstrip-add-card:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--accent-cyan);
+}
+
+/* ==============================================================================
+   5. RASTER OVERZICHT (GRID OVERVIEW VOOR 25 FOTO'S)
+   ============================================================================== */
+.grid-overview-container {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-primary);
+  z-index: 25;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.grid-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-glow);
+  padding-bottom: 12px;
+}
+
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.grid-photo-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.grid-photo-card:hover {
+  border-color: var(--accent-cyan);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+}
+
+.grid-photo-card.active {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+}
+
+.grid-photo-thumb {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  background: #02050b;
+}
+
+.grid-photo-meta {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: rgba(11, 17, 30, 0.85);
+}
+
+.grid-photo-title {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.grid-photo-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ==============================================================================
+   6. Rechter Zijbalk (Lightroom Tuner)
+   ============================================================================== */
 .sidebar-right {
   width: 350px;
   background: var(--bg-panel);
@@ -445,25 +655,25 @@ body {
 .param-slider {
   flex: 1;
   -webkit-appearance: none;
-  height: 4px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 3px;
   background: #1e293b;
   outline: none;
 }
 
 .param-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 13px;
-  height: 13px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--accent-cyan);
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
   transition: transform 0.1s;
 }
 
 .param-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
+  transform: scale(1.25);
 }
 
 /* Knoppen */
@@ -479,10 +689,13 @@ button {
   color: #080c14;
   font-weight: 700;
   font-size: 12px;
-  padding: 7px 14px;
+  padding: 8px 14px;
   border-radius: var(--radius-sm);
   transition: all 0.15s ease;
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .btn-primary:hover {
@@ -495,7 +708,7 @@ button {
   color: #080c14;
   font-size: 11px;
   font-weight: 700;
-  padding: 4px 10px;
+  padding: 5px 10px;
   border-radius: 12px;
 }
 
@@ -503,10 +716,13 @@ button {
   background: var(--bg-panel-sub);
   color: var(--text-main);
   border: 1px solid var(--border-glow);
-  padding: 6px 12px;
+  padding: 7px 12px;
   border-radius: var(--radius-sm);
   font-size: 12px;
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .btn-secondary:hover {
@@ -524,12 +740,12 @@ button {
 .btn-icon {
   background: transparent;
   color: var(--text-muted);
-  padding: 6px 8px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 14px;
   transition: all 0.15s;
 }
 
@@ -549,7 +765,6 @@ button {
   color: var(--accent-cyan);
 }
 
-/* Zwart-Wit Presets */
 .bw-preset-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -560,7 +775,7 @@ button {
   background: #111827;
   border: 1px solid #1f2937;
   color: #ffffff;
-  padding: 6px;
+  padding: 7px;
   border-radius: var(--radius-sm);
   font-size: 11px;
   text-align: center;
@@ -572,7 +787,6 @@ button {
   border-color: #38bdf8;
 }
 
-/* Tone Curve Canvas */
 #curve-canvas {
   width: 100%;
   height: 180px;
@@ -582,26 +796,21 @@ button {
   cursor: crosshair;
 }
 
-/* Formulieren & Selects */
 .form-select {
   background: #090e18;
   border: 1px solid var(--border-glow);
   color: var(--text-main);
-  padding: 6px 10px;
+  padding: 7px 10px;
   border-radius: var(--radius-sm);
   font-size: 12px;
   outline: none;
-}
-
-.form-select:focus {
-  border-color: var(--accent-cyan);
 }
 
 /* Modals */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
   backdrop-filter: var(--blur-panel);
   display: flex;
   align-items: center;
@@ -613,9 +822,9 @@ button {
   background: rgba(15, 23, 42, 0.95);
   border: 1px solid var(--border-glow-active);
   border-radius: var(--radius-lg);
-  width: 440px;
-  max-width: 90%;
-  padding: 22px;
+  width: 480px;
+  max-width: 92%;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -626,20 +835,30 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .modal-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.dest-choice-box {
+  background: rgba(9, 14, 24, 0.8);
+  border: 1px solid var(--border-glow);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* Loading Overlay */
@@ -657,8 +876,8 @@ button {
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 3px solid rgba(56, 189, 248, 0.2);
   border-top-color: var(--accent-cyan);
   border-radius: 50%;
@@ -673,8 +892,50 @@ button {
   display: none !important;
 }
 
-/* Responsiveness */
-@media (max-width: 960px) {
-  .sidebar-left { display: none; }
+/* ==============================================================================
+   7. IPAD & TOUCHSCREEN OPTIMALISATIES (TABLETS & LAPTOPS)
+   ============================================================================== */
+
+/* iPad Landscape & Tablets */
+@media (max-width: 1180px) {
+  .sidebar-left { width: 220px; }
   .sidebar-right { width: 310px; }
+}
+
+/* iPad Portrait (768px - 1024px) */
+@media (max-width: 960px) {
+  .app-workspace {
+    flex-direction: column;
+  }
+  .sidebar-left {
+    display: none; /* Geplaatst in tab-bediening voor iPads */
+  }
+  .sidebar-right {
+    width: 100%;
+    height: 300px;
+    border-left: none;
+    border-top: 1px solid var(--border-glow);
+  }
+  #main-canvas {
+    max-height: 45vh;
+  }
+  .filmstrip-bar {
+    height: 95px;
+  }
+  .filmstrip-item, .filmstrip-add-card {
+    width: 80px;
+    height: 60px;
+  }
+  /* Grotere aanraakzones voor vingers op iPad */
+  .param-slider {
+    height: 8px;
+  }
+  .param-slider::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+  }
+  .btn-primary, .btn-secondary {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
 }

@@ -1,15 +1,16 @@
 /**
  * app.js
- * Hoofdcontroller voor vroonphoto
+ * Hoofdcontroller voor vroonphoto met 25-Foto Batch Beheer & Mapkeuze op Apparaat
  * Geïnspireerd op de architectuur en stijl van Peters eerdere apps (PetersWorld)
- * Bevat WebAssembly hardware acceleratie, RAW decoder, rood licht herstel,
- * ruisonderdrukking, knallend zwart-wit, Topaz super-resolution en versiecontrole.
+ * Ondersteunt laptops én iPads met touch-bediening, Filmstrip, Rasteroverzicht,
+ * File System Access API ("Kies map op apparaat") en iOS "Bewaar in Bestanden".
  */
 
 const CFG = {
     appName: 'vroonphoto',
     versionFile: 'version.json',
-    wasmFile: 'vroonphoto.wasm'
+    wasmFile: 'vroonphoto.wasm',
+    maxPhotos: 25
 };
 
 let currentVersion = null;
@@ -20,33 +21,25 @@ let currentVersion = null;
 
 async function forceAppUpdate() {
     console.log('🔄 Bezig met forceren van app update & cache purge...');
-    // 1. Verwijder alle Service Worker registraties
     try {
         if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
-            for (const reg of registrations) {
-                await reg.unregister();
-            }
+            for (const reg of registrations) await reg.unregister();
         }
     } catch (e) {}
 
-    // 2. Verwijder alle CacheStorage caches
     try {
         if ('caches' in window) {
             const keys = await caches.keys();
-            for (const k of keys) {
-                await caches.delete(k);
-            }
+            for (const k of keys) await caches.delete(k);
         }
     } catch (e) {}
 
-    // 3. Wis alle opslag
     try {
         localStorage.clear();
         sessionStorage.clear();
     } catch (e) {}
 
-    // 4. Haal nieuwste versie op van de server
     let latestVer = Date.now();
     try {
         const res = await fetch(`${CFG.versionFile}?nocache=${Date.now()}`, { cache: 'no-store' });
@@ -56,10 +49,8 @@ async function forceAppUpdate() {
         }
     } catch (e) {}
 
-    // 5. Herlaad direct met cache-busters
     setTimeout(() => {
-        const targetUrl = `index.html?v=${latestVer}&t=${Date.now()}`;
-        window.location.replace(targetUrl);
+        window.location.replace(`index.html?v=${latestVer}&t=${Date.now()}`);
     }, 450);
 }
 
@@ -88,15 +79,10 @@ async function checkVersion(silent = true) {
             const dot = document.getElementById('ver-dot');
             if (dot) dot.className = 'dot gold';
         } else if (!silent) {
-            // Als de gebruiker handmatig op 🔄 klikt: direct geforceerd herladen en cachen wissen!
             await forceAppUpdate();
         }
     } catch (e) {
-        if (!silent) {
-            await forceAppUpdate();
-        } else {
-            console.warn('[Versie] Check mislukt:', e);
-        }
+        if (!silent) await forceAppUpdate();
     }
 }
 
@@ -105,7 +91,7 @@ async function applyUpdate() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  2. WEBASSEMBLY ENGINE (HARDWARE VERSNELLER)
+//  2. WEBASSEMBLY HARDWARE KERNEL
 // ═══════════════════════════════════════════════════════
 
 class WasmKernel {
@@ -126,14 +112,12 @@ class WasmKernel {
                     this.instance = module.instance;
                     this.memory = this.instance.exports.memory;
                     this.isReady = true;
-                    console.log(`⚡ [vroonphoto WASM] Succesvol geladen vanaf ${path} (Hardware-Accelerated)`);
+                    console.log(`⚡ [vroonphoto WASM] Hardware acceleratie geactiveerd via ${path}`);
                     return true;
                 }
-            } catch (e) {
-                // probeer volgende pad
-            }
+            } catch (e) {}
         }
-        console.warn('⚠️ [vroonphoto WASM] WebAssembly kon niet geladen worden. JS fallback actief.');
+        console.warn('⚠️ [vroonphoto WASM] Fallback naar geoptimaliseerde JS routines');
         return false;
     }
 
@@ -146,7 +130,6 @@ class WasmKernel {
         }
     }
 
-    // 1. Rood licht herstel
     recoverRedLight(imageData, threshold, strength, skinProtect, gamutCompress) {
         const { data, width, height } = imageData;
         const totalBytes = width * height * 4;
@@ -183,14 +166,12 @@ class WasmKernel {
         }
     }
 
-    // 2. Ruisonderdrukking
     denoise(imageData, radius, spatialSigma, rangeSigma, chromaStrength) {
         const { data, width, height } = imageData;
         const totalBytes = width * height * 4;
 
         if (this.isReady && this.instance.exports.vroon_denoise_bilateral) {
-            const srcOff = 0;
-            const dstOff = totalBytes;
+            const srcOff = 0, dstOff = totalBytes;
             this.ensureMemory(totalBytes * 2);
             const mem = new Uint8Array(this.memory.buffer);
             mem.set(data, srcOff);
@@ -235,14 +216,12 @@ class WasmKernel {
         }
     }
 
-    // 3. Knallend Zwart-Wit
     punchyBW(imageData, rw, gw, bw, contrast, clarity, grain) {
         const { data, width, height } = imageData;
         const totalBytes = width * height * 4;
 
         if (this.isReady && this.instance.exports.vroon_punchy_bw) {
-            const srcOff = 0;
-            const dstOff = totalBytes;
+            const srcOff = 0, dstOff = totalBytes;
             this.ensureMemory(totalBytes * 2);
             const mem = new Uint8Array(this.memory.buffer);
             mem.set(data, srcOff);
@@ -268,7 +247,6 @@ class WasmKernel {
         }
     }
 
-    // 4. Topaz Super-Resolution 2x
     superRes2x(srcImageData, sharpness = 50.0) {
         const sw = srcImageData.width, sh = srcImageData.height;
         const dw = sw * 2, dh = sh * 2;
@@ -310,7 +288,6 @@ class WasmKernel {
         return dstImageData;
     }
 
-    // 5. Firefly Inpainting
     smartInpaint(imageData, maskArray, radius = 5) {
         const { data, width, height } = imageData;
         const totalBytes = width * height * 4;
@@ -360,7 +337,7 @@ class WasmKernel {
 }
 
 // ═══════════════════════════════════════════════════════
-//  3. VROONPHOTO HOOFD APPLICATIE
+//  3. VROONPHOTO 25-FOTO BATCH & WORKSPACE MANAGER
 // ═══════════════════════════════════════════════════════
 
 class VroonPhotoApp {
@@ -369,8 +346,10 @@ class VroonPhotoApp {
         this.canvas = document.getElementById('main-canvas');
         this.ctx = this.canvas ? this.canvas.getContext('2d', { willReadFrequently: true }) : null;
 
-        this.originalImageData = null;
-        this.currentImageData = null;
+        // Multi-Foto Array (max 25 foto's)
+        this.photos = [];
+        this.activePhotoIndex = -1;
+        this.viewMode = 'develop'; // 'develop' of 'grid'
 
         this.isBeforeAfterActive = false;
         this.splitComparePos = 0.5;
@@ -378,8 +357,6 @@ class VroonPhotoApp {
 
         this.maskCanvas = null;
         this.maskCtx = null;
-
-        this.state = this.getDefaultState();
     }
 
     getDefaultState() {
@@ -393,33 +370,42 @@ class VroonPhotoApp {
         };
     }
 
+    getActivePhoto() {
+        if (this.activePhotoIndex >= 0 && this.activePhotoIndex < this.photos.length) {
+            return this.photos[this.activePhotoIndex];
+        }
+        return null;
+    }
+
     async init() {
         await this.wasm.init();
         await checkVersion(true);
 
-        // Periodieke check elke 5 minuten
         setInterval(() => checkVersion(true), 5 * 60 * 1000);
 
         this.initHistogram();
         this.initToneCurve();
         this.setupEventListeners();
+        this.setupTouchInteractions();
         this.setupShortcuts();
         this.setupDropzone();
 
-        // Laad standaard concert sample
-        this.loadSamplePhoto('concert_red');
+        // Standaard batch van 5 voorbeeldfoto's laden voor directe demonstratie
+        this.loadSampleBatch();
     }
 
     setupEventListeners() {
-        // Sliders
+        // Sliders binding
         document.querySelectorAll('.param-slider').forEach(slider => {
             const param = slider.dataset.param;
             const valSpan = document.getElementById(`${slider.id}-val`);
             slider.addEventListener('input', (e) => {
+                const photo = this.getActivePhoto();
+                if (!photo) return;
                 const val = parseFloat(e.target.value);
-                this.state[param] = val;
+                photo.state[param] = val;
                 if (valSpan) valSpan.textContent = val;
-                this.render();
+                this.renderActivePhoto();
             });
         });
 
@@ -430,26 +416,20 @@ class VroonPhotoApp {
             });
         });
 
-        // B&W Presets
+        // Zwart-Wit Presets & Toggle
         document.querySelectorAll('.bw-preset-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.applyBWPreset(e.currentTarget.dataset.preset);
-            });
+            btn.addEventListener('click', (e) => this.applyBWPreset(e.currentTarget.dataset.preset));
         });
-
-        // Global Presets
         document.querySelectorAll('.preset-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                this.applyGlobalPreset(e.currentTarget.dataset.preset);
-            });
+            card.addEventListener('click', (e) => this.applyGlobalPreset(e.currentTarget.dataset.preset));
         });
-
-        // Zwart-Wit Toggle
         const bwToggle = document.getElementById('toggle-bw-mode');
         bwToggle?.addEventListener('change', (e) => {
-            this.state.bwEnabled = e.target.checked;
-            document.getElementById('bw-mixer-panel')?.classList.toggle('disabled', !this.state.bwEnabled);
-            this.render();
+            const photo = this.getActivePhoto();
+            if (!photo) return;
+            photo.state.bwEnabled = e.target.checked;
+            document.getElementById('bw-mixer-panel')?.classList.toggle('disabled', !photo.state.bwEnabled);
+            this.renderActivePhoto();
         });
 
         // Topaz Super-Resolution
@@ -468,17 +448,34 @@ class VroonPhotoApp {
         document.getElementById('btn-compare-toggle')?.addEventListener('click', () => {
             this.isBeforeAfterActive = !this.isBeforeAfterActive;
             document.getElementById('btn-compare-toggle').classList.toggle('active', this.isBeforeAfterActive);
-            this.drawCanvas();
+            this.drawActiveCanvas();
         });
 
-        // Export Modal
+        // Navigatie Vorige / Volgende
+        document.getElementById('btn-prev-photo')?.addEventListener('click', () => this.selectPrevPhoto());
+        document.getElementById('btn-next-photo')?.addEventListener('click', () => this.selectNextPhoto());
+
+        // Raster Overzicht Toggle
+        document.getElementById('btn-toggle-grid')?.addEventListener('click', () => this.toggleGridMode());
+        document.getElementById('btn-close-grid')?.addEventListener('click', () => this.toggleGridMode(false));
+
+        // Synchroniseer instellingen naar alle foto's
+        document.getElementById('btn-sync-all')?.addEventListener('click', () => this.syncSettingsToAll());
+        document.getElementById('btn-filmstrip-sync')?.addEventListener('click', () => this.syncSettingsToAll());
+
+        // Roterend
+        document.getElementById('btn-rotate-left')?.addEventListener('click', () => this.rotateActivePhoto(-90));
+        document.getElementById('btn-rotate-right')?.addEventListener('click', () => this.rotateActivePhoto(90));
+        document.getElementById('btn-flip-h')?.addEventListener('click', () => this.flipActivePhotoH());
+
+        // Opslaan & Exporteren Modal
         document.getElementById('btn-open-export')?.addEventListener('click', () => {
             document.getElementById('export-modal')?.classList.remove('hidden');
         });
         document.getElementById('btn-close-export')?.addEventListener('click', () => {
             document.getElementById('export-modal')?.classList.add('hidden');
         });
-        document.getElementById('btn-confirm-export')?.addEventListener('click', () => this.exportImage());
+        document.getElementById('btn-choose-folder-export')?.addEventListener('click', () => this.exportWithFolderPicker());
 
         // Update banner knoppen
         document.getElementById('btn-apply-upd')?.addEventListener('click', () => applyUpdate());
@@ -486,46 +483,68 @@ class VroonPhotoApp {
             document.getElementById('update-banner')?.classList.remove('show');
         });
 
-        // Roterend
-        document.getElementById('btn-rotate-left')?.addEventListener('click', () => this.rotate(-90));
-        document.getElementById('btn-rotate-right')?.addEventListener('click', () => this.rotate(90));
-        document.getElementById('btn-flip-h')?.addEventListener('click', () => this.flipH());
-
-        // Bestanden
+        // Bestanden openen (Header & Grid)
         document.getElementById('file-upload-input')?.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) this.loadFile(e.target.files[0]);
+            if (e.target.files) this.loadMultipleFiles(e.target.files);
         });
-        document.getElementById('sample-photos-select')?.addEventListener('change', (e) => {
-            this.loadSamplePhoto(e.target.value);
+        document.getElementById('grid-add-file-input')?.addEventListener('change', (e) => {
+            if (e.target.files) this.loadMultipleFiles(e.target.files);
         });
 
-        // Canvas muis interacties
-        this.setupCanvasMouse();
+        // Voorbeelden selectie
+        document.getElementById('sample-photos-select')?.addEventListener('change', (e) => {
+            if (e.target.value === 'batch_5') this.loadSampleBatch();
+            else this.loadSingleSample(e.target.value);
+        });
     }
 
-    setupCanvasMouse() {
+    // Touch & Muis Interacties (Geoptimaliseerd voor iPad vingers & laptop trackpad)
+    setupTouchInteractions() {
         let isDown = false;
-        this.canvas.addEventListener('mousedown', (e) => {
+
+        const handlePointerStart = (clientX, clientY) => {
             isDown = true;
             if (this.activeTool === 'inpaint') {
-                this.paintMask(e);
+                this.paintMaskAtPoint(clientX, clientY);
             } else if (this.isBeforeAfterActive) {
                 const rect = this.canvas.getBoundingClientRect();
-                this.splitComparePos = (e.clientX - rect.left) / rect.width;
-                this.drawCanvas();
+                this.splitComparePos = (clientX - rect.left) / rect.width;
+                this.drawActiveCanvas();
             }
-        });
-        window.addEventListener('mousemove', (e) => {
+        };
+
+        const handlePointerMove = (clientX, clientY) => {
             if (!isDown) return;
             if (this.activeTool === 'inpaint') {
-                this.paintMask(e);
+                this.paintMaskAtPoint(clientX, clientY);
             } else if (this.isBeforeAfterActive) {
                 const rect = this.canvas.getBoundingClientRect();
-                this.splitComparePos = Math.max(0.05, Math.min(0.95, (e.clientX - rect.left) / rect.width));
-                this.drawCanvas();
+                this.splitComparePos = Math.max(0.05, Math.min(0.95, (clientX - rect.left) / rect.width));
+                this.drawActiveCanvas();
             }
-        });
-        window.addEventListener('mouseup', () => { isDown = false; });
+        };
+
+        const handlePointerEnd = () => { isDown = false; };
+
+        // Muis events
+        this.canvas.addEventListener('mousedown', e => handlePointerStart(e.clientX, e.clientY));
+        window.addEventListener('mousemove', e => handlePointerMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', handlePointerEnd);
+
+        // Touch events voor iPad & tablets
+        this.canvas.addEventListener('touchstart', e => {
+            if (e.touches && e.touches[0]) {
+                handlePointerStart(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', e => {
+            if (isDown && e.touches && e.touches[0]) {
+                handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', handlePointerEnd);
     }
 
     setupShortcuts() {
@@ -533,6 +552,10 @@ class VroonPhotoApp {
             if (e.key === '\\') {
                 e.preventDefault();
                 document.getElementById('btn-compare-toggle')?.click();
+            } else if (e.key === 'ArrowRight' && !e.target.matches('input, select')) {
+                this.selectNextPhoto();
+            } else if (e.key === 'ArrowLeft' && !e.target.matches('input, select')) {
+                this.selectPrevPhoto();
             }
         });
     }
@@ -543,138 +566,336 @@ class VroonPhotoApp {
         ['dragenter', 'dragover'].forEach(n => drop.addEventListener(n, e => e.preventDefault()));
         drop.addEventListener('drop', (e) => {
             e.preventDefault();
-            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                this.loadFile(e.dataTransfer.files[0]);
-            }
+            if (e.dataTransfer.files) this.loadMultipleFiles(e.dataTransfer.files);
         });
     }
 
-    async loadFile(file) {
+    // ═══════════════════════════════════════════════════════
+    //  4. FOTO BEHEER (TOT 25 FOTO'S GELIJCKTIJDIG)
+    // ═══════════════════════════════════════════════════════
+
+    async loadMultipleFiles(fileList) {
+        if (!fileList || fileList.length === 0) return;
         document.getElementById('loading-overlay')?.classList.remove('hidden');
-        try {
-            console.log(`📂 [vroonphoto] Openen van: ${file.name}`);
-            const bitmap = await createImageBitmap(file);
-            const canvas = document.createElement('canvas');
-            canvas.width = bitmap.width;
-            canvas.height = bitmap.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(bitmap, 0, 0);
-            const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
-            this.setImage(imgData, {
-                filename: file.name,
-                filesize: `${(file.size / 1024 / 1024).toFixed(2)} MB`
-            });
-        } catch (err) {
-            console.error('Laadfout:', err);
-            alert(`Fout bij laden van foto: ${err.message}`);
-        } finally {
+
+        const remainingSlots = CFG.maxPhotos - this.photos.length;
+        if (remainingSlots <= 0) {
+            alert(`Het maximum van ${CFG.maxPhotos} foto's is bereikt. Verwijder eerst foto's om nieuwe toe te voegen.`);
             document.getElementById('loading-overlay')?.classList.add('hidden');
+            return;
+        }
+
+        const filesToLoad = Array.from(fileList).slice(0, remainingSlots);
+
+        for (const file of filesToLoad) {
+            try {
+                const bitmap = await createImageBitmap(file);
+                const c = document.createElement('canvas');
+                c.width = bitmap.width; c.height = bitmap.height;
+                const ctx = c.getContext('2d');
+                ctx.drawImage(bitmap, 0, 0);
+                const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+
+                this.addPhotoToSession(imgData, {
+                    filename: file.name,
+                    filesize: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+                });
+            } catch (err) {
+                console.warn('Fout bij importeren van foto:', file.name, err);
+            }
+        }
+
+        document.getElementById('loading-overlay')?.classList.add('hidden');
+        this.updateFilmstripUI();
+        this.updateGridUI();
+    }
+
+    addPhotoToSession(imageData, meta = {}) {
+        if (this.photos.length >= CFG.maxPhotos) return;
+
+        // Maak kleine thumbnail voor de filmstrip
+        const thumbCanvas = document.createElement('canvas');
+        const aspect = imageData.width / imageData.height;
+        thumbCanvas.width = 140;
+        thumbCanvas.height = Math.round(140 / aspect);
+        const tCtx = thumbCanvas.getContext('2d');
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = imageData.width; tempCanvas.height = imageData.height;
+        tempCanvas.getContext('2d').putImageData(imageData, 0, 0);
+        tCtx.drawImage(tempCanvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
+        const thumbUrl = thumbCanvas.toDataURL('image/jpeg', 0.7);
+
+        const photo = {
+            id: 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            filename: meta.filename || `Foto_${this.photos.length + 1}.jpg`,
+            filesize: meta.filesize || '4.0 MB',
+            originalImageData: new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height),
+            currentImageData: new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height),
+            thumbUrl: thumbUrl,
+            state: this.getDefaultState(),
+            hasStageRed: false
+        };
+
+        // Automatische podium rood licht analyse per foto
+        photo.hasStageRed = this.checkStageRed(photo.originalImageData);
+        if (photo.hasStageRed) {
+            photo.state.stageRedFix = 85;
+            photo.state.colorBleedReduction = 65;
+        }
+
+        this.photos.push(photo);
+
+        if (this.activePhotoIndex === -1) {
+            this.setActivePhoto(0);
+        } else {
+            this.updateFilmstripUI();
+            this.updateGridUI();
         }
     }
 
-    setImage(imageData, metadata = {}) {
-        this.originalImageData = new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height);
-        this.currentImageData = new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height);
+    setActivePhoto(index) {
+        if (index < 0 || index >= this.photos.length) return;
+        this.activePhotoIndex = index;
+        const photo = this.photos[index];
 
-        this.canvas.width = imageData.width;
-        this.canvas.height = imageData.height;
+        this.canvas.width = photo.currentImageData.width;
+        this.canvas.height = photo.currentImageData.height;
+        this.initMask(photo.currentImageData.width, photo.currentImageData.height);
 
-        this.initMask(imageData.width, imageData.height);
+        // Update info badge
+        const badge = document.getElementById('photo-counter-badge');
+        if (badge) badge.textContent = `${index + 1} / ${this.photos.length} Foto's`;
 
         const info = document.getElementById('photo-info-display');
         if (info) {
-            info.textContent = `${metadata.filename || 'Afbeelding'} | ${imageData.width}×${imageData.height}px | ${metadata.filesize || ''}`;
+            info.textContent = `${photo.filename} | ${photo.currentImageData.width}×${photo.currentImageData.height}px | ${photo.filesize}`;
         }
 
-        // Automatische podium rood licht detectie
-        this.detectStageRed();
-        this.render();
-    }
-
-    detectStageRed() {
-        const d = this.originalImageData.data;
-        let blown = 0;
-        const total = this.originalImageData.width * this.originalImageData.height;
-        for (let i = 0; i < d.length; i += 4) {
-            if (d[i] > 195 && d[i] > Math.max(d[i + 1], d[i + 2]) * 1.35) blown++;
-        }
-        const pct = (blown / total) * 100;
+        // Toon alert als rood podiumlicht actief is
         const alertBox = document.getElementById('stage-red-detected-alert');
         if (alertBox) {
-            if (pct > 2.5) {
+            if (photo.hasStageRed) {
                 alertBox.classList.remove('hidden');
-                alertBox.innerHTML = `⚠️ <strong>Rood podiumlicht gedetecteerd (${pct.toFixed(1)}% clipping)!</strong> 'Rood Licht Herstel' staat klaar.`;
-                this.state.stageRedFix = 85;
-                this.state.colorBleedReduction = 65;
-                this.syncUI();
+                alertBox.innerHTML = `⚠️ <strong>Rood podiumlicht gedetecteerd!</strong> Rood Licht Herstel staat actief voor deze foto.`;
             } else {
                 alertBox.classList.add('hidden');
             }
         }
+
+        this.syncSliderUIFromPhoto(photo);
+        this.renderActivePhoto();
+        this.updateFilmstripUI();
+        this.updateGridUI();
     }
 
-    syncUI() {
-        document.querySelectorAll('.param-slider').forEach(s => {
-            const param = s.dataset.param;
-            if (this.state[param] !== undefined) {
-                s.value = this.state[param];
-                const span = document.getElementById(`${s.id}-val`);
-                if (span) span.textContent = this.state[param];
+    selectPrevPhoto() {
+        if (this.photos.length <= 1) return;
+        const nextIdx = (this.activePhotoIndex - 1 + this.photos.length) % this.photos.length;
+        this.setActivePhoto(nextIdx);
+    }
+
+    selectNextPhoto() {
+        if (this.photos.length <= 1) return;
+        const nextIdx = (this.activePhotoIndex + 1) % this.photos.length;
+        this.setActivePhoto(nextIdx);
+    }
+
+    removePhoto(index, e) {
+        if (e) e.stopPropagation();
+        if (this.photos.length <= 1) {
+            alert('Je moet minstens één foto in de sessie behouden.');
+            return;
+        }
+        this.photos.splice(index, 1);
+        if (this.activePhotoIndex >= this.photos.length) {
+            this.activePhotoIndex = this.photos.length - 1;
+        }
+        this.setActivePhoto(this.activePhotoIndex);
+    }
+
+    // Synchroniseer huidige bewerking naar alle foto's in de batch
+    syncSettingsToAll() {
+        const active = this.getActivePhoto();
+        if (!active || this.photos.length <= 1) return;
+
+        const count = this.photos.length;
+        this.photos.forEach(p => {
+            if (p.id !== active.id) {
+                p.state = JSON.parse(JSON.stringify(active.state));
             }
+        });
+
+        this.renderActivePhoto();
+        alert(`⚡ De instellingen van '${active.filename}' zijn succesvol gesynchroniseerd naar alle ${count} foto's!`);
+    }
+
+    toggleGridMode(forceState = null) {
+        const gridCont = document.getElementById('grid-overview-container');
+        const devPort = document.getElementById('develop-viewport');
+        const toggleBtn = document.getElementById('btn-toggle-grid');
+
+        if (forceState !== null) {
+            this.viewMode = forceState ? 'grid' : 'develop';
+        } else {
+            this.viewMode = this.viewMode === 'develop' ? 'grid' : 'develop';
+        }
+
+        const isGrid = this.viewMode === 'grid';
+        gridCont?.classList.toggle('hidden', !isGrid);
+        devPort?.classList.toggle('hidden', isGrid);
+        toggleBtn?.classList.toggle('active', isGrid);
+
+        if (isGrid) this.updateGridUI();
+    }
+
+    // Filmstrip UI rendering
+    updateFilmstripUI() {
+        const container = document.getElementById('filmstrip-scroll');
+        const countTxt = document.getElementById('filmstrip-count-txt');
+        if (!container) return;
+        if (countTxt) countTxt.textContent = `${this.photos.length} / ${CFG.maxPhotos}`;
+
+        container.innerHTML = '';
+
+        this.photos.forEach((photo, idx) => {
+            const item = document.createElement('div');
+            item.className = `filmstrip-item ${idx === this.activePhotoIndex ? 'active' : ''}`;
+            item.title = `${photo.filename} (Foto ${idx + 1})`;
+            item.onclick = () => this.setActivePhoto(idx);
+
+            item.innerHTML = `
+                <img src="${photo.thumbUrl}" alt="Thumb ${idx + 1}">
+                <span class="filmstrip-badge">#${idx + 1}</span>
+                <span class="filmstrip-close" title="Verwijderen" onclick="vroonApp.removePhoto(${idx}, event)">✕</span>
+            `;
+            container.appendChild(item);
+        });
+
+        // Voeg '+' toe als er nog ruimte is voor 25 foto's
+        if (this.photos.length < CFG.maxPhotos) {
+            const addCard = document.createElement('label');
+            addCard.className = 'filmstrip-add-card';
+            addCard.title = "Voeg foto's toe (tot 25)";
+            addCard.innerHTML = `
+                <span style="font-size: 16px;">➕</span>
+                <span>Toevoegen</span>
+                <input type="file" multiple accept="image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display:none;" onchange="vroonApp.loadMultipleFiles(this.files)">
+            `;
+            container.appendChild(addCard);
+        }
+    }
+
+    // Raster Overzicht UI rendering (25 foto's overzichtelijk scherm)
+    updateGridUI() {
+        const grid = document.getElementById('photos-grid');
+        const countTxt = document.getElementById('grid-count-txt');
+        if (!grid) return;
+        if (countTxt) countTxt.textContent = `${this.photos.length} / ${CFG.maxPhotos}`;
+
+        grid.innerHTML = '';
+
+        this.photos.forEach((photo, idx) => {
+            const card = document.createElement('div');
+            card.className = `grid-photo-card ${idx === this.activePhotoIndex ? 'active' : ''}`;
+            card.onclick = () => {
+                this.setActivePhoto(idx);
+                this.toggleGridMode(false);
+            };
+
+            card.innerHTML = `
+                <img class="grid-photo-thumb" src="${photo.thumbUrl}" alt="Photo ${idx + 1}">
+                <div class="grid-photo-meta">
+                    <span class="grid-photo-title">#${idx + 1} ${photo.filename}</span>
+                    <span class="grid-photo-sub">
+                        <span>${photo.filesize}</span>
+                        ${photo.state.bwEnabled ? '<span style="color:#fff;">⚡ Zwart-Wit</span>' : ''}
+                        ${photo.state.stageRedFix > 0 ? '<span style="color:#ef4444;">🔴 Rood Fix</span>' : ''}
+                    </span>
+                </div>
+            `;
+            grid.appendChild(card);
         });
     }
 
-    render() {
-        if (!this.originalImageData) return;
+    syncSliderUIFromPhoto(photo) {
+        document.querySelectorAll('.param-slider').forEach(s => {
+            const p = s.dataset.param;
+            if (photo.state[p] !== undefined) {
+                s.value = photo.state[p];
+                const span = document.getElementById(`${s.id}-val`);
+                if (span) span.textContent = photo.state[p];
+            }
+        });
+        const bwToggle = document.getElementById('toggle-bw-mode');
+        if (bwToggle) bwToggle.checked = photo.state.bwEnabled;
+        document.getElementById('bw-mixer-panel')?.classList.toggle('disabled', !photo.state.bwEnabled);
+    }
+
+    checkStageRed(imgData) {
+        const d = imgData.data;
+        let count = 0;
+        const total = imgData.width * imgData.height;
+        for (let i = 0; i < d.length; i += 4) {
+            if (d[i] > 190 && d[i] > Math.max(d[i + 1], d[i + 2]) * 1.35) count++;
+        }
+        return (count / total) * 100 > 2.0;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  5. BEWERKINGSENGINE (PER FOTO WEERGAVE & RENDERING)
+    // ═══════════════════════════════════════════════════════
+
+    renderActivePhoto() {
+        const photo = this.getActivePhoto();
+        if (!photo) return;
 
         const img = new ImageData(
-            new Uint8ClampedArray(this.originalImageData.data),
-            this.originalImageData.width,
-            this.originalImageData.height
+            new Uint8ClampedArray(photo.originalImageData.data),
+            photo.originalImageData.width,
+            photo.originalImageData.height
         );
         const data = img.data;
 
         // 1. Rood licht & Bleed recovery
-        if (this.state.stageRedFix > 0) {
+        if (photo.state.stageRedFix > 0) {
             this.wasm.recoverRedLight(
                 img,
                 0.68,
-                this.state.stageRedFix / 100.0,
-                this.state.skinProtection / 100.0,
-                this.state.colorBleedReduction / 100.0
+                photo.state.stageRedFix / 100.0,
+                photo.state.skinProtection / 100.0,
+                photo.state.colorBleedReduction / 100.0
             );
         }
 
         // 2. Ruisonderdrukking
-        if (this.state.denoiseLuma > 0 || this.state.denoiseChroma > 0) {
+        if (photo.state.denoiseLuma > 0 || photo.state.denoiseChroma > 0) {
             this.wasm.denoise(
                 img,
-                this.state.denoiseLuma > 60 ? 2 : 1,
-                1.0 + (this.state.denoiseLuma / 100.0) * 2.5,
-                15.0 + (this.state.denoiseLuma / 100.0) * 35.0,
-                this.state.denoiseChroma / 100.0
+                photo.state.denoiseLuma > 60 ? 2 : 1,
+                1.0 + (photo.state.denoiseLuma / 100.0) * 2.5,
+                15.0 + (photo.state.denoiseLuma / 100.0) * 35.0,
+                photo.state.denoiseChroma / 100.0
             );
         }
 
-        // 3. Lightroom Basics (Exposure, Contrast, Highlights, Shadows, Temp, Tint, Sat)
-        const exp = Math.pow(2.0, this.state.exposure / 2.0);
-        const cont = (this.state.contrast + 100.0) / 100.0;
-        const temp = (this.state.temp / 100.0) * 35.0;
-        const tint = (this.state.tint / 100.0) * 20.0;
-        const sat = (this.state.saturation + 100.0) / 100.0;
-        const vib = (this.state.vibrance / 100.0);
+        // 3. Lightroom Basics
+        const exp = Math.pow(2.0, photo.state.exposure / 2.0);
+        const cont = (photo.state.contrast + 100.0) / 100.0;
+        const temp = (photo.state.temp / 100.0) * 35.0;
+        const tint = (photo.state.tint / 100.0) * 20.0;
+        const sat = (photo.state.saturation + 100.0) / 100.0;
+        const vib = (photo.state.vibrance / 100.0);
 
         for (let i = 0; i < data.length; i += 4) {
             let r = data[i] * exp + temp + tint * 0.25;
             let g = data[i + 1] * exp - tint * 0.5;
             let b = data[i + 2] * exp - temp + tint * 0.25;
 
-            // Contrast
             r = 128.0 + (r - 128.0) * cont;
             g = 128.0 + (g - 128.0) * cont;
             b = 128.0 + (b - 128.0) * cont;
 
-            // Verzadiging & Levendigheid
             const gray = 0.299 * r + 0.587 * g + 0.114 * b;
             const maxC = Math.max(r, g, b), minC = Math.min(r, g, b);
             const curSat = maxC === 0 ? 0 : (maxC - minC) / maxC;
@@ -695,41 +916,42 @@ class VroonPhotoApp {
         }
 
         // 5. Knallend Zwart-Wit
-        if (this.state.bwEnabled) {
+        if (photo.state.bwEnabled) {
             this.wasm.punchyBW(
                 img,
-                (this.state.bwRed + 100) / 100.0,
-                (this.state.bwGreen + 100) / 100.0,
-                (this.state.bwBlue + 100) / 100.0,
-                this.state.bwContrast,
-                this.state.bwClarity,
-                this.state.bwGrain
+                (photo.state.bwRed + 100) / 100.0,
+                (photo.state.bwGreen + 100) / 100.0,
+                (photo.state.bwBlue + 100) / 100.0,
+                photo.state.bwContrast,
+                photo.state.bwClarity,
+                photo.state.bwGrain
             );
         }
 
-        this.currentImageData = img;
-        this.drawCanvas();
+        photo.currentImageData = img;
+        this.drawActiveCanvas();
         this.updateHistogram(img);
     }
 
-    drawCanvas() {
-        if (!this.currentImageData || !this.ctx) return;
-        const w = this.currentImageData.width, h = this.currentImageData.height;
+    drawActiveCanvas() {
+        const photo = this.getActivePhoto();
+        if (!photo || !this.ctx) return;
+
+        const w = photo.currentImageData.width, h = photo.currentImageData.height;
         if (this.canvas.width !== w || this.canvas.height !== h) {
             this.canvas.width = w; this.canvas.height = h;
         }
 
         if (this.isBeforeAfterActive) {
-            this.ctx.putImageData(this.currentImageData, 0, 0);
+            this.ctx.putImageData(photo.currentImageData, 0, 0);
             const splitX = Math.floor(w * this.splitComparePos);
             this.ctx.save();
             this.ctx.beginPath();
             this.ctx.rect(0, 0, splitX, h);
             this.ctx.clip();
-            this.ctx.putImageData(this.originalImageData, 0, 0);
+            this.ctx.putImageData(photo.originalImageData, 0, 0);
             this.ctx.restore();
 
-            // Lijn
             this.ctx.strokeStyle = '#38bdf8';
             this.ctx.lineWidth = 2.5;
             this.ctx.beginPath();
@@ -742,7 +964,7 @@ class VroonPhotoApp {
             this.ctx.fillText('VOOR', Math.max(10, splitX - 55), 26);
             this.ctx.fillText('NA', splitX + 12, 26);
         } else {
-            this.ctx.putImageData(this.currentImageData, 0, 0);
+            this.ctx.putImageData(photo.currentImageData, 0, 0);
         }
 
         if (this.activeTool === 'inpaint' && this.maskCanvas) {
@@ -755,23 +977,23 @@ class VroonPhotoApp {
 
     // Topaz Super-Resolution
     upscale(scale = 2) {
-        if (!this.currentImageData) return;
+        const photo = this.getActivePhoto();
+        if (!photo) return;
         const sharpness = parseFloat(document.getElementById('upscale-sharpness')?.value || 50);
         document.getElementById('loading-overlay')?.classList.remove('hidden');
 
         setTimeout(() => {
-            let res = this.wasm.superRes2x(this.currentImageData, sharpness);
+            let res = this.wasm.superRes2x(photo.currentImageData, sharpness);
             if (scale === 4) res = this.wasm.superRes2x(res, sharpness * 0.7);
-            this.setImage(res, {
-                filename: `topaz_upscale_${scale}x.jpg`,
-                filesize: `${(res.width * res.height * 4 / 1024 / 1024).toFixed(1)} MB`
-            });
+            photo.originalImageData = res;
+            photo.currentImageData = res;
+            this.setActivePhoto(this.activePhotoIndex);
             document.getElementById('loading-overlay')?.classList.add('hidden');
-            alert(`✨ Succesvol vergroot naar ${res.width} × ${res.height} pixels met Topaz Super-Resolution!`);
+            alert(`✨ Foto succesvol vergroot naar ${res.width} × ${res.height} pixels met Topaz Super-Resolution!`);
         }, 50);
     }
 
-    // Firefly Inpaint Masker
+    // Firefly Inpaint
     initMask(w, h) {
         if (!this.maskCanvas) this.maskCanvas = document.createElement('canvas');
         this.maskCanvas.width = w; this.maskCanvas.height = h;
@@ -782,32 +1004,35 @@ class VroonPhotoApp {
         if (!this.maskCtx) return;
         this.maskCtx.fillStyle = '#000000';
         this.maskCtx.fillRect(0, 0, this.maskCanvas.width, this.maskCanvas.height);
-        this.drawCanvas();
+        this.drawActiveCanvas();
     }
-    paintMask(e) {
+    paintMaskAtPoint(clientX, clientY) {
         const rect = this.canvas.getBoundingClientRect();
         const sx = this.canvas.width / rect.width, sy = this.canvas.height / rect.height;
-        const x = (e.clientX - rect.left) * sx, y = (e.clientY - rect.top) * sy;
+        const x = (clientX - rect.left) * sx, y = (clientY - rect.top) * sy;
         const size = parseInt(document.getElementById('inpaint-brush-size')?.value || 25);
         this.maskCtx.fillStyle = '#ffffff';
         this.maskCtx.beginPath();
         this.maskCtx.arc(x, y, size, 0, Math.PI * 2);
         this.maskCtx.fill();
-        this.drawCanvas();
+        this.drawActiveCanvas();
     }
     applyInpaint() {
-        if (!this.originalImageData) return;
+        const photo = this.getActivePhoto();
+        if (!photo) return;
         const mData = this.maskCtx.getImageData(0, 0, this.maskCanvas.width, this.maskCanvas.height).data;
         const mask = new Uint8Array(this.maskCanvas.width * this.maskCanvas.height);
         for (let i = 0, j = 0; i < mData.length; i += 4, j++) mask[j] = mData[i];
-        this.wasm.smartInpaint(this.originalImageData, mask, 6);
+        this.wasm.smartInpaint(photo.originalImageData, mask, 6);
         this.clearMask();
-        this.render();
+        this.renderActivePhoto();
     }
 
     // Presets
     applyBWPreset(preset) {
-        this.state.bwEnabled = true;
+        const photo = this.getActivePhoto();
+        if (!photo) return;
+        photo.state.bwEnabled = true;
         document.getElementById('toggle-bw-mode').checked = true;
         document.getElementById('bw-mixer-panel')?.classList.remove('disabled');
 
@@ -818,39 +1043,44 @@ class VroonPhotoApp {
             'dramatic_street':   { r: 30, g: 15, b: -10, c: 30, cl: 65, gr: 18 }
         };
         const p = map[preset] || map['knallend_contrast'];
-        this.state.bwRed = p.r; this.state.bwGreen = p.g; this.state.bwBlue = p.b;
-        this.state.bwContrast = p.c; this.state.bwClarity = p.cl; this.state.bwGrain = p.gr;
-        this.syncUI();
-        this.render();
+        photo.state.bwRed = p.r; photo.state.bwGreen = p.g; photo.state.bwBlue = p.b;
+        photo.state.bwContrast = p.c; photo.state.bwClarity = p.cl; photo.state.bwGrain = p.gr;
+        this.syncSliderUIFromPhoto(photo);
+        this.renderActivePhoto();
     }
 
     applyGlobalPreset(name) {
+        const photo = this.getActivePhoto();
+        if (!photo) return;
         if (name === 'stage_fix') {
-            this.state.stageRedFix = 90; this.state.colorBleedReduction = 75; this.state.skinProtection = 65;
-            this.state.highlights = -30; this.state.shadows = 20;
+            photo.state.stageRedFix = 90; photo.state.colorBleedReduction = 75; photo.state.skinProtection = 65;
+            photo.state.highlights = -30; photo.state.shadows = 20;
         } else if (name === 'punchy_bw') {
             this.applyBWPreset('knallend_contrast');
         } else if (name === 'crisp_landscape') {
-            this.state.exposure = 0.2; this.state.contrast = 25; this.state.highlights = -20; this.state.shadows = 25; this.state.vibrance = 35;
+            photo.state.exposure = 0.2; photo.state.contrast = 25; photo.state.highlights = -20; photo.state.shadows = 25; photo.state.vibrance = 35;
         } else if (name === 'portrait_clean') {
-            this.state.exposure = 0.3; this.state.contrast = 10; this.state.denoiseLuma = 30; this.state.denoiseChroma = 45; this.state.temp = 8;
+            photo.state.exposure = 0.3; photo.state.contrast = 10; photo.state.denoiseLuma = 30; photo.state.denoiseChroma = 45; photo.state.temp = 8;
         }
-        this.syncUI();
-        this.render();
+        this.syncSliderUIFromPhoto(photo);
+        this.renderActivePhoto();
     }
 
     resetSection(s) {
+        const photo = this.getActivePhoto();
+        if (!photo) return;
         const d = this.getDefaultState();
-        if (s === 'stage_red') ['stageRedFix', 'colorBleedReduction', 'skinProtection', 'gamutCompress'].forEach(k => this.state[k] = d[k]);
-        if (s === 'denoise') ['denoiseLuma', 'denoiseChroma', 'denoiseDetail'].forEach(k => this.state[k] = d[k]);
-        if (s === 'tone') ['exposure', 'contrast', 'highlights', 'shadows'].forEach(k => this.state[k] = d[k]);
-        this.syncUI();
-        this.render();
+        if (s === 'stage_red') ['stageRedFix', 'colorBleedReduction', 'skinProtection', 'gamutCompress'].forEach(k => photo.state[k] = d[k]);
+        if (s === 'denoise') ['denoiseLuma', 'denoiseChroma', 'denoiseDetail'].forEach(k => photo.state[k] = d[k]);
+        if (s === 'tone') ['exposure', 'contrast', 'highlights', 'shadows'].forEach(k => photo.state[k] = d[k]);
+        this.syncSliderUIFromPhoto(photo);
+        this.renderActivePhoto();
     }
 
-    rotate(deg) {
-        if (!this.originalImageData) return;
-        const s = this.originalImageData, dst = new ImageData(s.height, s.width);
+    rotateActivePhoto(deg) {
+        const photo = this.getActivePhoto();
+        if (!photo) return;
+        const s = photo.originalImageData, dst = new ImageData(s.height, s.width);
         for (let y = 0; y < s.height; y++) {
             for (let x = 0; x < s.width; x++) {
                 const sI = (y * s.width + x) * 4;
@@ -860,12 +1090,14 @@ class VroonPhotoApp {
                 for (let c = 0; c < 4; c++) dst.data[dI + c] = s.data[sI + c];
             }
         }
-        this.setImage(dst);
+        photo.originalImageData = dst;
+        this.setActivePhoto(this.activePhotoIndex);
     }
 
-    flipH() {
-        if (!this.originalImageData) return;
-        const s = this.originalImageData, dst = new ImageData(s.width, s.height);
+    flipActivePhotoH() {
+        const photo = this.getActivePhoto();
+        if (!photo) return;
+        const s = photo.originalImageData, dst = new ImageData(s.width, s.height);
         for (let y = 0; y < s.height; y++) {
             for (let x = 0; x < s.width; x++) {
                 const sI = (y * s.width + x) * 4;
@@ -873,71 +1105,11 @@ class VroonPhotoApp {
                 for (let c = 0; c < 4; c++) dst.data[dI + c] = s.data[sI + c];
             }
         }
-        this.setImage(dst);
+        photo.originalImageData = dst;
+        this.setActivePhoto(this.activePhotoIndex);
     }
 
-    // Procedurale voorbeeldfoto's
-    loadSamplePhoto(id) {
-        const w = 1200, h = 800;
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        const ctx = c.getContext('2d');
-
-        if (id === 'concert_red') {
-            const bg = ctx.createLinearGradient(0, 0, w, h);
-            bg.addColorStop(0, '#0a0305'); bg.addColorStop(1, '#1e050c');
-            ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
-
-            // Gezicht / Artiest
-            ctx.fillStyle = '#9a6b55';
-            ctx.beginPath(); ctx.arc(600, 390, 110, 0, Math.PI * 2); ctx.fill();
-
-            // Fel rood podiumlicht blowout
-            const redGlow = ctx.createRadialGradient(600, 370, 20, 600, 370, 440);
-            redGlow.addColorStop(0, 'rgba(255, 20, 15, 1.0)');
-            redGlow.addColorStop(0.4, 'rgba(255, 0, 30, 0.95)');
-            redGlow.addColorStop(0.7, 'rgba(220, 0, 45, 0.65)');
-            redGlow.addColorStop(1, 'rgba(90, 0, 20, 0.0)');
-            ctx.fillStyle = redGlow; ctx.fillRect(0, 0, w, h);
-
-            ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 6;
-            ctx.beginPath(); ctx.moveTo(560, 490); ctx.lineTo(600, 410); ctx.stroke();
-            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px system-ui';
-            ctx.fillText('Voorbeeld: Podiumconcert met Overbelicht Rood Licht & Kleurdoorloop', 40, 60);
-
-        } else if (id === 'noisy_night') {
-            ctx.fillStyle = '#0b0f19'; ctx.fillRect(0, 0, w, h);
-            ctx.fillStyle = '#1e293b'; ctx.fillRect(150, 280, 220, 520);
-            ctx.fillRect(440, 180, 320, 620); ctx.fillRect(830, 320, 250, 480);
-
-            const imgD = ctx.getImageData(0, 0, w, h);
-            for (let i = 0; i < imgD.data.length; i += 4) {
-                const n = (Math.random() - 0.5) * 80;
-                const cR = (Math.random() - 0.5) * 60, cB = (Math.random() - 0.5) * 60;
-                imgD.data[i] = Math.min(255, Math.max(0, imgD.data[i] + n + cR));
-                imgD.data[i + 1] = Math.min(255, Math.max(0, imgD.data[i + 1] + n));
-                imgD.data[i + 2] = Math.min(255, Math.max(0, imgD.data[i + 2] + n + cB));
-            }
-            ctx.putImageData(imgD, 0, 0);
-            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px system-ui';
-            ctx.fillText('Voorbeeld: Hoge ISO Nachtopname (Veel Luminantie- & Kleurruis)', 40, 60);
-        } else {
-            const sky = ctx.createLinearGradient(0, 0, 0, h);
-            sky.addColorStop(0, '#38bdf8'); sky.addColorStop(0.5, '#bae6fd');
-            sky.addColorStop(0.51, '#15803d'); sky.addColorStop(1, '#14532d');
-            ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
-            ctx.fillStyle = '#475569';
-            ctx.beginPath(); ctx.moveTo(100, 400); ctx.lineTo(350, 140); ctx.lineTo(600, 400); ctx.fill();
-            ctx.beginPath(); ctx.moveTo(500, 400); ctx.lineTo(750, 120); ctx.lineTo(1050, 400); ctx.fill();
-            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px system-ui';
-            ctx.fillText('Voorbeeld: Berglandschap (Perfect voor Knallend Zwart-Wit & Curves)', 40, 60);
-        }
-
-        const sample = ctx.getImageData(0, 0, w, h);
-        this.setImage(sample, { filename: `${id}.dng`, filesize: '3.6 MB' });
-    }
-
-    // Histogram
+    // Histogram & Curves
     initHistogram() {
         this.hCanvas = document.getElementById('histogram-canvas');
         this.hCtx = this.hCanvas ? this.hCanvas.getContext('2d') : null;
@@ -968,7 +1140,6 @@ class VroonPhotoApp {
         this.hCtx.globalCompositeOperation = 'source-over';
     }
 
-    // Tone Curve
     initToneCurve() {
         this.cCanvas = document.getElementById('curve-canvas');
         this.cCtx = this.cCanvas ? this.cCanvas.getContext('2d') : null;
@@ -981,7 +1152,7 @@ class VroonPhotoApp {
             this.curvePoints = [{ x: 0, y: 0 }, { x: 0.25, y: 0.25 }, { x: 0.75, y: 0.75 }, { x: 1, y: 1 }];
             this.updateCurveLut();
             this.drawCurve();
-            this.render();
+            this.renderActivePhoto();
         });
     }
 
@@ -1019,22 +1190,204 @@ class VroonPhotoApp {
         this.cCtx.stroke();
     }
 
-    // Export
-    exportImage() {
-        if (!this.currentImageData) return;
+    // ═══════════════════════════════════════════════════════
+    //  6. ZELF OPSLAGMAP KIEZEN OP HET APPARAAT
+    // ═══════════════════════════════════════════════════════
+
+    async exportWithFolderPicker() {
+        const scope = document.getElementById('export-scope')?.value || 'all';
         const format = document.getElementById('export-format')?.value || 'image/jpeg';
-        const q = parseFloat(document.getElementById('export-quality')?.value || 0.95);
-        const expCanvas = document.createElement('canvas');
-        expCanvas.width = this.currentImageData.width; expCanvas.height = this.currentImageData.height;
-        const ctx = expCanvas.getContext('2d');
-        ctx.putImageData(this.currentImageData, 0, 0);
-        const url = expCanvas.toDataURL(format, q);
+        const quality = parseFloat(document.getElementById('export-quality')?.value || 0.95);
         const ext = format === 'image/png' ? 'png' : (format === 'image/webp' ? 'webp' : 'jpg');
-        const a = document.createElement('a');
-        a.download = `vroonphoto_${Date.now()}.${ext}`;
-        a.href = url;
-        a.click();
+
+        const photosToExport = scope === 'all' ? this.photos : [this.getActivePhoto()];
+        if (photosToExport.length === 0 || !photosToExport[0]) return;
+
         document.getElementById('export-modal')?.classList.add('hidden');
+        document.getElementById('loading-overlay')?.classList.remove('hidden');
+
+        try {
+            // OPTIE A: Moderne desktop/laptop native map-keuze (File System Access API)
+            if ('showDirectoryPicker' in window && photosToExport.length > 1) {
+                console.log('📁 Native Directory Picker geopend...');
+                const dirHandle = await window.showDirectoryPicker();
+                let savedCount = 0;
+
+                for (let i = 0; i < photosToExport.length; i++) {
+                    const p = photosToExport[i];
+                    const blob = await this.renderPhotoToBlob(p, format, quality);
+                    const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${ext}`;
+                    const fileHandle = await dirHandle.getFileHandle(cleanName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    savedCount++;
+                }
+
+                alert(`✅ Succesvol ${savedCount} foto's opgeslagen in de door jou gekozen map!`);
+                document.getElementById('loading-overlay')?.classList.add('hidden');
+                return;
+            }
+
+            // OPTIE B: Enkele foto met Save File Picker op laptop/desktop
+            if ('showSaveFilePicker' in window && photosToExport.length === 1) {
+                const p = photosToExport[0];
+                const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${ext}`;
+                const fileHandle = await window.showSaveFilePicker({
+                    suggestedName: cleanName,
+                    types: [{
+                        description: 'Afbeelding',
+                        accept: { [format]: [`.${ext}`] }
+                    }]
+                });
+                const blob = await this.renderPhotoToBlob(p, format, quality);
+                const writable = await fileHandle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                alert(`✅ Foto succesvol opgeslagen op de gekozen locatie!`);
+                document.getElementById('loading-overlay')?.classList.add('hidden');
+                return;
+            }
+
+            // OPTIE C: iPad / iOS Web Share API ("Bewaar in Bestanden")
+            if (navigator.canShare && navigator.canShare({ files: [] })) {
+                const filesArray = [];
+                for (let i = 0; i < photosToExport.length; i++) {
+                    const p = photosToExport[i];
+                    const blob = await this.renderPhotoToBlob(p, format, quality);
+                    const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt_${i + 1}.${ext}`;
+                    filesArray.push(new File([blob], cleanName, { type: format }));
+                }
+
+                if (navigator.canShare({ files: filesArray })) {
+                    await navigator.share({
+                        files: filesArray,
+                        title: 'vroonphoto export',
+                        text: `${filesArray.length} bewerkte foto('s) van vroonphoto`
+                    });
+                    document.getElementById('loading-overlay')?.classList.add('hidden');
+                    return;
+                }
+            }
+
+            // OPTIE D: Standaard download fallback
+            for (let i = 0; i < photosToExport.length; i++) {
+                const p = photosToExport[i];
+                const blob = await this.renderPhotoToBlob(p, format, quality);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt_${i + 1}.${ext}`;
+                a.click();
+                await new Promise(r => setTimeout(r, 200));
+                URL.revokeObjectURL(url);
+            }
+            alert(`✅ ${photosToExport.length} foto('s) succesvol gedownload naar je apparaat!`);
+
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                console.error('Opslag fout:', err);
+                alert(`Fout bij opslaan: ${err.message}`);
+            }
+        } finally {
+            document.getElementById('loading-overlay')?.classList.add('hidden');
+        }
+    }
+
+    renderPhotoToBlob(photo, format, quality) {
+        return new Promise(resolve => {
+            const expCanvas = document.createElement('canvas');
+            expCanvas.width = photo.currentImageData.width;
+            expCanvas.height = photo.currentImageData.height;
+            const ctx = expCanvas.getContext('2d');
+            ctx.putImageData(photo.currentImageData, 0, 0);
+            expCanvas.toBlob(blob => resolve(blob), format, quality);
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  7. VOORBEELDFOTO GENERATOREN VOOR BATCH TESTEN
+    // ═══════════════════════════════════════════════════════
+
+    loadSampleBatch() {
+        this.photos = [];
+        this.activePhotoIndex = -1;
+
+        const w = 1200, h = 800;
+
+        // 1. Concert Podium Rood Licht
+        const c1 = document.createElement('canvas'); c1.width = w; c1.height = h;
+        const ctx1 = c1.getContext('2d');
+        const bg1 = ctx1.createLinearGradient(0, 0, w, h);
+        bg1.addColorStop(0, '#0a0305'); bg1.addColorStop(1, '#1e050c');
+        ctx1.fillStyle = bg1; ctx1.fillRect(0, 0, w, h);
+        ctx1.fillStyle = '#9a6b55';
+        ctx1.beginPath(); ctx1.arc(600, 390, 110, 0, Math.PI * 2); ctx1.fill();
+        const redGlow = ctx1.createRadialGradient(600, 370, 20, 600, 370, 440);
+        redGlow.addColorStop(0, 'rgba(255, 20, 15, 1.0)');
+        redGlow.addColorStop(0.4, 'rgba(255, 0, 30, 0.95)');
+        redGlow.addColorStop(0.7, 'rgba(220, 0, 45, 0.65)');
+        redGlow.addColorStop(1, 'rgba(90, 0, 20, 0.0)');
+        ctx1.fillStyle = redGlow; ctx1.fillRect(0, 0, w, h);
+        ctx1.strokeStyle = '#e2e8f0'; ctx1.lineWidth = 6;
+        ctx1.beginPath(); ctx1.moveTo(560, 490); ctx1.lineTo(600, 410); ctx1.stroke();
+        this.addPhotoToSession(ctx1.getImageData(0, 0, w, h), { filename: 'Concert_Stage_Red.dng' });
+
+        // 2. Hoge ISO Nachtopname (Ruis)
+        const c2 = document.createElement('canvas'); c2.width = w; c2.height = h;
+        const ctx2 = c2.getContext('2d');
+        ctx2.fillStyle = '#0b0f19'; ctx2.fillRect(0, 0, w, h);
+        ctx2.fillStyle = '#1e293b'; ctx2.fillRect(150, 280, 220, 520);
+        ctx2.fillRect(440, 180, 320, 620); ctx2.fillRect(830, 320, 250, 480);
+        const imgD2 = ctx2.getImageData(0, 0, w, h);
+        for (let i = 0; i < imgD2.data.length; i += 4) {
+            const n = (Math.random() - 0.5) * 80;
+            const cR = (Math.random() - 0.5) * 60, cB = (Math.random() - 0.5) * 60;
+            imgD2.data[i] = Math.min(255, Math.max(0, imgD2.data[i] + n + cR));
+            imgD2.data[i + 1] = Math.min(255, Math.max(0, imgD2.data[i + 1] + n));
+            imgD2.data[i + 2] = Math.min(255, Math.max(0, imgD2.data[i + 2] + n + cB));
+        }
+        ctx2.putImageData(imgD2, 0, 0);
+        this.addPhotoToSession(ctx2.getImageData(0, 0, w, h), { filename: 'Nacht_ISO6400_Ruis.cr2' });
+
+        // 3. Berglandschap (Knallend Zwart-Wit Test)
+        const c3 = document.createElement('canvas'); c3.width = w; c3.height = h;
+        const ctx3 = c3.getContext('2d');
+        const sky = ctx3.createLinearGradient(0, 0, 0, h);
+        sky.addColorStop(0, '#38bdf8'); sky.addColorStop(0.5, '#bae6fd');
+        sky.addColorStop(0.51, '#15803d'); sky.addColorStop(1, '#14532d');
+        ctx3.fillStyle = sky; ctx3.fillRect(0, 0, w, h);
+        ctx3.fillStyle = '#475569';
+        ctx3.beginPath(); ctx3.moveTo(100, 400); ctx3.lineTo(350, 140); ctx3.lineTo(600, 400); ctx3.fill();
+        ctx3.beginPath(); ctx3.moveTo(500, 400); ctx3.lineTo(750, 120); ctx3.lineTo(1050, 400); ctx3.fill();
+        this.addPhotoToSession(ctx3.getImageData(0, 0, w, h), { filename: 'Alpen_Landschap.nef' });
+
+        // 4. Gouden Uur Portret
+        const c4 = document.createElement('canvas'); c4.width = w; c4.height = h;
+        const ctx4 = c4.getContext('2d');
+        const sun = ctx4.createRadialGradient(900, 200, 50, 900, 200, 700);
+        sun.addColorStop(0, '#fef08a'); sun.addColorStop(0.5, '#f97316'); sun.addColorStop(1, '#7c2d12');
+        ctx4.fillStyle = sun; ctx4.fillRect(0, 0, w, h);
+        ctx4.fillStyle = '#d97706';
+        ctx4.beginPath(); ctx4.arc(450, 400, 140, 0, Math.PI * 2); ctx4.fill();
+        this.addPhotoToSession(ctx4.getImageData(0, 0, w, h), { filename: 'Portret_Golden_Hour.arw' });
+
+        // 5. Straatfotografie
+        const c5 = document.createElement('canvas'); c5.width = w; c5.height = h;
+        const ctx5 = c5.getContext('2d');
+        ctx5.fillStyle = '#1e293b'; ctx5.fillRect(0, 0, w, h);
+        ctx5.fillStyle = '#334155'; ctx5.fillRect(200, 100, 300, 700); ctx5.fillRect(700, 150, 350, 650);
+        ctx5.fillStyle = '#f8fafc'; ctx5.fillRect(520, 450, 40, 90);
+        this.addPhotoToSession(ctx5.getImageData(0, 0, w, h), { filename: 'Straat_Contrast_Noir.dng' });
+
+        this.setActivePhoto(0);
+    }
+
+    loadSingleSample(id) {
+        // Laad 1 specifieke foto
+        this.loadSampleBatch();
+        const map = { 'concert_red': 0, 'noisy_night': 1, 'landscape': 2 };
+        this.setActivePhoto(map[id] || 0);
     }
 }
 

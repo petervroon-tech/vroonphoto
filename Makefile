@@ -22,3 +22,4 @@ hooks:
 
 clean:
 	rm -f /tmp/vroonphoto*
+

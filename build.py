@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-vroonphoto WebAssembly Build & Release Compiler v1.0.0
+vroonphoto WebAssembly Build & Release Compiler v1.1.0
 ======================================================
 Assembleert en compileert de WebAssembly instructies naar een valide binary 'vroonphoto.wasm'
 voor de hardware-versnelde fotobewerking en beheert versie-detectie & GitHub Pages CI/CD.
+Ondersteunt tot 25 foto's gelijktijdig, filmstrip, mapkeuze op apparaat en touch-optimalisatie.
 """
 
 import os
@@ -13,7 +14,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "vroonphoto"
-DEFAULT_VERSION = "1.0.0"
+DEFAULT_VERSION = "1.1.0"
 
 def encode_u32(val: int) -> bytes:
     res = bytearray()
@@ -140,7 +141,6 @@ def build_wasm(output_path: str) -> int:
     with open(output_path, "wb") as f:
         f.write(out)
 
-    # Schrijf ook kopie naar src/wasm/vroonphoto_core.wasm
     src_wasm_path = os.path.join(project_dir, "src", "wasm", "vroonphoto_core.wasm")
     os.makedirs(os.path.dirname(src_wasm_path), exist_ok=True)
     with open(src_wasm_path, "wb") as f:
@@ -157,7 +157,6 @@ def verify_wasm_locally(wasm_path: str):
             var bytes = read('{wasm_path}', 'binary');
             var module = new WebAssembly.Module(bytes);
             var inst = new WebAssembly.Instance(module, {{}});
-            var exp = Object.keys(inst.exports);
             if (!inst.exports.vroon_recover_red_light) throw new Error('Functie vroon_recover_red_light ontbreekt');
             if (!inst.exports.vroon_denoise_bilateral) throw new Error('Functie vroon_denoise_bilateral ontbreekt');
             if (!inst.exports.vroon_punchy_bw) throw new Error('Functie vroon_punchy_bw ontbreekt');
@@ -175,17 +174,20 @@ def update_version_file(version_path: str, forced_sha: str = None, forced_build:
     data = {
         "app_name": APP_NAME,
         "version": DEFAULT_VERSION,
-        "build": 1,
+        "build": 5,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "git_hash": forced_sha or get_git_hash(),
         "features": [
+            "🎞️ 25-Foto Batch Beheer & Filmstrip (v1.1.0): Bewerk tot 25 foto's tegelijkertijd met onafhankelijke bewerkingsstaten per foto, vloeiende filmstrip onderaan en overzichtelijk schermvullend rasteroverzicht.",
+            "📁 Zelf Opslaglocatie Kiezen op Apparaat (v1.1.0): Kies zelf elke gewenste map via de native Directory Picker op Mac/Windows/laptops of via de officiële 'Bewaar in Bestanden' share sheet op iPad (iCloud Drive / Op mijn iPad).",
+            "📱 iPad & Touchscreen Optimalisatie (v1.1.0): 44px+ aanraakdoelen voor vingers, vergrote slider-knoppen, touch-drag voor Voor/Na vergelijking en interactief Firefly inpaint penseel.",
+            "⚡ Batch Synchronisatie: Kopieer met één klik alle bewerkingsinstellingen (zoals rood podiumlicht herstel of zwart-wit) van de actieve foto naar alle andere foto's in de sessie.",
             "🔴 Rood Licht & Kleurdoorloop Herstel: Reconstructie van verloren details bij overbelicht concert podiumlicht via groene/blauwe luminantiediffusie en gamut compressie.",
             "🛡️ Dual-Engine Ruisonderdrukking: Hardware-versnelde bilaterale ruimtelijke filtering voor luminantie en guided YCbCr filtering voor kleurruis-spikkels.",
             "⚡ Knallend Zwart-Wit Engine: 6-kanaals analoge filter mixer, Ansel Adams Zone System contrastcurve, micro-contrast punch (clarity) en natuurgetrouwe filmkorrel.",
             "🚀 Topaz Labs Super-Resolution: 2x en 4x vergroten met edge-directed gradient interpolatie en unsharp textuurscherpte zonder kartels.",
             "🪄 Adobe Firefly Smart Retouch: Interactief vlekken- en objectenherstel met contextuele achtergrondtextuursynthese.",
-            "📁 Universele RAW & DNG Ondersteuning: Ingebouwde parser voor DNG, CR2, NEF, ARW, RW2, RAF, ORF, TIFF en alle moderne rasterformaten.",
-            "🔄 Automatische Update Detectie: Snelle versie-notificatie in de browser met 1-klik geheugenzuivering en Service Worker update."
+            "📁 Universele RAW & DNG Ondersteuning: Ingebouwde parser voor DNG, CR2, NEF, ARW, RW2, RAF, ORF, TIFF en alle moderne rasterformaten."
         ]
     }
 
@@ -193,12 +195,10 @@ def update_version_file(version_path: str, forced_sha: str = None, forced_build:
         try:
             with open(version_path, "r", encoding="utf-8") as f:
                 old = json.load(f)
-                data["version"] = old.get("version", DEFAULT_VERSION)
+                data["version"] = DEFAULT_VERSION
                 data["build"] = int(forced_build) if forced_build else (int(old.get("build", 0)) + 1)
                 if not forced_sha:
                     data["git_hash"] = get_git_hash()
-                if "features" in old and old["features"]:
-                    data["features"] = old["features"]
         except Exception:
             pass
 
