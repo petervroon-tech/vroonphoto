@@ -11,3 +11,4 @@ description: Strikte quota- en tegoedregel: Gebruik altijd eerst het wekelijkse 
    Extra aangeschafte Google AI credits (Pay-As-You-Go / aanvullende quota) mogen pas worden aangesproken wanneer de wekelijkse limiet is bereikt.
 3. **Waarschuwing bij overschakeling:**
    Meld het duidelijk wanneer de wekelijkse limiet is bereikt voordat betaalde extra credits worden verbruikt.
+

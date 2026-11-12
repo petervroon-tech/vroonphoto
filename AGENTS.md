@@ -15,3 +15,4 @@
 
 ## 3. Zichtbaarheid in Antigravity
 - Toon en respecteer altijd de status van het wekelijkse tegoed versus de extra gekochte credits.
+

@@ -1791,7 +1791,8 @@ class VroonPhotoApp {
 
     async pickTargetDestinationDir() {
         if (!('showDirectoryPicker' in window)) {
-            alert("Uw browser ondersteunt geen directe lokale mapkeuze via File System Access API. Bij het opslaan kunt u exporteren via de standaard download optie.");
+            // Safari / browsers zonder showDirectoryPicker: open direct het Exportcentrum
+            this.openExportModalWithScope('all');
             return;
         }
         try {
@@ -1810,7 +1811,8 @@ class VroonPhotoApp {
 
     async pickCullDestinationDir() {
         if (!('showDirectoryPicker' in window)) {
-            alert("Uw browser ondersteunt geen directe lokale mapkeuze via File System Access API. Bij het opslaan kunt u exporteren via het exportvenster.");
+            // Safari / browsers zonder showDirectoryPicker: open direct het Exportcentrum
+            this.openExportModalWithScope('selected');
             return;
         }
         try {
@@ -3514,19 +3516,37 @@ class VroonPhotoApp {
                 }
             }
 
-            // OPTIE D: Standaard download fallback (alleen voor oude browsers zonder File System API)
-            for (let i = 0; i < photosToExport.length; i++) {
-                const p = photosToExport[i];
+            // OPTIE D: Standaard download fallback (Safari of browser zonder native Directory Picker)
+            if (photosToExport.length > 1) {
+                const loadingText = document.getElementById('loading-text');
+                const fileItems = [];
+                for (let i = 0; i < photosToExport.length; i++) {
+                    const p = photosToExport[i];
+                    if (loadingText) loadingText.textContent = `Verpakken in ZIP (${i + 1}/${photosToExport.length}): ${p.filename}...`;
+                    const { blob, ext } = await getPhotoExportData(p);
+                    const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt_${i + 1}.${ext}`;
+                    const arrayBuf = await blob.arrayBuffer();
+                    fileItems.push({ name: cleanName, data: new Uint8Array(arrayBuf) });
+                }
+                const zipBlob = this.createSimpleZipBlob(fileItems);
+                const url = URL.createObjectURL(zipBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `vroonphoto_selectie_${photosToExport.length}_fotos.zip`;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                alert(`✅ ${photosToExport.length} foto's zijn gebundeld en direct opgeslagen als 1 ZIP-bestand ('${a.download}')! U kunt dit bestand in Finder direct uitpakken.`);
+            } else {
+                const p = photosToExport[0];
                 const { blob, ext } = await getPhotoExportData(p);
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt_${i + 1}.${ext}`;
+                a.download = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${ext}`;
                 a.click();
-                await new Promise(r => setTimeout(r, 200));
-                URL.revokeObjectURL(url);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                alert(`✅ Foto succesvol opgeslagen op uw apparaat als '${a.download}'!`);
             }
-            alert(`✅ ${photosToExport.length} foto('s) succesvol geëxporteerd naar je apparaat!`);
 
         } catch (err) {
             if (err.name !== 'AbortError') {
@@ -3666,6 +3686,110 @@ class VroonPhotoApp {
         }
 
         return u8;
+    }
+
+    // Eenvoudige, zero-dependency zip generator voor Safari en browsers zonder showDirectoryPicker
+    createSimpleZipBlob(files) {
+        // files: Array<{ name: string, data: Uint8Array }>
+        const table = new Uint32Array(256);
+        for (let i = 0; i < 256; i++) {
+            let c = i;
+            for (let k = 0; k < 8; k++) {
+                c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+            }
+            table[i] = c;
+        }
+        const calcCrc32 = (buf) => {
+            let crc = 0xFFFFFFFF;
+            for (let i = 0; i < buf.length; i++) {
+                crc = table[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
+            }
+            return (crc ^ 0xFFFFFFFF) >>> 0;
+        };
+
+        const enc = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : {
+            encode: (s) => {
+                const arr = new Uint8Array(s.length);
+                for (let i = 0; i < s.length; i++) arr[i] = s.charCodeAt(i) & 0xff;
+                return arr;
+            }
+        };
+
+        const parts = [];
+        const cdEntries = [];
+        let offset = 0;
+
+        for (const f of files) {
+            const nameBytes = enc.encode(f.name);
+            const dataBytes = f.data;
+            const fileCrc = calcCrc32(dataBytes);
+            const size = dataBytes.length;
+
+            // Local file header (30 bytes + name)
+            const lh = new Uint8Array(30 + nameBytes.length);
+            const dv = new DataView(lh.buffer);
+            dv.setUint32(0, 0x04034b50, true);
+            dv.setUint16(4, 20, true);
+            dv.setUint16(6, 0x0800, true); // UTF-8
+            dv.setUint16(8, 0, true); // Stored (no compression)
+            dv.setUint16(10, 0, true);
+            dv.setUint16(12, 0x21, true); // 1980-01-01
+            dv.setUint32(14, fileCrc, true);
+            dv.setUint32(18, size, true);
+            dv.setUint32(22, size, true);
+            dv.setUint16(26, nameBytes.length, true);
+            dv.setUint16(28, 0, true);
+            lh.set(nameBytes, 30);
+
+            parts.push(lh, dataBytes);
+
+            // Central directory entry (46 bytes + name)
+            const cdh = new Uint8Array(46 + nameBytes.length);
+            const cdv = new DataView(cdh.buffer);
+            cdv.setUint32(0, 0x02014b50, true);
+            cdv.setUint16(4, 20, true);
+            cdv.setUint16(6, 20, true);
+            cdv.setUint16(8, 0x0800, true);
+            cdv.setUint16(10, 0, true);
+            cdv.setUint16(12, 0, true);
+            cdv.setUint16(14, 0x21, true);
+            cdv.setUint32(16, fileCrc, true);
+            cdv.setUint32(20, size, true);
+            cdv.setUint32(24, size, true);
+            cdv.setUint16(28, nameBytes.length, true);
+            cdv.setUint16(30, 0, true);
+            cdv.setUint16(32, 0, true);
+            cdv.setUint16(34, 0, true);
+            cdv.setUint16(36, 0, true);
+            cdv.setUint32(38, 0, true);
+            cdv.setUint32(42, offset, true);
+            cdh.set(nameBytes, 46);
+
+            cdEntries.push(cdh);
+            offset += lh.length + dataBytes.length;
+        }
+
+        const cdOffset = offset;
+        let cdSize = 0;
+        for (const c of cdEntries) {
+            parts.push(c);
+            cdSize += c.length;
+        }
+
+        // End of central directory record (22 bytes)
+        const eocd = new Uint8Array(22);
+        const edv = new DataView(eocd.buffer);
+        edv.setUint32(0, 0x06054b50, true);
+        edv.setUint16(4, 0, true);
+        edv.setUint16(6, 0, true);
+        edv.setUint16(8, files.length, true);
+        edv.setUint16(10, files.length, true);
+        edv.setUint32(12, cdSize, true);
+        edv.setUint32(16, cdOffset, true);
+        edv.setUint16(20, 0, true);
+        parts.push(eocd);
+
+        return new Blob(parts, { type: 'application/zip' });
     }
 
     // ═══════════════════════════════════════════════════════

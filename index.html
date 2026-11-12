@@ -22,7 +22,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.7.0</strong> beschikbaar &bull; <span id="upd-note">Direct opslaan via Finder / Bestandsbeheer zonder browser-downloads</span></span>
+      <span><strong id="upd-ver">v1.7.1</strong> beschikbaar &bull; <span id="upd-note">Duidelijk zichtbaar Exportcentrum &amp; directe Safari/Mac opslag</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -43,7 +43,7 @@
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)"
           title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.7.0</span> 🔄
+          <span id="ver-txt">v1.7.1</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -101,7 +101,9 @@
       <button id="btn-open-export" class="btn-secondary" title="Sla foto direct op via Finder / Verkenner op uw computer of schijf">
         <span>💾 Opslaan (Finder)</span>
       </button>
-      <button id="btn-open-export-modal" class="btn-icon" title="Geavanceerde exportopties & formaten (TIFF, DNG, JPEG, PNG)">⚙️</button>
+      <button id="btn-open-export-modal" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #38bdf8; font-weight: 600;" title="Open het Exportcentrum met alle formaten (RAW, DNG, JPEG, TIFF) en exportopties">
+        <span>⚙️ Exportcentrum</span>
+      </button>
     </div>
   </header>
 
@@ -536,8 +538,8 @@
                 💾 Sla Selectie Op in Map
               </button>
             </div>
-            <button id="btn-cull-export-subfolder" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;" title="Exporteer geselecteerde foto's via export-dialoogvenster">
-              ⚙️ Export Dialoog
+            <button id="btn-cull-export-subfolder" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #38bdf8; font-weight: 600;" title="Open het Exportcentrum voor het exporteren van geselecteerde foto's">
+              ⚙️ Exportcentrum
             </button>
           </div>
         </div>
@@ -903,23 +905,21 @@
     </aside>
   </main>
 
-  <!-- EXPORT & OPSLAAN MODAL (MET DIRECTORY / MAP KEUZE OP APPARAAT) -->
+  <!-- EXPORT & OPSLAAN MODAL (EXPORTCENTRUM MET DIRECTORY / MAP KEUZE OP APPARAAT) -->
   <div id="export-modal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <span>💾 Foto's Opslaan op Apparaat</span>
+        <span>⚙️ Exportcentrum — Foto's Opslaan &amp; Exporteren</span>
         <button id="btn-close-export" class="btn-icon">✕</button>
       </div>
       <div class="modal-body">
 
         <div class="dest-choice-box">
           <div style="font-weight: 700; color: var(--accent-cyan); display: flex; align-items: center; gap: 6px;">
-            <span>📁 Zelf Opslaglocatie Kiezen op Apparaat</span>
+            <span>📁 Direct Opslaan op Apparaat (Finder, Verkenner &amp; Bestanden)</span>
           </div>
           <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
-            Op Mac, Windows en laptops opent de native bestandsverkenner waarin je zelf elke gewenste map kunt
-            selecteren. Op iPad opent het officiële <strong>"Bewaar in Bestanden"</strong> menu (iCloud Drive / Op mijn
-            iPad).
+            Kies hieronder het gewenste bestandsformaat (origineel RAW, DNG, JPEG of TIFF) en de selectie. In Chrome/Edge kiest u direct de doelmap in Finder. In Safari worden foto's direct opgeslagen of gebundeld in <strong>1 overzichtelijk ZIP-bestand</strong> zonder pop-up blokkades.
           </p>
         </div>
 
@@ -955,8 +955,8 @@
       </div>
 
       <div class="modal-footer">
-        <button id="btn-choose-folder-export" class="btn-secondary" style="flex: 1; justify-content: center;">
-          📁 Kies Map &amp; Opslaan op Apparaat
+        <button id="btn-choose-folder-export" class="btn-secondary" style="flex: 1; justify-content: center; font-weight: 700; color: #38bdf8;">
+          💾 Start Opslaan &amp; Exporteren
         </button>
       </div>
     </div>
@@ -1062,14 +1062,14 @@
             </div>
           </div>
 
-          <!-- 3. Direct Opslaan in Zichtbare Doelmap & Submap -->
+          <!-- 3. Direct Opslaan van Selectie in een Zichtbare Map & Submap -->
           <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 6px; padding: 10px 12px;">
             <div style="font-weight: 700; color: #38bdf8; font-size: 12px; margin-bottom: 3px;">
               💾 3. Direct Opslaan van Selectie in een Zichtbare Map &amp; Submap
             </div>
             <div style="color: #cbd5e1; font-size: 11.5px;">
               <strong>Wat kan het:</strong> Al uw beoordeelde of geselecteerde foto's direct wegschrijven naar een zelf gekozen doelmap op uw computer of externe schijf, met behoud van het originele RAW-formaat (.cr2, .nef, .arw, .dng) of als Adobe DNG / JPG / TIFF naar keuze.<br>
-              <strong>Hoe werkt het:</strong> Klik op <code>📂 Kies Doelmap...</code> in de culling-balk om uw gewenste map aan te wijzen; de exacte doelmaplocatie blijft direct zichtbaar in de balk. Typ eventueel de gewenste submapnaam in (standaard <code>Selectie</code>) en klik op <code>💾 Sla Selectie Op in Map</code>. Alle geselecteerde foto's worden direct geëxporteerd. Originelen op de SD-kaart/bron blijven <strong>100% onaangeroerd</strong>.
+              <strong>Hoe werkt het:</strong> Klik op <code>📂 Kies Doelmap...</code> in de culling-balk of op <code>⚙️ Exportcentrum</code> in de bovenbalk. Typ eventueel de gewenste submapnaam in (standaard <code>Selectie</code>) en klik op <code>💾 Sla Selectie Op in Map</code>. Alle geselecteerde foto's worden direct geëxporteerd. In Safari worden meervoudige selecties automatisch gebundeld in 1 handig ZIP-bestand. Originelen op de SD-kaart/bron blijven <strong>100% onaangeroerd</strong>.
             </div>
           </div>
 
