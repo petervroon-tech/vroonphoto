@@ -35,22 +35,14 @@ void vroon_recover_red_light(
 
         float max_gb = MAX(g, b);
 
-        // Check if Red is blown or excessively dominant (typical stage red light)
         if (r > thresh_val && r > max_gb * 1.25f) {
-            // Intact texture luminance synthesized from green and blue
             float detail_luma = 0.65f * g + 0.35f * b;
-            
-            // Amount of red blowout beyond green/blue
             float blowout = (r - max_gb) / 255.0f;
             if (blowout > 1.0f) blowout = 1.0f;
 
-            // Blend factor modulated by recovery strength
             float blend = blowout * recovery_strength;
-
-            // Reconstruct red by blending with synthesized detail
             float r_reconstructed = r * (1.0f - blend) + (max_gb + detail_luma * 0.45f) * blend;
 
-            // Gamut compression: compress intense red flare into warm organic tones
             if (gamut_compress > 0.01f) {
                 float target_g = g + (r - max_gb) * 0.32f * gamut_compress;
                 float target_b = b + (r - max_gb) * 0.15f * gamut_compress;
@@ -58,7 +50,6 @@ void vroon_recover_red_light(
                 b = b * (1.0f - gamut_compress * 0.6f) + target_b * (gamut_compress * 0.6f);
             }
 
-            // Skin tone protection: if ratio matches human skin (R > G > B), preserve warm radiance
             if (skin_protect > 0.01f && g > b) {
                 float skin_ratio = (g - b) / (r - b + 0.001f);
                 if (skin_ratio > 0.2f && skin_ratio < 0.65f) {
@@ -85,9 +76,9 @@ void vroon_denoise_bilateral(
     unsigned char* dst,
     int width,
     int height,
-    int radius,             // 1 to 3
-    float spatial_sigma,    // e.g. 2.0
-    float range_sigma       // e.g. 25.0 to 45.0
+    int radius,
+    float spatial_sigma,
+    float range_sigma
 ) {
     float two_spatial_sq = 2.0f * spatial_sigma * spatial_sigma;
     float two_range_sq = 2.0f * range_sigma * range_sigma;
@@ -150,7 +141,7 @@ void vroon_denoise_chroma(
     unsigned char* pixels,
     int width,
     int height,
-    float strength          // 0.0 to 1.0
+    float strength
 ) {
     if (strength <= 0.001f) return;
     int radius = (strength > 0.5f) ? 2 : 1;
@@ -339,7 +330,8 @@ void vroon_super_res_2x(
 }
 
 /*
- * 6. ADOBE FIREFLY STYLE SMART RETOUCH & INPAINTING
+ * 6. ADOBE FIREFLY STYLE SMART RETOUCH & OBJECT REMOVAL
+ * Concentric patch synthesis & multi-iteration background reconstruction
  */
 __attribute__((visibility("default")))
 void vroon_smart_inpaint(
@@ -349,7 +341,7 @@ void vroon_smart_inpaint(
     int height,
     int radius
 ) {
-    for (int iter = 0; iter < 4; iter++) {
+    for (int iter = 0; iter < 6; iter++) {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 int p_idx = y * width + x;
@@ -367,7 +359,7 @@ void vroon_smart_inpaint(
                         if (px < 0 || px >= width) continue;
 
                         int neighbor_idx = py * width + px;
-                        float is_valid = (mask[neighbor_idx] < 128) ? 1.0f : 0.15f;
+                        float is_valid = (mask[neighbor_idx] < 128) ? 1.0f : 0.08f;
                         float dist = (float)(dx * dx + dy * dy) + 0.1f;
                         float weight = is_valid / dist;
 
@@ -385,6 +377,60 @@ void vroon_smart_inpaint(
                     pixels[pixel_byte + 2] = (unsigned char)CLAMP(sum_b / total_weight, 0.0f, 255.0f);
                 }
             }
+        }
+    }
+}
+
+/*
+ * 7. SMART FOCUS & DEBLUR RECOVERY WITH HUMAN FACE PROTECTION
+ * Herstelt onscherpe foto's naar scherpe foto's zonder menselijke gezichten te vervormen
+ */
+__attribute__((visibility("default")))
+void vroon_smart_deblur(
+    unsigned char* pixels,
+    int width,
+    int height,
+    float sharpness_amount, // 0.0 tot 100.0
+    float skin_protection   // 0.0 tot 100.0
+) {
+    if (sharpness_amount <= 0.01f) return;
+    float boost = (sharpness_amount / 100.0f) * 1.25f;
+    float skin_safe = (skin_protection / 100.0f);
+
+    for (int y = 1; y < height - 1; y++) {
+        for (int x = 1; x < width - 1; x++) {
+            int idx = (y * width + x) * 4;
+            float r = (float)pixels[idx];
+            float g = (float)pixels[idx + 1];
+            float b = (float)pixels[idx + 2];
+
+            // 3x3 box blur voor high-frequency verschil (Laplacian unsharp)
+            int up_idx = ((y - 1) * width + x) * 4;
+            int dn_idx = ((y + 1) * width + x) * 4;
+            int lf_idx = (y * width + (x - 1)) * 4;
+            int rt_idx = (y * width + (x + 1)) * 4;
+
+            float avg_r = ((float)pixels[up_idx] + (float)pixels[dn_idx] + (float)pixels[lf_idx] + (float)pixels[rt_idx]) * 0.25f;
+            float avg_g = ((float)pixels[up_idx + 1] + (float)pixels[dn_idx + 1] + (float)pixels[lf_idx + 1] + (float)pixels[rt_idx + 1]) * 0.25f;
+            float avg_b = ((float)pixels[up_idx + 2] + (float)pixels[dn_idx + 2] + (float)pixels[lf_idx + 2] + (float)pixels[rt_idx + 2]) * 0.25f;
+
+            float diff_r = r - avg_r;
+            float diff_g = g - avg_g;
+            float diff_b = b - avg_b;
+
+            // Detecteer menselijke huidtinten
+            float effective_boost = boost;
+            if (r > 60.0f && r > g && g > b) {
+                float skin_ratio = (g - b) / (r - b + 0.001f);
+                if (skin_ratio > 0.25f && skin_ratio < 0.70f) {
+                    // Menselijke huid: bescherm tegen overmatige rimpelversterking en gezichtsvervorming
+                    effective_boost = boost * (1.0f - skin_safe * 0.75f);
+                }
+            }
+
+            pixels[idx]     = (unsigned char)CLAMP(r + diff_r * effective_boost, 0.0f, 255.0f);
+            pixels[idx + 1] = (unsigned char)CLAMP(g + diff_g * effective_boost, 0.0f, 255.0f);
+            pixels[idx + 2] = (unsigned char)CLAMP(b + diff_b * effective_boost, 0.0f, 255.0f);
         }
     }
 }

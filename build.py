@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-vroonphoto WebAssembly Build & Release Compiler v1.1.0
+vroonphoto WebAssembly Build & Release Compiler v1.2.0
 ======================================================
 Assembleert en compileert de WebAssembly instructies naar een valide binary 'vroonphoto.wasm'
 voor de hardware-versnelde fotobewerking en beheert versie-detectie & GitHub Pages CI/CD.
-Ondersteunt tot 25 foto's gelijktijdig, filmstrip, mapkeuze op apparaat en touch-optimalisatie.
+Ondersteunt tot 25 foto's gelijktijdig, JPG/RAW, slimme onscherpte herstel (gezichtsbehoud),
+inpaint objectverwijdering, filmstrip, mapkeuze op apparaat en touch-optimalisatie.
 """
 
 import os
@@ -14,7 +15,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "vroonphoto"
-DEFAULT_VERSION = "1.1.0"
+DEFAULT_VERSION = "1.2.0"
 
 def encode_u32(val: int) -> bytes:
     res = bytearray()
@@ -29,7 +30,6 @@ def encode_u32(val: int) -> bytes:
     return bytes(res)
 
 def get_git_hash() -> str:
-    """Haalt de huidige git commit hash op indien beschikbaar."""
     try:
         r = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
@@ -45,7 +45,6 @@ def get_git_hash() -> str:
     return "local"
 
 def build_wasm(output_path: str) -> int:
-    """Compileert src/wasm/vroonphoto_core.c via clang naar WebAssembly en linkt exports."""
     project_dir = os.path.dirname(os.path.abspath(__file__))
     c_src = os.path.join(project_dir, "src", "wasm", "vroonphoto_core.c")
     obj_tmp = "/tmp/vroonphoto_core.o"
@@ -101,7 +100,7 @@ def build_wasm(output_path: str) -> int:
     out += encode_u32(len(func_payload))
     out += func_payload
 
-    # 3. Memory section: min 256 pages (16MB), max 2048 pages (128MB)
+    # 3. Memory section
     mem_payload = bytearray()
     mem_payload += encode_u32(1)
     mem_payload.append(1)
@@ -111,14 +110,15 @@ def build_wasm(output_path: str) -> int:
     out += encode_u32(len(mem_payload))
     out += mem_payload
 
-    # 4. Export section: export memory and functions
+    # 4. Export section: export memory and 7 functions
     funcs = [
         "vroon_recover_red_light",
         "vroon_denoise_bilateral",
         "vroon_denoise_chroma",
         "vroon_punchy_bw",
         "vroon_super_res_2x",
-        "vroon_smart_inpaint"
+        "vroon_smart_inpaint",
+        "vroon_smart_deblur"
     ]
     exp_payload = bytearray()
     exp_payload += encode_u32(1 + len(funcs))
@@ -149,7 +149,6 @@ def build_wasm(output_path: str) -> int:
     return len(out)
 
 def verify_wasm_locally(wasm_path: str):
-    """Test de gebouwde WASM binary via JavaScriptCore indien aanwezig op macOS."""
     jsc_path = "/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc"
     if os.path.exists(jsc_path):
         try:
@@ -157,9 +156,8 @@ def verify_wasm_locally(wasm_path: str):
             var bytes = read('{wasm_path}', 'binary');
             var module = new WebAssembly.Module(bytes);
             var inst = new WebAssembly.Instance(module, {{}});
-            if (!inst.exports.vroon_recover_red_light) throw new Error('Functie vroon_recover_red_light ontbreekt');
-            if (!inst.exports.vroon_denoise_bilateral) throw new Error('Functie vroon_denoise_bilateral ontbreekt');
-            if (!inst.exports.vroon_punchy_bw) throw new Error('Functie vroon_punchy_bw ontbreekt');
+            if (!inst.exports.vroon_smart_deblur) throw new Error('Functie vroon_smart_deblur ontbreekt');
+            if (!inst.exports.vroon_smart_inpaint) throw new Error('Functie vroon_smart_inpaint ontbreekt');
             print('VERIFY_OK');
             """
             p = subprocess.run([jsc_path, "-e", js_test], capture_output=True, text=True)
@@ -170,24 +168,20 @@ def verify_wasm_locally(wasm_path: str):
     return True
 
 def update_version_file(version_path: str, forced_sha: str = None, forced_build: str = None) -> dict:
-    """Beheert versie-increment, buildnummers en functiebeschrijvingen."""
     data = {
         "app_name": APP_NAME,
         "version": DEFAULT_VERSION,
-        "build": 5,
+        "build": 10,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "git_hash": forced_sha or get_git_hash(),
         "features": [
-            "🎞️ 25-Foto Batch Beheer & Filmstrip (v1.1.0): Bewerk tot 25 foto's tegelijkertijd met onafhankelijke bewerkingsstaten per foto, vloeiende filmstrip onderaan en overzichtelijk schermvullend rasteroverzicht.",
-            "📁 Zelf Opslaglocatie Kiezen op Apparaat (v1.1.0): Kies zelf elke gewenste map via de native Directory Picker op Mac/Windows/laptops of via de officiële 'Bewaar in Bestanden' share sheet op iPad (iCloud Drive / Op mijn iPad).",
-            "📱 iPad & Touchscreen Optimalisatie (v1.1.0): 44px+ aanraakdoelen voor vingers, vergrote slider-knoppen, touch-drag voor Voor/Na vergelijking en interactief Firefly inpaint penseel.",
-            "⚡ Batch Synchronisatie: Kopieer met één klik alle bewerkingsinstellingen (zoals rood podiumlicht herstel of zwart-wit) van de actieve foto naar alle andere foto's in de sessie.",
-            "🔴 Rood Licht & Kleurdoorloop Herstel: Reconstructie van verloren details bij overbelicht concert podiumlicht via groene/blauwe luminantiediffusie en gamut compressie.",
-            "🛡️ Dual-Engine Ruisonderdrukking: Hardware-versnelde bilaterale ruimtelijke filtering voor luminantie en guided YCbCr filtering voor kleurruis-spikkels.",
-            "⚡ Knallend Zwart-Wit Engine: 6-kanaals analoge filter mixer, Ansel Adams Zone System contrastcurve, micro-contrast punch (clarity) en natuurgetrouwe filmkorrel.",
-            "🚀 Topaz Labs Super-Resolution: 2x en 4x vergroten met edge-directed gradient interpolatie en unsharp textuurscherpte zonder kartels.",
-            "🪄 Adobe Firefly Smart Retouch: Interactief vlekken- en objectenherstel met contextuele achtergrondtextuursynthese.",
-            "📁 Universele RAW & DNG Ondersteuning: Ingebouwde parser voor DNG, CR2, NEF, ARW, RW2, RAF, ORF, TIFF en alle moderne rasterformaten."
+            "🔍 Slimme Focus & Onscherpte Herstel met Gezichtsbehoud (v1.2.0): Herstelt onscherpe en bewogen foto's naar haarscherpe foto's zonder menselijke gezichten te vervormen of onnatuurlijke rimpels/artefacten te veroorzaken.",
+            "🪄 Objecten & Personen Verwijderen (v1.2.0): Schilder over in de weg staande objecten (prullenbakken, lantaarnpalen, kabels, voorbijgangers) om ze direct en naadloos te wissen via contextuele achtergrondsynthese.",
+            "🎨 12 Populaire Lightroom Presets (v1.2.0): Gouden Uur, Vintage Matte Film, Architectuur HDR, Zacht Portret, Moody Teal & Orange, Herfst Amber, Winter Koud, Ansel Adams B&W en Stage Red Fix.",
+            "🖼️ Volledige JPG & RAW Ondersteuning: Bewerk en exporteer JPG-foto's net zo snel en krachtig als RAW en DNG, met uniforme knoppenbalk.",
+            "🎞️ 25-Foto Batch Beheer & Filmstrip: Bewerk tot 25 foto's tegelijkertijd met onafhankelijke bewerkingsstaten per foto, filmstrip onderaan en rasteroverzicht.",
+            "📁 Zelf Opslaglocatie Kiezen op Apparaat: Kies zelf elke gewenste map via de native Directory Picker op Mac/Windows/laptops of via 'Bewaar in Bestanden' op iPad.",
+            "📱 iPad & Touchscreen Optimalisatie: 44px+ aanraakdoelen voor vingers, vergrote slider-knoppen, touch-drag voor Voor/Na vergelijking en inpaint penseel."
         ]
     }
 

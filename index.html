@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="vroonphoto – Professionele WebAssembly RAW & Fotobewerker met 25-Foto Beheer, Rood Licht Herstel, Ruisonderdrukking, Knallend Zwart-Wit en Topaz Super-Resolution">
-  <title>vroonphoto — WASM Fotobewerker (Tot 25 Foto's)</title>
+  <meta name="description" content="vroonphoto – Professionele WebAssembly RAW & JPG Fotobewerker met 12 Lightroom Presets, Gezichtsbehoud Deblur, Firefly Objectverwijdering, 25-Foto Beheer, Rood Licht Herstel en Topaz Super-Resolution">
+  <title>vroonphoto — WASM Fotobewerker (JPG & RAW | 12 Presets | Deblur & Inpaint)</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="favicon.svg">
   <link rel="manifest" href="manifest.json">
@@ -18,7 +18,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.1.0</strong> beschikbaar &bull; <span id="upd-note">25-Foto batch beheer, opslagmap kiezen & iPad touch-ondersteuning</span></span>
+      <span><strong id="upd-ver">v1.2.0</strong> beschikbaar &bull; <span id="upd-note">Slimme focus/deblur met gezichtsbehoud, inpaint objectverwijdering &amp; 12 Lightroom presets</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -26,7 +26,7 @@
     </div>
   </div>
 
-  <!-- Header Navigatie -->
+  <!-- Header Navigatie (Uniforme Knoppenbalk) -->
   <header class="app-header">
     <div class="header-left">
       <div class="app-brand">
@@ -36,18 +36,20 @@
         <span id="photo-counter-badge" class="badge-count">1 / 1 Foto's</span>
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)" title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.1.0</span> 🔄
+          <span id="ver-txt">v1.2.0</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
 
-      <label class="btn-primary" style="cursor: pointer;" title="Voeg tot 25 foto's toe (RAW, DNG, JPG, etc.)">
+      <label class="btn-primary" title="Voeg foto's toe (JPG, RAW, DNG, PNG, etc. tot 25 foto's)">
         <span>📂 Foto's Openen</span>
-        <input type="file" id="file-upload-input" multiple accept="image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;">
+        <input type="file" id="file-upload-input" multiple accept="image/jpeg,image/png,image/webp,image/*,.jpg,.jpeg,.png,.webp,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;">
       </label>
 
       <select id="sample-photos-select" class="form-select" title="Voorbeeldfoto's laden">
         <option value="batch_5">📸 Laad 5 Voorbeeldfoto's (Batch Test)</option>
+        <option value="jpg_object">🏖️ Voorbeeld: Vakantie JPG (Object Verwijderen Test)</option>
+        <option value="blurry_portrait">👤 Voorbeeld: Bewogen Portret (Scherpte Herstel Test)</option>
         <option value="concert_red">🔴 Voorbeeld: Podium Rood Licht &amp; Doorloop</option>
         <option value="noisy_night">🌌 Voorbeeld: Hoge ISO Ruisopname</option>
         <option value="landscape">🏔️ Voorbeeld: Berglandschap (Zwart-Wit)</option>
@@ -71,7 +73,9 @@
       <button id="btn-next-photo" class="btn-icon" title="Volgende foto (▶)">▶</button>
       <button id="btn-rotate-left" class="btn-icon" title="90° Links draaien">↺</button>
       <button id="btn-rotate-right" class="btn-icon" title="90° Rechts draaien">↻</button>
-      <button id="btn-open-export" class="btn-primary">💾 Opslaan &amp; Exporteren</button>
+      <button id="btn-open-export" class="btn-primary" title="Foto's opslaan op apparaat">
+        <span>💾 Opslaan &amp; Exporteren</span>
+      </button>
     </div>
   </header>
 
@@ -83,17 +87,20 @@
       <div class="sidebar-section">
         <div class="sidebar-title">Gereedschappen</div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          <button id="tool-inpaint" class="btn-secondary" style="width: 100%; text-align: left;">
-            🪄 Firefly Vlekken Herstel
+          <button id="tool-inpaint" class="btn-secondary" style="width: 100%; text-align: left;" title="Schilder over ongewenste objecten of mensen om ze te wissen">
+            🪄 Object / Persoon Verwijderen
           </button>
           <div id="inpaint-controls" style="display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(9, 14, 24, 0.85); border-radius: 4px; border: 1px solid var(--border-glow);">
+            <div style="font-size: 10.5px; color: var(--text-muted); line-height: 1.35; margin-bottom: 2px;">
+              Schilder over in de weg staande objecten (prullenbakken, palen, kabels of voorbijgangers) en klik op 'Wis Object'.
+            </div>
             <div class="control-label-group">
               <span>Penseelgrootte</span>
-              <span id="brush-size-val">25px</span>
+              <span id="brush-size-val">35px</span>
             </div>
-            <input type="range" id="inpaint-brush-size" min="5" max="80" value="25" class="param-slider">
+            <input type="range" id="inpaint-brush-size" min="5" max="120" value="35" class="param-slider">
             <div style="display: flex; gap: 6px; margin-top: 4px;">
-              <button id="btn-apply-heal" class="btn-primary-small" style="flex: 1;">Vlekken Wissen</button>
+              <button id="btn-apply-heal" class="btn-primary-small" style="flex: 1;" title="Wis gemarkeerde objecten via contextuele synthese">✨ Wis Object</button>
               <button id="btn-clear-heal" class="btn-secondary" style="font-size: 11px;">Wis Masker</button>
             </div>
           </div>
@@ -101,23 +108,55 @@
       </div>
 
       <div class="sidebar-section">
-        <div class="sidebar-title">Snelle Presets</div>
+        <div class="sidebar-title">Lightroom &amp; AI Presets (12)</div>
         <div class="preset-grid">
-          <div class="preset-card" data-preset="stage_fix">
-            <span>🔴</span>
-            <span>Stage Red Light Herstel</span>
+          <div class="preset-card" data-preset="golden_hour" title="Warme gouden uurtint met zachte schaduwen">
+            <span>🌅</span>
+            <span>Gouden Uur</span>
           </div>
-          <div class="preset-card" data-preset="punchy_bw">
+          <div class="preset-card" data-preset="matte_film" title="Vintage analoge film met zacht contrast">
+            <span>🌲</span>
+            <span>Matte Film (Vintage)</span>
+          </div>
+          <div class="preset-card" data-preset="hdr_arch" title="Architectuur HDR met diepe dynamiek">
+            <span>🏛️</span>
+            <span>Architectuur &amp; HDR</span>
+          </div>
+          <div class="preset-card" data-preset="soft_portrait" title="Zacht portret met natuurlijke huidtinten">
+            <span>🌸</span>
+            <span>Zacht Portret</span>
+          </div>
+          <div class="preset-card" data-preset="teal_orange" title="Cinematic Hollywood Teal & Orange">
+            <span>🏙️</span>
+            <span>Moody Teal &amp; Orange</span>
+          </div>
+          <div class="preset-card" data-preset="autumn_amber" title="Rijke herfstkleuren en amber gloed">
+            <span>🍂</span>
+            <span>Herfst Amber</span>
+          </div>
+          <div class="preset-card" data-preset="winter_cool" title="Frisse heldere koele wintertinten">
+            <span>❄️</span>
+            <span>Winter Koud</span>
+          </div>
+          <div class="preset-card highlight-focus" data-preset="smart_focus_deblur" title="Herstelt onscherpe fotos naar scherp met gezichtsbehoud">
+            <span>🔍</span>
+            <span>Focus &amp; Gezichtsbehoud</span>
+          </div>
+          <div class="preset-card" data-preset="ansel_bw" title="Ansel Adams Zone System diep zwart-wit">
             <span>⚡</span>
             <span>Knallend Zwart-Wit</span>
           </div>
-          <div class="preset-card" data-preset="crisp_landscape">
-            <span>🏔️</span>
-            <span>Crisp Landschap</span>
+          <div class="preset-card" data-preset="film_noir" title="Dramatisch film noir met filmkorrel">
+            <span>🎬</span>
+            <span>Film Noir (B&amp;W)</span>
           </div>
-          <div class="preset-card" data-preset="portrait_clean">
-            <span>👤</span>
-            <span>Helder Portret</span>
+          <div class="preset-card" data-preset="stage_fix" title="Overbelicht concert rood licht herstel">
+            <span>🔴</span>
+            <span>Stage Red Light Fix</span>
+          </div>
+          <div class="preset-card" data-preset="denoise_high_iso" title="Bilateral luma & chroma ruisonderdrukking">
+            <span>🛡️</span>
+            <span>Hoge ISO Ruis Fix</span>
           </div>
         </div>
       </div>
@@ -128,7 +167,7 @@
           Geen foto geopend
         </div>
         <div style="font-size: 10px; color: var(--text-dim); margin-top: 6px;">
-          Batch support: tot 25 foto's tegelijk (RAW, DNG, CR2, NEF, ARW, JPG, PNG)
+          Batch support: tot 25 foto's tegelijk (JPG, PNG, WebP, RAW, DNG, CR2, NEF, ARW)
         </div>
       </div>
     </aside>
@@ -146,7 +185,7 @@
           <div style="display: flex; gap: 8px;">
             <label class="btn-primary" style="cursor: pointer;">
               <span>➕ Voeg Meer Foto's Toe</span>
-              <input type="file" id="grid-add-file-input" multiple accept="image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;">
+              <input type="file" id="grid-add-file-input" multiple accept="image/jpeg,image/png,image/webp,image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;">
             </label>
             <button id="btn-close-grid" class="btn-secondary">Sluit Overzicht ✕</button>
           </div>
@@ -160,6 +199,7 @@
           <div id="stage-red-detected-alert" class="stage-red-alert hidden"></div>
           <div class="canvas-wrapper">
             <canvas id="main-canvas"></canvas>
+            <div id="brush-cursor-circle"></div>
           </div>
         </div>
 
@@ -251,7 +291,40 @@
         </div>
       </div>
 
-      <!-- SECTIE 2: KNALLEND ZWART-WIT ENGINE -->
+      <!-- SECTIE 2: SLIMME FOCUS & ONSCHERPTE HERSTEL (GEZICHTSBEHOUD) -->
+      <div class="accordion-panel">
+        <div class="panel-header highlight-cyan">
+          <span>🔍 Slimme Focus &amp; Onscherpte Herstel</span>
+          <button class="btn-reset-section" data-section="deblur">Reset</button>
+        </div>
+        <div class="panel-content">
+          <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+            Herstelt onscherpe of bewogen opnames naar haarscherpe foto's via hardware Laplacian deblurring. Beschermt gezichten automatisch tegen vervorming en onnatuurlijke rimpels.
+          </p>
+
+          <div class="control-row">
+            <div class="control-label-group">
+              <span>Onscherpte Herstel (Deblur)</span>
+              <span id="slider-smart-deblur-val">0</span>
+            </div>
+            <div class="control-input-group">
+              <input type="range" id="slider-smart-deblur" data-param="smartDeblur" min="0" max="100" value="0" class="param-slider">
+            </div>
+          </div>
+
+          <div class="control-row">
+            <div class="control-label-group">
+              <span>Gezichtsbehoud &amp; Huidbescherming</span>
+              <span id="slider-deblur-skin-val">75</span>
+            </div>
+            <div class="control-input-group">
+              <input type="range" id="slider-deblur-skin" data-param="deblurSkinProtect" min="0" max="100" value="75" class="param-slider">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTIE 3: KNALLEND ZWART-WIT ENGINE -->
       <div class="accordion-panel">
         <div class="panel-header highlight-bw">
           <span>⚡ Knallend Zwart-Wit Engine</span>

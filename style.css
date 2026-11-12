@@ -1,14 +1,14 @@
 /* ==============================================================================
-   vroonphoto - Modern Cyberpunk Glassmorphic Stylesheet
+   vroonphoto - Modern Cyberpunk Glassmorphic Stylesheet v1.2.0
    Geïnspireerd op Peters eerdere WebAssembly applicaties (PetersWorld)
-   Geoptimaliseerd voor laptops én iPads / Touchscreens met 25-foto workflow
+   Uniforme knopformaten, 12 Lightroom Presets, Focusherstel & Objectverwijdering
    ============================================================================== */
 
 :root {
   --bg-primary: #080c14;
-  --bg-panel: rgba(15, 23, 42, 0.78);
-  --bg-panel-sub: rgba(30, 41, 59, 0.75);
-  --bg-panel-hover: rgba(51, 65, 85, 0.85);
+  --bg-panel: rgba(15, 23, 42, 0.85);
+  --bg-panel-sub: rgba(30, 41, 59, 0.78);
+  --bg-panel-hover: rgba(51, 65, 85, 0.90);
   --border-glow: rgba(56, 189, 248, 0.28);
   --border-glow-active: rgba(56, 189, 248, 0.65);
   --accent-cyan: #38bdf8;
@@ -24,7 +24,7 @@
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --blur-panel: blur(16px);
   --transition-fast: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  --radius-sm: 4px;
+  --radius-sm: 5px;
   --radius-md: 8px;
   --radius-lg: 12px;
 }
@@ -117,10 +117,10 @@ body {
 }
 
 /* ==============================================================================
-   2. Header & Navigatie
+   2. Header & Navigatie (UNIFORME KNOPHOOGTE 34PX)
    ============================================================================== */
 .app-header {
-  height: 54px;
+  height: 52px;
   background: var(--bg-panel);
   backdrop-filter: var(--blur-panel);
   border-bottom: 1px solid var(--border-glow);
@@ -135,7 +135,7 @@ body {
 .header-left, .header-center, .header-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .app-brand {
@@ -164,7 +164,6 @@ body {
   border-radius: 12px;
 }
 
-/* Actieve Foto Badge */
 .badge-count {
   font-size: 11px;
   font-family: var(--font-mono);
@@ -176,7 +175,6 @@ body {
   font-weight: 600;
 }
 
-/* Versie Pill */
 .ver-pill {
   display: inline-flex;
   align-items: center;
@@ -226,7 +224,7 @@ body {
   text-decoration: none;
   font-size: 11px;
   font-weight: 600;
-  padding: 4px 9px;
+  padding: 4px 8px;
   border-radius: 6px;
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.25);
@@ -241,6 +239,71 @@ body {
   border-color: rgba(239, 68, 68, 0.5);
 }
 
+/* UNIFORME KNOPPENBOVENBOUW (ALLE KNOPPEN BOVENAAN EXACT 34PX HOOG) */
+.app-header .btn-primary,
+.app-header .btn-secondary,
+.app-header label.btn-primary,
+.app-header .btn-icon,
+.app-header .form-select {
+  height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 0 12px !important;
+  border-radius: var(--radius-sm) !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  border: 1px solid var(--border-glow);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.app-header .btn-primary,
+.app-header label.btn-primary {
+  background: var(--accent-cyan);
+  color: #080c14;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.app-header .btn-primary:hover,
+.app-header label.btn-primary:hover {
+  background: #7dd3fc;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+}
+
+.app-header .btn-secondary {
+  background: var(--bg-panel-sub);
+  color: var(--text-main);
+}
+
+.app-header .btn-secondary:hover {
+  background: var(--bg-panel-hover);
+  border-color: var(--border-glow-active);
+}
+
+.app-header .btn-secondary.active {
+  background: var(--accent-cyan);
+  color: #080c14;
+  border-color: var(--accent-cyan);
+}
+
+.app-header .btn-icon {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0 10px !important;
+  font-size: 13px !important;
+}
+
+.app-header .btn-icon:hover {
+  color: #fff;
+  background: var(--bg-panel-hover);
+  border-color: var(--border-glow-active);
+}
+
 /* ==============================================================================
    3. Hoofd Workspace Layout
    ============================================================================== */
@@ -253,7 +316,7 @@ body {
 
 /* Linker Zijbalk */
 .sidebar-left {
-  width: 250px;
+  width: 260px;
   background: var(--bg-panel);
   backdrop-filter: var(--blur-panel);
   border-right: 1px solid var(--border-glow);
@@ -264,7 +327,7 @@ body {
 }
 
 .sidebar-section {
-  padding: 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid rgba(56, 189, 248, 0.15);
 }
 
@@ -274,27 +337,28 @@ body {
   letter-spacing: 1px;
   color: var(--text-dim);
   font-weight: 700;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+/* 12 Presets Grid */
 .preset-grid {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .preset-card {
   background: var(--bg-panel-sub);
-  padding: 9px 12px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 9px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 11.5px;
   font-weight: 500;
   border: 1px solid transparent;
   transition: all 0.15s ease;
@@ -304,6 +368,11 @@ body {
   background: var(--bg-panel-hover);
   border-color: var(--border-glow-active);
   transform: translateX(2px);
+}
+
+.preset-card.highlight-focus {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.1);
 }
 
 /* Midden Viewport & Canvas */
@@ -348,11 +417,23 @@ body {
   cursor: crosshair;
 }
 
+/* Visuele penseel cursor */
+#brush-cursor-circle {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid rgba(56, 189, 248, 0.9);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+  z-index: 100;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
 /* ==============================================================================
    4. FILMSTRIP (25 FOTO'S ONDERAAN HET SCHERM)
    ============================================================================== */
 .filmstrip-bar {
-  height: 110px;
+  height: 105px;
   background: rgba(11, 17, 30, 0.95);
   backdrop-filter: var(--blur-panel);
   border-top: 1px solid var(--border-glow);
@@ -376,7 +457,7 @@ body {
   gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
-  height: 80px;
+  height: 76px;
   padding-bottom: 2px;
   scrollbar-width: thin;
   scrollbar-color: var(--border-glow) transparent;
@@ -392,8 +473,8 @@ body {
 
 .filmstrip-item {
   position: relative;
-  width: 95px;
-  height: 70px;
+  width: 90px;
+  height: 66px;
   border-radius: var(--radius-sm);
   border: 2px solid rgba(56, 189, 248, 0.2);
   background: #040711;
@@ -456,8 +537,8 @@ body {
 }
 
 .filmstrip-add-card {
-  width: 95px;
-  height: 70px;
+  width: 90px;
+  height: 66px;
   border-radius: var(--radius-sm);
   border: 2px dashed rgba(56, 189, 248, 0.4);
   background: rgba(15, 23, 42, 0.4);
@@ -465,7 +546,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   color: var(--accent-cyan);
   cursor: pointer;
   flex-shrink: 0;
@@ -577,27 +658,26 @@ body {
 
 /* Histogram */
 .histogram-container {
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-bottom: 1px solid rgba(56, 189, 248, 0.15);
   background: rgba(8, 12, 20, 0.85);
 }
 
 #histogram-canvas {
   width: 100%;
-  height: 90px;
+  height: 85px;
   background: #050811;
   border-radius: var(--radius-sm);
   border: 1px solid rgba(56, 189, 248, 0.2);
   display: block;
 }
 
-/* Accordion Panelen */
 .accordion-panel {
   border-bottom: 1px solid rgba(56, 189, 248, 0.12);
 }
 
 .panel-header {
-  padding: 11px 14px;
+  padding: 10px 14px;
   background: var(--bg-panel);
   font-size: 12px;
   font-weight: 700;
@@ -613,17 +693,19 @@ body {
   background: var(--bg-panel-sub);
 }
 
+.panel-header.highlight-focus { border-left-color: var(--accent-gold); }
 .panel-header.highlight-red { border-left-color: var(--accent-red); }
 .panel-header.highlight-bw { border-left-color: #ffffff; }
 .panel-header.highlight-denoise { border-left-color: var(--accent-green); }
 .panel-header.highlight-superres { border-left-color: var(--accent-cyan); }
+.panel-header.highlight-cyan { border-left-color: var(--accent-cyan); }
 
 .panel-content {
-  padding: 14px;
+  padding: 12px 14px;
   background: rgba(9, 14, 24, 0.95);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 11px;
 }
 
 .panel-content.disabled {
@@ -635,7 +717,7 @@ body {
 .control-row {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .control-label-group {
@@ -676,31 +758,11 @@ body {
   transform: scale(1.25);
 }
 
-/* Knoppen */
 button {
   font-family: inherit;
   cursor: pointer;
   border: none;
   outline: none;
-}
-
-.btn-primary {
-  background: var(--accent-cyan);
-  color: #080c14;
-  font-weight: 700;
-  font-size: 12px;
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  transition: all 0.15s ease;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-primary:hover {
-  background: #7dd3fc;
-  box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
 }
 
 .btn-primary-small {
@@ -710,48 +772,6 @@ button {
   font-weight: 700;
   padding: 5px 10px;
   border-radius: 12px;
-}
-
-.btn-secondary {
-  background: var(--bg-panel-sub);
-  color: var(--text-main);
-  border: 1px solid var(--border-glow);
-  padding: 7px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  transition: all 0.15s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-secondary:hover {
-  background: var(--bg-panel-hover);
-  border-color: var(--border-glow-active);
-}
-
-.btn-secondary.active {
-  background: var(--accent-cyan);
-  color: #080c14;
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
-}
-
-.btn-icon {
-  background: transparent;
-  color: var(--text-muted);
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  transition: all 0.15s;
-}
-
-.btn-icon:hover {
-  color: var(--text-main);
-  background: var(--bg-panel-hover);
 }
 
 .btn-reset-section {
@@ -789,21 +809,11 @@ button {
 
 #curve-canvas {
   width: 100%;
-  height: 180px;
+  height: 170px;
   background: #040711;
   border: 1px solid rgba(56, 189, 248, 0.2);
   border-radius: var(--radius-sm);
   cursor: crosshair;
-}
-
-.form-select {
-  background: #090e18;
-  border: 1px solid var(--border-glow);
-  color: var(--text-main);
-  padding: 7px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  outline: none;
 }
 
 /* Modals */
@@ -861,6 +871,23 @@ button {
   gap: 8px;
 }
 
+.stage-red-alert {
+  position: absolute;
+  top: 16px;
+  background: rgba(239, 68, 68, 0.9);
+  backdrop-filter: var(--blur-panel);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 20;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 /* Loading Overlay */
 .loading-overlay {
   position: absolute;
@@ -893,49 +920,25 @@ button {
 }
 
 /* ==============================================================================
-   7. IPAD & TOUCHSCREEN OPTIMALISATIES (TABLETS & LAPTOPS)
+   7. IPAD & TOUCHSCREEN OPTIMALISATIES
    ============================================================================== */
-
-/* iPad Landscape & Tablets */
 @media (max-width: 1180px) {
-  .sidebar-left { width: 220px; }
+  .sidebar-left { width: 230px; }
   .sidebar-right { width: 310px; }
 }
 
-/* iPad Portrait (768px - 1024px) */
 @media (max-width: 960px) {
-  .app-workspace {
-    flex-direction: column;
-  }
-  .sidebar-left {
-    display: none; /* Geplaatst in tab-bediening voor iPads */
-  }
+  .app-workspace { flex-direction: column; }
+  .sidebar-left { display: none; }
   .sidebar-right {
     width: 100%;
-    height: 300px;
+    height: 310px;
     border-left: none;
     border-top: 1px solid var(--border-glow);
   }
-  #main-canvas {
-    max-height: 45vh;
-  }
-  .filmstrip-bar {
-    height: 95px;
-  }
-  .filmstrip-item, .filmstrip-add-card {
-    width: 80px;
-    height: 60px;
-  }
-  /* Grotere aanraakzones voor vingers op iPad */
-  .param-slider {
-    height: 8px;
-  }
-  .param-slider::-webkit-slider-thumb {
-    width: 24px;
-    height: 24px;
-  }
-  .btn-primary, .btn-secondary {
-    padding: 10px 14px;
-    font-size: 13px;
-  }
+  #main-canvas { max-height: 42vh; }
+  .filmstrip-bar { height: 95px; }
+  .filmstrip-item, .filmstrip-add-card { width: 80px; height: 60px; }
+  .param-slider { height: 8px; }
+  .param-slider::-webkit-slider-thumb { width: 24px; height: 24px; }
 }

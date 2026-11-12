@@ -334,6 +334,56 @@ class WasmKernel {
             }
         }
     }
+
+    smartDeblur(imageData, sharpnessAmount, skinProtection = 75.0) {
+        const { data, width, height } = imageData;
+        const totalBytes = width * height * 4;
+
+        if (this.isReady && this.instance.exports.vroon_smart_deblur) {
+            this.ensureMemory(totalBytes);
+            const mem = new Uint8Array(this.memory.buffer);
+            mem.set(data.subarray(0, totalBytes), 0);
+            this.instance.exports.vroon_smart_deblur(
+                0, width, height, sharpnessAmount, skinProtection
+            );
+            data.set(mem.subarray(0, totalBytes));
+            return;
+        }
+
+        // JS Fallback met gezichtsbehoud
+        if (sharpnessAmount <= 0.01) return;
+        const boost = (sharpnessAmount / 100.0) * 1.25;
+        const skinSafe = (skinProtection / 100.0);
+        const copy = new Uint8ClampedArray(data);
+
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                const idx = (y * width + x) * 4;
+                const r = copy[idx], g = copy[idx + 1], b = copy[idx + 2];
+                const up = ((y - 1) * width + x) * 4;
+                const dn = ((y + 1) * width + x) * 4;
+                const lf = (y * width + (x - 1)) * 4;
+                const rt = (y * width + (x + 1)) * 4;
+
+                const avgR = (copy[up] + copy[dn] + copy[lf] + copy[rt]) * 0.25;
+                const avgG = (copy[up + 1] + copy[dn + 1] + copy[lf + 1] + copy[rt + 1]) * 0.25;
+                const avgB = (copy[up + 2] + copy[dn + 2] + copy[lf + 2] + copy[rt + 2]) * 0.25;
+
+                let effBoost = boost;
+                // Menselijke huidskleur detectie
+                if (r > 60 && r > g && g > b) {
+                    const skinRatio = (g - b) / (r - b + 0.001);
+                    if (skinRatio > 0.25 && skinRatio < 0.70) {
+                        effBoost = boost * (1.0 - skinSafe * 0.75);
+                    }
+                }
+
+                data[idx]     = Math.min(255, Math.max(0, (r + (r - avgR) * effBoost) | 0));
+                data[idx + 1] = Math.min(255, Math.max(0, (g + (g - avgG) * effBoost) | 0));
+                data[idx + 2] = Math.min(255, Math.max(0, (b + (b - avgB) * effBoost) | 0));
+            }
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -364,6 +414,7 @@ class VroonPhotoApp {
             exposure: 0, contrast: 0, highlights: 0, shadows: 0,
             temp: 0, tint: 0, vibrance: 0, saturation: 0,
             stageRedFix: 0, colorBleedReduction: 0, skinProtection: 50, gamutCompress: 50,
+            smartDeblur: 0, deblurSkinProtect: 75,
             denoiseLuma: 0, denoiseChroma: 0, denoiseDetail: 50,
             bwEnabled: false, bwRed: 40, bwGreen: 10, bwBlue: -10,
             bwContrast: 35, bwClarity: 45, bwGrain: 10
@@ -403,10 +454,17 @@ class VroonPhotoApp {
                 const photo = this.getActivePhoto();
                 if (!photo) return;
                 const val = parseFloat(e.target.value);
-                photo.state[param] = val;
+                if (param) photo.state[param] = val;
                 if (valSpan) valSpan.textContent = val;
                 this.renderActivePhoto();
             });
+        });
+
+        // Penseelgrootte slider binding & update
+        const brushSlider = document.getElementById('inpaint-brush-size');
+        const brushSpan = document.getElementById('brush-size-val');
+        brushSlider?.addEventListener('input', (e) => {
+            if (brushSpan) brushSpan.textContent = `${e.target.value}px`;
         });
 
         // Reset secties
@@ -436,10 +494,13 @@ class VroonPhotoApp {
         document.getElementById('btn-upscale-2x')?.addEventListener('click', () => this.upscale(2));
         document.getElementById('btn-upscale-4x')?.addEventListener('click', () => this.upscale(4));
 
-        // Firefly Inpaint Tool
+        // Object / Persoon Verwijderen Tool (Inpaint)
         document.getElementById('tool-inpaint')?.addEventListener('click', () => {
             this.activeTool = this.activeTool === 'inpaint' ? 'adjust' : 'inpaint';
-            document.getElementById('tool-inpaint').classList.toggle('active', this.activeTool === 'inpaint');
+            const isActive = this.activeTool === 'inpaint';
+            document.getElementById('tool-inpaint').classList.toggle('active', isActive);
+            const circle = document.getElementById('brush-cursor-circle');
+            if (circle && !isActive) circle.style.display = 'none';
         });
         document.getElementById('btn-apply-heal')?.addEventListener('click', () => this.applyInpaint());
         document.getElementById('btn-clear-heal')?.addEventListener('click', () => this.clearMask());
@@ -483,7 +544,7 @@ class VroonPhotoApp {
             document.getElementById('update-banner')?.classList.remove('show');
         });
 
-        // Bestanden openen (Header & Grid)
+        // Bestanden openen (Header & Grid - Volledige JPG & RAW support)
         document.getElementById('file-upload-input')?.addEventListener('change', (e) => {
             if (e.target.files) this.loadMultipleFiles(e.target.files);
         });
@@ -502,6 +563,28 @@ class VroonPhotoApp {
     setupTouchInteractions() {
         let isDown = false;
 
+        const updateCursorCircle = (clientX, clientY) => {
+            const circle = document.getElementById('brush-cursor-circle');
+            if (!circle) return;
+            if (this.activeTool !== 'inpaint') {
+                circle.style.display = 'none';
+                return;
+            }
+            const rect = this.canvas.getBoundingClientRect();
+            if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+                circle.style.display = 'none';
+                return;
+            }
+            const brushSize = parseInt(document.getElementById('inpaint-brush-size')?.value || 35);
+            const scale = rect.width / this.canvas.width;
+            const displayDiam = Math.max(12, brushSize * 2 * scale);
+            circle.style.display = 'block';
+            circle.style.width = `${displayDiam}px`;
+            circle.style.height = `${displayDiam}px`;
+            circle.style.left = `${clientX}px`;
+            circle.style.top = `${clientY}px`;
+        };
+
         const handlePointerStart = (clientX, clientY) => {
             isDown = true;
             if (this.activeTool === 'inpaint') {
@@ -511,12 +594,47 @@ class VroonPhotoApp {
                 this.splitComparePos = (clientX - rect.left) / rect.width;
                 this.drawActiveCanvas();
             }
+            updateCursorCircle(clientX, clientY);
         };
 
         const handlePointerMove = (clientX, clientY) => {
+            updateCursorCircle(clientX, clientY);
             if (!isDown) return;
             if (this.activeTool === 'inpaint') {
                 this.paintMaskAtPoint(clientX, clientY);
+            } else if (this.isBeforeAfterActive) {
+                const rect = this.canvas.getBoundingClientRect();
+                this.splitComparePos = Math.max(0.05, Math.min(0.95, (clientX - rect.left) / rect.width));
+                this.drawActiveCanvas();
+            }
+        };
+
+        const handlePointerEnd = () => { isDown = false; };
+
+        // Muis events
+        this.canvas.addEventListener('mousedown', e => handlePointerStart(e.clientX, e.clientY));
+        window.addEventListener('mousemove', e => handlePointerMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', handlePointerEnd);
+        this.canvas.addEventListener('mouseleave', () => {
+            const circle = document.getElementById('brush-cursor-circle');
+            if (circle) circle.style.display = 'none';
+        });
+
+        // Touch events voor iPad & tablets
+        this.canvas.addEventListener('touchstart', e => {
+            if (e.touches && e.touches[0]) {
+                handlePointerStart(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', e => {
+            if (e.touches && e.touches[0]) {
+                handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', handlePointerEnd);
+    }
             } else if (this.isBeforeAfterActive) {
                 const rect = this.canvas.getBoundingClientRect();
                 this.splitComparePos = Math.max(0.05, Math.min(0.95, (clientX - rect.left) / rect.width));
@@ -879,7 +997,16 @@ class VroonPhotoApp {
             );
         }
 
-        // 3. Lightroom Basics
+        // 3. Slimme Focus & Deblur met Gezichtsbehoud
+        if (photo.state.smartDeblur > 0) {
+            this.wasm.smartDeblur(
+                img,
+                photo.state.smartDeblur,
+                photo.state.deblurSkinProtect !== undefined ? photo.state.deblurSkinProtect : 75.0
+            );
+        }
+
+        // 4. Lightroom Basics
         const exp = Math.pow(2.0, photo.state.exposure / 2.0);
         const cont = (photo.state.contrast + 100.0) / 100.0;
         const temp = (photo.state.temp / 100.0) * 35.0;
@@ -1010,7 +1137,7 @@ class VroonPhotoApp {
         const rect = this.canvas.getBoundingClientRect();
         const sx = this.canvas.width / rect.width, sy = this.canvas.height / rect.height;
         const x = (clientX - rect.left) * sx, y = (clientY - rect.top) * sy;
-        const size = parseInt(document.getElementById('inpaint-brush-size')?.value || 25);
+        const size = parseInt(document.getElementById('inpaint-brush-size')?.value || 35);
         this.maskCtx.fillStyle = '#ffffff';
         this.maskCtx.beginPath();
         this.maskCtx.arc(x, y, size, 0, Math.PI * 2);
@@ -1022,13 +1149,30 @@ class VroonPhotoApp {
         if (!photo) return;
         const mData = this.maskCtx.getImageData(0, 0, this.maskCanvas.width, this.maskCanvas.height).data;
         const mask = new Uint8Array(this.maskCanvas.width * this.maskCanvas.height);
-        for (let i = 0, j = 0; i < mData.length; i += 4, j++) mask[j] = mData[i];
-        this.wasm.smartInpaint(photo.originalImageData, mask, 6);
-        this.clearMask();
-        this.renderActivePhoto();
+        let hasMaskPixels = false;
+        for (let i = 0, j = 0; i < mData.length; i += 4, j++) {
+            mask[j] = mData[i];
+            if (mData[i] > 100) hasMaskPixels = true;
+        }
+
+        if (!hasMaskPixels) {
+            alert("Schilder eerst met de muis of je vinger over het object of de persoon die je wilt verwijderen.");
+            return;
+        }
+
+        document.getElementById('loading-overlay')?.classList.remove('hidden');
+        setTimeout(() => {
+            // Multi-pass contextuele synthese voor naadloze objectverwijdering
+            for (let pass = 0; pass < 3; pass++) {
+                this.wasm.smartInpaint(photo.originalImageData, mask, 8);
+            }
+            this.clearMask();
+            this.renderActivePhoto();
+            document.getElementById('loading-overlay')?.classList.add('hidden');
+        }, 40);
     }
 
-    // Presets
+    // Presets (12 Lightroom & AI Presets)
     applyBWPreset(preset) {
         const photo = this.getActivePhoto();
         if (!photo) return;
@@ -1052,16 +1196,70 @@ class VroonPhotoApp {
     applyGlobalPreset(name) {
         const photo = this.getActivePhoto();
         if (!photo) return;
-        if (name === 'stage_fix') {
+        const d = this.getDefaultState();
+
+        if (name === 'golden_hour') {
+            photo.state.bwEnabled = false;
+            photo.state.exposure = 0.25; photo.state.contrast = 15;
+            photo.state.temp = 24; photo.state.tint = 6;
+            photo.state.vibrance = 28; photo.state.saturation = 12;
+            photo.state.smartDeblur = 15;
+        } else if (name === 'matte_film') {
+            photo.state.bwEnabled = false;
+            photo.state.exposure = 0.15; photo.state.contrast = -12;
+            photo.state.temp = -4; photo.state.tint = 8;
+            photo.state.vibrance = 14; photo.state.saturation = -8;
+            photo.state.bwGrain = 15;
+        } else if (name === 'hdr_arch') {
+            photo.state.bwEnabled = false;
+            photo.state.exposure = 0.1; photo.state.contrast = 30;
+            photo.state.temp = -5; photo.state.vibrance = 45; photo.state.saturation = 15;
+            photo.state.smartDeblur = 40; photo.state.denoiseLuma = 15;
+        } else if (name === 'soft_portrait') {
+            photo.state.bwEnabled = false;
+            photo.state.exposure = 0.25; photo.state.contrast = -6;
+            photo.state.temp = 8; photo.state.tint = 4;
+            photo.state.vibrance = 12; photo.state.saturation = 5;
+            photo.state.denoiseLuma = 25; photo.state.denoiseChroma = 35;
+            photo.state.skinProtection = 80; photo.state.deblurSkinProtect = 90;
+        } else if (name === 'teal_orange') {
+            photo.state.bwEnabled = false;
+            photo.state.exposure = 0.0; photo.state.contrast = 26;
+            photo.state.temp = 16; photo.state.tint = -12;
+            photo.state.vibrance = 50; photo.state.saturation = 14;
+            photo.state.smartDeblur = 20;
+        } else if (name === 'autumn_amber') {
+            photo.state.bwEnabled = false;
+            photo.state.exposure = 0.1; photo.state.contrast = 22;
+            photo.state.temp = 32; photo.state.tint = 14;
+            photo.state.vibrance = 38; photo.state.saturation = 20;
+        } else if (name === 'winter_cool') {
+            photo.state.bwEnabled = false;
+            photo.state.exposure = 0.2; photo.state.contrast = 16;
+            photo.state.temp = -38; photo.state.tint = -8;
+            photo.state.vibrance = -10; photo.state.saturation = -6;
+            photo.state.smartDeblur = 25;
+        } else if (name === 'smart_focus_deblur') {
+            photo.state.bwEnabled = false;
+            photo.state.smartDeblur = 80;
+            photo.state.deblurSkinProtect = 85;
+            photo.state.contrast = 15;
+            photo.state.vibrance = 15;
+        } else if (name === 'ansel_bw') {
+            this.applyBWPreset('ansel_adams');
+            return;
+        } else if (name === 'film_noir') {
+            this.applyBWPreset('film_noir');
+            return;
+        } else if (name === 'stage_fix') {
+            photo.state.bwEnabled = false;
             photo.state.stageRedFix = 90; photo.state.colorBleedReduction = 75; photo.state.skinProtection = 65;
-            photo.state.highlights = -30; photo.state.shadows = 20;
-        } else if (name === 'punchy_bw') {
-            this.applyBWPreset('knallend_contrast');
-        } else if (name === 'crisp_landscape') {
-            photo.state.exposure = 0.2; photo.state.contrast = 25; photo.state.highlights = -20; photo.state.shadows = 25; photo.state.vibrance = 35;
-        } else if (name === 'portrait_clean') {
-            photo.state.exposure = 0.3; photo.state.contrast = 10; photo.state.denoiseLuma = 30; photo.state.denoiseChroma = 45; photo.state.temp = 8;
+            photo.state.exposure = 0.0; photo.state.contrast = 10;
+        } else if (name === 'denoise_high_iso') {
+            photo.state.bwEnabled = false;
+            photo.state.denoiseLuma = 75; photo.state.denoiseChroma = 85; photo.state.denoiseDetail = 50;
         }
+
         this.syncSliderUIFromPhoto(photo);
         this.renderActivePhoto();
     }
@@ -1071,8 +1269,9 @@ class VroonPhotoApp {
         if (!photo) return;
         const d = this.getDefaultState();
         if (s === 'stage_red') ['stageRedFix', 'colorBleedReduction', 'skinProtection', 'gamutCompress'].forEach(k => photo.state[k] = d[k]);
+        if (s === 'deblur') ['smartDeblur', 'deblurSkinProtect'].forEach(k => photo.state[k] = d[k]);
         if (s === 'denoise') ['denoiseLuma', 'denoiseChroma', 'denoiseDetail'].forEach(k => photo.state[k] = d[k]);
-        if (s === 'tone') ['exposure', 'contrast', 'highlights', 'shadows'].forEach(k => photo.state[k] = d[k]);
+        if (s === 'tone') ['exposure', 'contrast', 'highlights', 'shadows', 'temp', 'tint', 'vibrance', 'saturation'].forEach(k => photo.state[k] = d[k]);
         this.syncSliderUIFromPhoto(photo);
         this.renderActivePhoto();
     }
@@ -1380,14 +1579,85 @@ class VroonPhotoApp {
         ctx5.fillStyle = '#f8fafc'; ctx5.fillRect(520, 450, 40, 90);
         this.addPhotoToSession(ctx5.getImageData(0, 0, w, h), { filename: 'Straat_Contrast_Noir.dng' });
 
+        // 6. Vakantie Strand JPG (Object Verwijderen Test)
+        const c6 = document.createElement('canvas'); c6.width = w; c6.height = h;
+        const ctx6 = c6.getContext('2d');
+        // Hemelsblauw & Zee
+        const skySea = ctx6.createLinearGradient(0, 0, 0, h);
+        skySea.addColorStop(0, '#38bdf8');
+        skySea.addColorStop(0.45, '#0284c7');
+        skySea.addColorStop(0.46, '#0ea5e9');
+        skySea.addColorStop(0.65, '#fde047');
+        skySea.addColorStop(1, '#eab308');
+        ctx6.fillStyle = skySea; ctx6.fillRect(0, 0, w, h);
+        // Strandtextuur
+        ctx6.fillStyle = '#ca8a04';
+        for (let i = 0; i < 400; i++) {
+            ctx6.fillRect(Math.random() * w, 520 + Math.random() * 280, 3, 3);
+        }
+        // In de weg staande rode waarschuwingspaal / object om te wissen
+        ctx6.fillStyle = '#475569';
+        ctx6.fillRect(588, 380, 24, 220); // Paal
+        ctx6.fillStyle = '#dc2626';
+        ctx6.fillRect(550, 300, 100, 90);  // Bord
+        ctx6.fillStyle = '#ffffff';
+        ctx6.font = 'bold 38px system-ui';
+        ctx6.fillText('⚠️', 580, 360);
+        this.addPhotoToSession(ctx6.getImageData(0, 0, w, h), { filename: 'Vakantie_Strand_Object_Test.jpg' });
+
+        // 7. Bewogen Portret (Scherpte Herstel & Gezichtsbehoud Test)
+        const c7 = document.createElement('canvas'); c7.width = w; c7.height = h;
+        const ctx7 = c7.getContext('2d');
+        // Achtergrond natuur
+        const bgGrad = ctx7.createLinearGradient(0, 0, w, h);
+        bgGrad.addColorStop(0, '#166534'); bgGrad.addColorStop(1, '#14532d');
+        ctx7.fillStyle = bgGrad; ctx7.fillRect(0, 0, w, h);
+        // Gezicht & Haar
+        ctx7.fillStyle = '#3f2e1e'; // Haar
+        ctx7.beginPath(); ctx7.arc(600, 370, 145, 0, Math.PI * 2); ctx7.fill();
+        ctx7.fillStyle = '#f6d7b0'; // Huidtint
+        ctx7.beginPath(); ctx7.arc(600, 390, 115, 0, Math.PI * 2); ctx7.fill();
+        // Ogen & Mond
+        ctx7.fillStyle = '#1e293b';
+        ctx7.beginPath(); ctx7.arc(560, 370, 12, 0, Math.PI * 2); ctx7.fill(); // Linkeroog
+        ctx7.beginPath(); ctx7.arc(640, 370, 12, 0, Math.PI * 2); ctx7.fill(); // Rechteroog
+        ctx7.fillStyle = '#b91c1c';
+        ctx7.beginPath(); ctx7.ellipse(600, 440, 24, 8, 0, 0, Math.PI * 2); ctx7.fill(); // Lippen
+        // Pas lichte onscherpte (blur) toe zodat het herbouwd kan worden
+        const blurImgD = ctx7.getImageData(0, 0, w, h);
+        const bData = blurImgD.data;
+        const bCopy = new Uint8ClampedArray(bData);
+        for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+                const idx = (y * w + x) * 4;
+                for (let c = 0; c < 3; c++) {
+                    bData[idx + c] = (
+                        bCopy[idx + c] * 4 +
+                        bCopy[((y - 1) * w + x) * 4 + c] +
+                        bCopy[((y + 1) * w + x) * 4 + c] +
+                        bCopy[(y * w + (x - 1)) * 4 + c] +
+                        bCopy[(y * w + (x + 1)) * 4 + c]
+                    ) / 8;
+                }
+            }
+        }
+        ctx7.putImageData(blurImgD, 0, 0);
+        this.addPhotoToSession(ctx7.getImageData(0, 0, w, h), { filename: 'Bewogen_Portret_Focus_Test.jpg' });
+
         this.setActivePhoto(0);
     }
 
     loadSingleSample(id) {
         // Laad 1 specifieke foto
         this.loadSampleBatch();
-        const map = { 'concert_red': 0, 'noisy_night': 1, 'landscape': 2 };
-        this.setActivePhoto(map[id] || 0);
+        const map = {
+            'concert_red': 0,
+            'noisy_night': 1,
+            'landscape': 2,
+            'jpg_object': 5,
+            'blurry_portrait': 6
+        };
+        this.setActivePhoto(map[id] !== undefined ? map[id] : 0);
     }
 }
 
