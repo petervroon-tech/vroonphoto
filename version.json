@@ -1,11 +1,12 @@
 {
   "app_name": "vroonphoto",
-  "version": "1.5.2",
-  "build": 22,
-  "timestamp": "2026-11-12T12:09:57.047445+00:00",
-  "git_hash": "83ef568",
+  "version": "1.5.3",
+  "build": 23,
+  "timestamp": "2026-11-12T12:16:26.515214+00:00",
+  "git_hash": "c2a6105",
   "features": [
-    "🚀 Versie v1.5.2: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🚀 Versie v1.5.3: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "📐 Werkruimte & Layout Reorganisatie (v1.5.3): Alle functies (Topaz AI Vergroten, Curves & Histogram, Presets en Inpainting) verplaatst naar de linker zijbalk voor een aanzienlijk groter centraal werkscherm. Rechter zijbalk slank (240px) en exclusief ingericht voor schuifregelaars (Preset Verhouding bovenaan, Belichting & Kleur, Rood Licht, Focus, Ruis, Zwart-Wit).",
     "🎚️ Lightroom & AI Presets Schuifregelaar (v1.5.2): Traploze verhouding- en intensiteitsregelaar per preset (0% = origineel/neutraal, 100% = standaard preset, tot 200% = dubbele intensiteit) met real-time live preview.",
     "🎨 Uniforme Knopstyling (v1.5.1): '✨ Wis Object' en '↺ Wis Masker' uniform in hoogte (32px), breedte en kenmerkende donkere leisteen / neon cyaan kleuren.",
     "🔴 Automatisch Podium LED Interferentiestrepen Verwijderen (v1.5.0): Verwijdert hinderlijke periodieke rolling shutter en PWM LED interferentiestrepen bij concert- en podiumverlichting direct bij het laden.",
