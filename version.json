@@ -1,9 +1,9 @@
 {
   "app_name": "vroonphoto",
   "version": "1.0.0",
-  "build": 3,
-  "timestamp": "2026-11-12T10:28:46.846935+00:00",
-  "git_hash": "d6ecc2d",
+  "build": 4,
+  "timestamp": "2026-11-12T10:29:07.311875+00:00",
+  "git_hash": "960d66c",
   "features": [
     "WASM Hardware-Accelerated Image Kernel",
     "Stage Red Light & Bleed Recovery",
