@@ -1081,8 +1081,11 @@ class VroonPhotoApp {
         document.getElementById('btn-rotate-right')?.addEventListener('click', () => this.rotateActivePhoto(90));
         document.getElementById('btn-flip-h')?.addEventListener('click', () => this.flipActivePhotoH());
 
-        // Opslaan & Exporteren Modal
+        // Opslaan & Exporteren (Direct in Finder / Verkenner)
         document.getElementById('btn-open-export')?.addEventListener('click', () => {
+            this.saveWithFinder();
+        });
+        document.getElementById('btn-open-export-modal')?.addEventListener('click', () => {
             document.getElementById('export-modal')?.classList.remove('hidden');
         });
         document.getElementById('btn-close-export')?.addEventListener('click', () => {
@@ -1972,9 +1975,7 @@ class VroonPhotoApp {
                         const sessName = this.activeSessionName || 'Fotosessie';
                         this.sessionDirHandle = await this.parentDestDirHandle.getDirectoryHandle(sessName, { create: true });
                     } else {
-                        alert(
-                            `Selecteer de map op uw computer of externe schijf waarin de selectie-submap '${subfolderName}' moet worden opgeslagen:`
-                        );
+                        // Direct Finder openen ZONDER blokkerende alert (behoudt user activation)
                         const chosen = await window.showDirectoryPicker({ mode: 'readwrite' });
                         if (chosen) {
                             this.sessionDirHandle = chosen;
@@ -2072,8 +2073,121 @@ class VroonPhotoApp {
             }
         }
 
-        // Fallback voor browsers zonder File System Access API
-        this.openExportModalWithScope('selected');
+        // Indien native Directory Picker niet beschikbaar is (bijv. oude browser)
+        if (!('showDirectoryPicker' in window)) {
+            this.openExportModalWithScope('selected');
+        }
+    }
+
+    async saveWithFinder() {
+        if (!this.photos || this.photos.length === 0) {
+            alert("Er is geen foto geladen om op te slaan.");
+            return;
+        }
+
+        const activePhoto = this.getActivePhoto();
+        if (!activePhoto) return;
+
+        // KEUZE A: 1 foto actief -> Direct de native Finder 'Bewaar Als' (Save As) dialoog openen!
+        if (this.photos.length === 1 || !('showDirectoryPicker' in window)) {
+            const origExt = (activePhoto.filename.split('.').pop() || 'jpg').toLowerCase();
+            const isRaw = activePhoto.isRaw || (this.rawDecoder && this.rawDecoder.isRaw(activePhoto.filename));
+            const defaultExt = isRaw ? (activePhoto.originalFile ? origExt : 'dng') : (origExt === 'png' ? 'png' : 'jpg');
+            const defaultName = activePhoto.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${defaultExt}`;
+
+            if ('showSaveFilePicker' in window) {
+                try {
+                    const mimeType = defaultExt === 'dng' ? 'image/x-adobe-dng' : (defaultExt === 'png' ? 'image/png' : 'image/jpeg');
+                    // Direct Finder openen in het actieve klik-event zonder vertraging:
+                    const fileHandle = await window.showSaveFilePicker({
+                        suggestedName: defaultName,
+                        types: [{
+                            description: `Foto (*.${defaultExt})`,
+                            accept: { [mimeType]: [`.${defaultExt}`] }
+                        }]
+                    });
+
+                    const loadingOverlay = document.getElementById('loading-overlay');
+                    const loadingText = document.getElementById('loading-text');
+                    loadingOverlay?.classList.remove('hidden');
+                    if (loadingText) loadingText.textContent = `Bezig met opslaan naar Finder (${fileHandle.name})...`;
+
+                    let blob;
+                    if (defaultExt === 'dng') {
+                        const dngBytes = this.encodeTiffOrDng(activePhoto.currentImageData, true);
+                        blob = new Blob([dngBytes.buffer], { type: 'image/x-adobe-dng' });
+                    } else if (isRaw && activePhoto.originalFile && defaultExt === origExt) {
+                        blob = activePhoto.originalFile;
+                    } else if (defaultExt === 'png') {
+                        blob = await this.renderPhotoToBlob(activePhoto, 'image/png', 0.95);
+                    } else {
+                        blob = await this.renderPhotoToBlob(activePhoto, 'image/jpeg', 0.95);
+                    }
+
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+
+                    loadingOverlay?.classList.add('hidden');
+                    alert(`✅ Foto succesvol opgeslagen in Finder als '${fileHandle.name}'!`);
+                    return;
+                } catch (err) {
+                    document.getElementById('loading-overlay')?.classList.add('hidden');
+                    if (err.name === 'AbortError') return;
+                    console.warn("Fout bij showSaveFilePicker:", err);
+                }
+            }
+        } else {
+            // KEUZE B: Meerdere foto's in sessie: Open DIRECT Finder om de doelmap aan te wijzen!
+            if ('showDirectoryPicker' in window) {
+                try {
+                    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                    if (!dirHandle) return;
+
+                    const loadingOverlay = document.getElementById('loading-overlay');
+                    const loadingText = document.getElementById('loading-text');
+                    loadingOverlay?.classList.remove('hidden');
+
+                    let savedCount = 0;
+                    for (let i = 0; i < this.photos.length; i++) {
+                        const p = this.photos[i];
+                        if (loadingText) loadingText.textContent = `Opslaan naar Finder map '${dirHandle.name}' (${i + 1}/${this.photos.length}): ${p.filename}...`;
+
+                        const origExt = (p.filename.split('.').pop() || 'jpg').toLowerCase();
+                        const isRaw = p.isRaw || (this.rawDecoder && this.rawDecoder.isRaw(p.filename));
+                        const ext = isRaw ? (p.originalFile ? origExt : 'dng') : 'jpg';
+
+                        let blob;
+                        if (isRaw && p.originalFile) {
+                            blob = p.originalFile;
+                        } else if (isRaw) {
+                            const dngBytes = this.encodeTiffOrDng(p.currentImageData, true);
+                            blob = new Blob([dngBytes.buffer], { type: 'image/x-adobe-dng' });
+                        } else {
+                            blob = await this.renderPhotoToBlob(p, 'image/jpeg', 0.95);
+                        }
+
+                        const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${ext}`;
+                        const fileHandle = await dirHandle.getFileHandle(cleanName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+                        savedCount++;
+                    }
+
+                    loadingOverlay?.classList.add('hidden');
+                    alert(`✅ ${savedCount} foto's zijn succesvol opgeslagen in Finder in map '${dirHandle.name}'!`);
+                    return;
+                } catch (err) {
+                    document.getElementById('loading-overlay')?.classList.add('hidden');
+                    if (err.name === 'AbortError') return;
+                    console.warn("Fout bij showDirectoryPicker:", err);
+                }
+            }
+        }
+
+        // Alleen indien browser geen native file pickers ondersteunt:
+        this.openExportModalWithScope('current');
     }
 
     openExportModalWithScope(targetScope = 'all') {
@@ -3308,14 +3422,63 @@ class VroonPhotoApp {
         };
 
         try {
-            // OPTIE A: Moderne desktop/laptop native map-keuze (File System Access API)
-            if ('showDirectoryPicker' in window && photosToExport.length > 1) {
-                console.log('📁 Native Directory Picker geopend...');
-                const dirHandle = await window.showDirectoryPicker();
-                let savedCount = 0;
+            // ═══════════════════════════════════════════════════════
+            // KEUZE 1: ENKELE FOTO DIRECT IN FINDER 'BEWAAR ALS' OPENEN
+            // ═══════════════════════════════════════════════════════
+            if ('showSaveFilePicker' in window && photosToExport.length === 1) {
+                const p = photosToExport[0];
+                const origExt = (p.filename.split('.').pop() || 'jpg').toLowerCase();
+                const isRaw = p.isRaw || (this.rawDecoder && this.rawDecoder.isRaw(p.filename));
+                let ext = 'jpg';
+                if (format === 'original-raw') {
+                    ext = (isRaw && p.originalFile) ? origExt : (isRaw ? 'dng' : 'jpg');
+                } else if (format === 'image/x-adobe-dng') ext = 'dng';
+                else if (format === 'image/tiff') ext = 'tif';
+                else if (format === 'image/png') ext = 'png';
+                else if (format === 'image/webp') ext = 'webp';
 
+                const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${ext}`;
+                const mimeType = (ext === 'dng') ? 'image/x-adobe-dng' : (format === 'original-raw' ? 'application/octet-stream' : format);
+
+                // DIRECT FINDER OPENEN VOORDAT RENDERING START (behoudt user activation)
+                const fileHandle = await window.showSaveFilePicker({
+                    suggestedName: cleanName,
+                    types: [{
+                        description: `Bestand (.${ext})`,
+                        accept: { [mimeType]: [`.${ext}`] }
+                    }]
+                });
+
+                document.getElementById('loading-overlay')?.classList.remove('hidden');
+                const loadingText = document.getElementById('loading-text');
+                if (loadingText) loadingText.textContent = `Bezig met wegschrijven naar Finder (${fileHandle.name})...`;
+
+                const { blob } = await getPhotoExportData(p);
+                const writable = await fileHandle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+
+                alert(`✅ Foto succesvol opgeslagen in Finder als '${fileHandle.name}'!`);
+                document.getElementById('loading-overlay')?.classList.add('hidden');
+                return;
+            }
+
+            // ═══════════════════════════════════════════════════════
+            // KEUZE 2: MEERDERE FOTO'S DIRECT IN FINDER MAP SELECTIE OPENEN
+            // ═══════════════════════════════════════════════════════
+            if ('showDirectoryPicker' in window && photosToExport.length > 1) {
+                // DIRECT FINDER OPENEN VOORDAT RENDERING START
+                const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                if (!dirHandle) return;
+
+                document.getElementById('loading-overlay')?.classList.remove('hidden');
+                const loadingText = document.getElementById('loading-text');
+
+                let savedCount = 0;
                 for (let i = 0; i < photosToExport.length; i++) {
                     const p = photosToExport[i];
+                    if (loadingText) loadingText.textContent = `Opslaan in Finder map '${dirHandle.name}' (${i + 1}/${photosToExport.length}): ${p.filename}...`;
+
                     const { blob, ext } = await getPhotoExportData(p);
                     const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${ext}`;
                     const fileHandle = await dirHandle.getFileHandle(cleanName, { create: true });
@@ -3325,28 +3488,7 @@ class VroonPhotoApp {
                     savedCount++;
                 }
 
-                alert(`✅ Succesvol ${savedCount} foto's opgeslagen in de gekozen map!`);
-                document.getElementById('loading-overlay')?.classList.add('hidden');
-                return;
-            }
-
-            // OPTIE B: Enkele foto met Save File Picker op laptop/desktop
-            if ('showSaveFilePicker' in window && photosToExport.length === 1) {
-                const p = photosToExport[0];
-                const { blob, ext } = await getPhotoExportData(p);
-                const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${ext}`;
-                const mimeType = (ext === 'dng') ? 'image/x-adobe-dng' : (format === 'original-raw' ? 'application/octet-stream' : format);
-                const fileHandle = await window.showSaveFilePicker({
-                    suggestedName: cleanName,
-                    types: [{
-                        description: `Bestand (.${ext})`,
-                        accept: { [mimeType]: [`.${ext}`] }
-                    }]
-                });
-                const writable = await fileHandle.createWritable();
-                await writable.write(blob);
-                await writable.close();
-                alert(`✅ Foto succesvol opgeslagen als .${ext} op de gekozen locatie!`);
+                alert(`✅ Succesvol ${savedCount} foto's opgeslagen in Finder in map '${dirHandle.name}'!`);
                 document.getElementById('loading-overlay')?.classList.add('hidden');
                 return;
             }
@@ -3372,7 +3514,7 @@ class VroonPhotoApp {
                 }
             }
 
-            // OPTIE D: Standaard download fallback
+            // OPTIE D: Standaard download fallback (alleen voor oude browsers zonder File System API)
             for (let i = 0; i < photosToExport.length; i++) {
                 const p = photosToExport[i];
                 const { blob, ext } = await getPhotoExportData(p);
