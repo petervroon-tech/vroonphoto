@@ -571,7 +571,74 @@ class WasmKernel {
 }
 
 // ═══════════════════════════════════════════════════════
-//  3. VROONPHOTO 25-FOTO BATCH & WORKSPACE MANAGER
+//  3. LIGHTROOM & AI PRESET DEFINITIES & RECEPTEN
+// ═══════════════════════════════════════════════════════
+
+const PRESET_DEFINITIONS = {
+    'golden_hour': {
+        name: '🌅 Gouden Uur',
+        params: { bwEnabled: false, exposure: 0.25, contrast: 15, temp: 24, tint: 6, vibrance: 28, saturation: 12, smartDeblur: 15 }
+    },
+    'matte_film': {
+        name: '🌲 Matte Film',
+        params: { bwEnabled: false, exposure: 0.15, contrast: -12, temp: -4, tint: 8, vibrance: 14, saturation: -8, bwGrain: 15 }
+    },
+    'hdr_arch': {
+        name: '🏛️ Architectuur & HDR',
+        params: { bwEnabled: false, exposure: 0.1, contrast: 30, temp: -5, vibrance: 45, saturation: 15, smartDeblur: 40, denoiseLuma: 15 }
+    },
+    'soft_portrait': {
+        name: '🌸 Zacht Portret',
+        params: { bwEnabled: false, exposure: 0.25, contrast: -6, temp: 8, tint: 4, vibrance: 12, saturation: 5, denoiseLuma: 25, denoiseChroma: 35, skinProtection: 80, deblurSkinProtect: 90 }
+    },
+    'teal_orange': {
+        name: '🏙️ Moody Teal & Orange',
+        params: { bwEnabled: false, exposure: 0.0, contrast: 26, temp: 16, tint: -12, vibrance: 50, saturation: 14, smartDeblur: 20 }
+    },
+    'autumn_amber': {
+        name: '🍂 Herfst Amber',
+        params: { bwEnabled: false, exposure: 0.1, contrast: 22, temp: 32, tint: 14, vibrance: 38, saturation: 20 }
+    },
+    'winter_cool': {
+        name: '❄️ Winter Koud',
+        params: { bwEnabled: false, exposure: 0.2, contrast: 16, temp: -38, tint: -8, vibrance: -10, saturation: -6, smartDeblur: 25 }
+    },
+    'smart_focus_deblur': {
+        name: '🔍 Focus & Gezichtsbehoud',
+        params: { bwEnabled: false, smartDeblur: 80, deblurSkinProtect: 85, contrast: 15, vibrance: 15 }
+    },
+    'ansel_bw': {
+        name: '⚡ Knallend Zwart-Wit',
+        params: { bwEnabled: true, bwRed: 35, bwGreen: 20, bwBlue: -15, bwContrast: 35, bwClarity: 40, bwGrain: 8 }
+    },
+    'film_noir': {
+        name: '🎬 Film Noir (B&W)',
+        params: { bwEnabled: true, bwRed: 50, bwGreen: -10, bwBlue: -35, bwContrast: 65, bwClarity: 50, bwGrain: 25 }
+    },
+    'stage_fix': {
+        name: '🔴 Stage Red Light Fix',
+        params: { bwEnabled: false, stageRedFix: 90, colorBleedReduction: 75, skinProtection: 65, exposure: 0.0, contrast: 10 }
+    },
+    'denoise_high_iso': {
+        name: '🛡️ Hoge ISO Ruis Fix',
+        params: { bwEnabled: false, denoiseLuma: 75, denoiseChroma: 85, denoiseDetail: 50 }
+    },
+    'knallend_contrast': {
+        name: '⚡ Knallend Contrast',
+        params: { bwEnabled: true, bwRed: 45, bwGreen: 10, bwBlue: -25, bwContrast: 50, bwClarity: 55, bwGrain: 12 }
+    },
+    'ansel_adams': {
+        name: '🏞️ Ansel Adams',
+        params: { bwEnabled: true, bwRed: 35, bwGreen: 20, bwBlue: -15, bwContrast: 35, bwClarity: 40, bwGrain: 8 }
+    },
+    'dramatic_street': {
+        name: '📷 Straatfoto',
+        params: { bwEnabled: true, bwRed: 30, bwGreen: 15, bwBlue: -10, bwContrast: 30, bwClarity: 65, bwGrain: 18 }
+    }
+};
+
+// ═══════════════════════════════════════════════════════
+//  4. VROONPHOTO 25-FOTO BATCH & WORKSPACE MANAGER
 // ═══════════════════════════════════════════════════════
 
 class VroonPhotoApp {
@@ -592,6 +659,10 @@ class VroonPhotoApp {
 
         this.maskCanvas = null;
         this.maskCtx = null;
+
+        // Actieve Preset & Proportionele Intensiteit (0% - 200%)
+        this.activePresetKey = null;
+        this.activePresetAmount = 100;
 
         // Touch, Hand & Pen (Apple Pencil / Stylus) & Zoom State
         this.zoomLevel = 1.0;
@@ -782,8 +853,20 @@ class VroonPhotoApp {
             btn.addEventListener('click', (e) => this.applyBWPreset(e.currentTarget.dataset.preset));
         });
         document.querySelectorAll('.preset-card').forEach(card => {
-            card.addEventListener('click', (e) => this.applyGlobalPreset(e.currentTarget.dataset.preset));
+            card.addEventListener('click', (e) => this.applyGlobalPreset(e.currentTarget.dataset.preset, 100));
         });
+
+        // Lightroom & AI Preset Verhouding / Intensiteit Schuifregelaar
+        const presetSlider = document.getElementById('slider-preset-amount');
+        if (presetSlider) {
+            presetSlider.addEventListener('input', (e) => {
+                const amount = parseInt(e.target.value, 10);
+                const amountVal = document.getElementById('slider-preset-amount-val');
+                if (amountVal) amountVal.textContent = `${amount}%`;
+                const key = this.activePresetKey || 'golden_hour';
+                this.applyGlobalPreset(key, amount);
+            });
+        }
         const bwToggle = document.getElementById('toggle-bw-mode');
         bwToggle?.addEventListener('change', (e) => {
             const photo = this.getActivePhoto();
@@ -1297,6 +1380,14 @@ class VroonPhotoApp {
         }
 
         this.syncSliderUIFromPhoto(photo);
+        if (photo.activePreset) {
+            this.activePresetKey = photo.activePreset.key;
+            this.activePresetAmount = photo.activePreset.amount ?? 100;
+        } else {
+            this.activePresetKey = null;
+            this.activePresetAmount = 100;
+        }
+        this.syncPresetUI();
         this.renderActivePhoto();
         this.updateFilmstripUI();
         this.updateGridUI();
@@ -1485,6 +1576,24 @@ class VroonPhotoApp {
         const bwToggle = document.getElementById('toggle-bw-mode');
         if (bwToggle) bwToggle.checked = photo.state.bwEnabled;
         document.getElementById('bw-mixer-panel')?.classList.toggle('disabled', !photo.state.bwEnabled);
+    }
+
+    syncPresetUI() {
+        const slider = document.getElementById('slider-preset-amount');
+        const valSpan = document.getElementById('slider-preset-amount-val');
+        const nameSpan = document.getElementById('active-preset-name');
+        if (slider) slider.value = this.activePresetAmount;
+        if (valSpan) valSpan.textContent = `${this.activePresetAmount}%`;
+        if (nameSpan) {
+            if (this.activePresetKey && PRESET_DEFINITIONS[this.activePresetKey]) {
+                nameSpan.textContent = PRESET_DEFINITIONS[this.activePresetKey].name;
+            } else {
+                nameSpan.textContent = 'Geen preset actief';
+            }
+        }
+        document.querySelectorAll('.preset-card').forEach(card => {
+            card.classList.toggle('active', card.dataset.preset === this.activePresetKey);
+        });
     }
 
     checkStageRed(imgData) {
@@ -1706,92 +1815,60 @@ class VroonPhotoApp {
         }, 40);
     }
 
-    // Presets (12 Lightroom & AI Presets)
+    // Presets (12 Lightroom & AI Presets + Proportionele Verhouding/Intensiteit 0% - 200%)
     applyBWPreset(preset) {
-        const photo = this.getActivePhoto();
-        if (!photo) return;
-        photo.state.bwEnabled = true;
-        document.getElementById('toggle-bw-mode').checked = true;
-        document.getElementById('bw-mixer-panel')?.classList.remove('disabled');
-
-        const map = {
-            'knallend_contrast': { r: 45, g: 10, b: -25, c: 50, cl: 55, gr: 12 },
-            'ansel_adams':       { r: 35, g: 20, b: -15, c: 35, cl: 40, gr: 8 },
-            'film_noir':         { r: 50, g: -10, b: -35, c: 65, cl: 50, gr: 25 },
-            'dramatic_street':   { r: 30, g: 15, b: -10, c: 30, cl: 65, gr: 18 }
-        };
-        const p = map[preset] || map['knallend_contrast'];
-        photo.state.bwRed = p.r; photo.state.bwGreen = p.g; photo.state.bwBlue = p.b;
-        photo.state.bwContrast = p.c; photo.state.bwClarity = p.cl; photo.state.bwGrain = p.gr;
-        this.syncSliderUIFromPhoto(photo);
-        this.renderActivePhoto();
+        this.applyGlobalPreset(preset, 100);
     }
 
-    applyGlobalPreset(name) {
+    applyGlobalPreset(name, amount = 100) {
         const photo = this.getActivePhoto();
         if (!photo) return;
-        const d = this.getDefaultState();
+        const preset = PRESET_DEFINITIONS[name];
+        if (!preset) return;
 
-        if (name === 'golden_hour') {
-            photo.state.bwEnabled = false;
-            photo.state.exposure = 0.25; photo.state.contrast = 15;
-            photo.state.temp = 24; photo.state.tint = 6;
-            photo.state.vibrance = 28; photo.state.saturation = 12;
-            photo.state.smartDeblur = 15;
-        } else if (name === 'matte_film') {
-            photo.state.bwEnabled = false;
-            photo.state.exposure = 0.15; photo.state.contrast = -12;
-            photo.state.temp = -4; photo.state.tint = 8;
-            photo.state.vibrance = 14; photo.state.saturation = -8;
-            photo.state.bwGrain = 15;
-        } else if (name === 'hdr_arch') {
-            photo.state.bwEnabled = false;
-            photo.state.exposure = 0.1; photo.state.contrast = 30;
-            photo.state.temp = -5; photo.state.vibrance = 45; photo.state.saturation = 15;
-            photo.state.smartDeblur = 40; photo.state.denoiseLuma = 15;
-        } else if (name === 'soft_portrait') {
-            photo.state.bwEnabled = false;
-            photo.state.exposure = 0.25; photo.state.contrast = -6;
-            photo.state.temp = 8; photo.state.tint = 4;
-            photo.state.vibrance = 12; photo.state.saturation = 5;
-            photo.state.denoiseLuma = 25; photo.state.denoiseChroma = 35;
-            photo.state.skinProtection = 80; photo.state.deblurSkinProtect = 90;
-        } else if (name === 'teal_orange') {
-            photo.state.bwEnabled = false;
-            photo.state.exposure = 0.0; photo.state.contrast = 26;
-            photo.state.temp = 16; photo.state.tint = -12;
-            photo.state.vibrance = 50; photo.state.saturation = 14;
-            photo.state.smartDeblur = 20;
-        } else if (name === 'autumn_amber') {
-            photo.state.bwEnabled = false;
-            photo.state.exposure = 0.1; photo.state.contrast = 22;
-            photo.state.temp = 32; photo.state.tint = 14;
-            photo.state.vibrance = 38; photo.state.saturation = 20;
-        } else if (name === 'winter_cool') {
-            photo.state.bwEnabled = false;
-            photo.state.exposure = 0.2; photo.state.contrast = 16;
-            photo.state.temp = -38; photo.state.tint = -8;
-            photo.state.vibrance = -10; photo.state.saturation = -6;
-            photo.state.smartDeblur = 25;
-        } else if (name === 'smart_focus_deblur') {
-            photo.state.bwEnabled = false;
-            photo.state.smartDeblur = 80;
-            photo.state.deblurSkinProtect = 85;
-            photo.state.contrast = 15;
-            photo.state.vibrance = 15;
-        } else if (name === 'ansel_bw') {
-            this.applyBWPreset('ansel_adams');
-            return;
-        } else if (name === 'film_noir') {
-            this.applyBWPreset('film_noir');
-            return;
-        } else if (name === 'stage_fix') {
-            photo.state.bwEnabled = false;
-            photo.state.stageRedFix = 90; photo.state.colorBleedReduction = 75; photo.state.skinProtection = 65;
-            photo.state.exposure = 0.0; photo.state.contrast = 10;
-        } else if (name === 'denoise_high_iso') {
-            photo.state.bwEnabled = false;
-            photo.state.denoiseLuma = 75; photo.state.denoiseChroma = 85; photo.state.denoiseDetail = 50;
+        this.activePresetKey = name;
+        this.activePresetAmount = amount;
+        photo.activePreset = { key: name, amount: amount };
+
+        this.syncPresetUI();
+
+        const d = this.getDefaultState();
+        const factor = amount / 100.0;
+
+        const presetKeys = [
+            'exposure', 'contrast', 'highlights', 'shadows',
+            'temp', 'tint', 'vibrance', 'saturation',
+            'stageRedFix', 'colorBleedReduction', 'skinProtection', 'gamutCompress',
+            'smartDeblur', 'deblurSkinProtect',
+            'denoiseLuma', 'denoiseChroma', 'denoiseDetail',
+            'bwEnabled', 'bwRed', 'bwGreen', 'bwBlue', 'bwContrast', 'bwClarity', 'bwGrain'
+        ];
+
+        // Reset beïnvloede parameters naar schone neutrale basis
+        presetKeys.forEach(k => {
+            if (d[k] !== undefined) {
+                photo.state[k] = d[k];
+            }
+        });
+
+        // Pas preset recept proportioneel toe geschaald met factor
+        for (const [key, targetVal] of Object.entries(preset.params)) {
+            if (typeof targetVal === 'boolean') {
+                photo.state[key] = factor > 0.05 ? targetVal : (d[key] !== undefined ? d[key] : false);
+            } else {
+                const def = d[key] !== undefined ? d[key] : 0;
+                const diff = targetVal - def;
+                let scaled = def + diff * factor;
+
+                if (key === 'exposure') {
+                    scaled = Math.max(-5, Math.min(5, Math.round(scaled * 10) / 10));
+                } else if (['contrast', 'temp', 'tint', 'vibrance', 'saturation', 'bwRed', 'bwGreen', 'bwBlue'].includes(key)) {
+                    scaled = Math.max(-100, Math.min(100, Math.round(scaled)));
+                } else {
+                    scaled = Math.max(0, Math.min(100, Math.round(scaled)));
+                }
+                photo.state[key] = scaled;
+            }
         }
 
         this.syncSliderUIFromPhoto(photo);
@@ -1807,6 +1884,14 @@ class VroonPhotoApp {
         if (s === 'denoise') ['denoiseLuma', 'denoiseChroma', 'denoiseDetail'].forEach(k => photo.state[k] = d[k]);
         if (s === 'tone') ['exposure', 'contrast', 'highlights', 'shadows', 'temp', 'tint', 'vibrance', 'saturation'].forEach(k => photo.state[k] = d[k]);
         this.syncSliderUIFromPhoto(photo);
+        if (photo.activePreset) {
+            this.activePresetKey = photo.activePreset.key;
+            this.activePresetAmount = photo.activePreset.amount ?? 100;
+        } else {
+            this.activePresetKey = null;
+            this.activePresetAmount = 100;
+        }
+        this.syncPresetUI();
         this.renderActivePhoto();
     }
 

@@ -18,7 +18,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.5.1</strong> beschikbaar &bull; <span id="upd-note">Podium LED interferentiestrepen automatisch verwijderen bij import &amp; zelf instelbare standaard import-preset</span></span>
+      <span><strong id="upd-ver">v1.5.2</strong> beschikbaar &bull; <span id="upd-note">Lightroom &amp; AI Presets verhouding schuifregelaar (0% - 200%) &amp; automatische LED bandherstel</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -37,7 +37,7 @@
         <span id="photo-counter-badge" class="badge-count">1 / 1 Foto's</span>
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)" title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.5.1</span> 🔄
+          <span id="ver-txt">v1.5.2</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -106,6 +106,21 @@
 
       <div class="sidebar-section">
         <div class="sidebar-title">Lightroom &amp; AI Presets (12)</div>
+
+        <!-- PRESET SCHUIFREGELAAR VOOR VERHOUDING / INTENSITEIT -->
+        <div id="preset-amount-container" class="preset-amount-panel">
+          <div class="control-label-group" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-main);">Verhouding: <strong id="active-preset-name" style="color: var(--accent-cyan); margin-left: 2px;">Geen preset actief</strong></span>
+            <span id="slider-preset-amount-val" style="color: var(--accent-cyan); font-weight: 700; font-size: 12px;">100%</span>
+          </div>
+          <input type="range" id="slider-preset-amount" min="0" max="200" value="100" class="param-slider" title="Pas de verhouding en intensiteit van de gekozen preset aan (0% = origineel, 100% = standaard, 200% = extra krachtig)">
+          <div style="display: flex; justify-content: space-between; font-size: 9.5px; color: var(--text-dim); margin-top: 2px;">
+            <span>0% (Origineel)</span>
+            <span>100% (Normaal)</span>
+            <span>200% (Extra Sterk)</span>
+          </div>
+        </div>
+
         <div class="preset-grid">
           <div class="preset-card" data-preset="golden_hour" title="Warme gouden uurtint met zachte schaduwen">
             <span>🌅</span>
