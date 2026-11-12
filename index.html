@@ -22,7 +22,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.7.3</strong> beschikbaar &bull; <span id="upd-note">Kies zelf uw doelmap in Exportcentrum (Directe Finder mapkeuze / Losse bestanden / Géén verplichte ZIP)</span></span>
+      <span><strong id="upd-ver">v1.7.4</strong> beschikbaar &bull; <span id="upd-note">Volledige functie-audit, horizontaal spiegelen &amp; stabiliteitsharding</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -43,7 +43,7 @@
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)"
           title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.7.3</span> 🔄
+          <span id="ver-txt">v1.7.4</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -96,6 +96,7 @@
       <button id="btn-next-photo" class="btn-icon" title="Volgende foto (▶)">▶</button>
       <button id="btn-rotate-left" class="btn-icon" title="90° Links draaien">↺</button>
       <button id="btn-rotate-right" class="btn-icon" title="90° Rechts draaien">↻</button>
+      <button id="btn-flip-h" class="btn-icon" title="Horizontaal spiegelen (Flip)">⇄</button>
       <button id="btn-delete-active-photo" class="btn-icon btn-danger-icon"
         title="Verwijder huidige foto uit sessie (Del / Backspace)">🗑️</button>
       <button id="btn-open-export" class="btn-secondary" title="Sla foto direct op via Finder / Verkenner op uw computer of schijf">
@@ -228,7 +229,7 @@
             </div>
             <div class="control-label-group">
               <span>Penseelgrootte</span>
-              <span id="brush-size-val">35px</span>
+              <span id="inpaint-brush-size-val">35px</span>
             </div>
             <input type="range" id="inpaint-brush-size" min="5" max="120" value="35" class="param-slider">
             <div style="display: flex; gap: 8px; margin-top: 6px;">
@@ -1038,7 +1039,7 @@
       <div class="modal-header">
         <span style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 19px;">💡</span>
-          <strong>Handleiding &amp; Mogelijkheden van &lt;vroonphoto&gt; (<span id="help-modal-ver">v1.7.2</span>)</strong>
+          <strong>Handleiding &amp; Mogelijkheden van &lt;vroonphoto&gt; (<span id="help-modal-ver">v1.7.4</span>)</strong>
         </span>
         <button id="btn-close-help-modal" class="btn-icon">✕</button>
       </div>

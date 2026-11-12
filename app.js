@@ -1033,14 +1033,17 @@ class VroonPhotoApp {
         // Penseelgrootte slider binding & update
         const brushSlider = document.getElementById('inpaint-brush-size');
         const brushSpan = document.getElementById('brush-size-val');
+        const brushSpanNew = document.getElementById('inpaint-brush-size-val');
         brushSlider?.addEventListener('input', (e) => {
             if (brushSpan) brushSpan.textContent = `${e.target.value}px`;
+            if (brushSpanNew) brushSpanNew.textContent = `${e.target.value}px`;
         });
 
-        // Reset secties
-        document.querySelectorAll('.btn-reset-section').forEach(btn => {
+        // Reset secties (uitsluitend knoppen met data-section attribuut)
+        document.querySelectorAll('.btn-reset-section[data-section]').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                this.resetSection(e.target.dataset.section);
+                const sec = e.currentTarget.dataset.section;
+                if (sec) this.resetSection(sec);
             });
         });
 
@@ -3270,6 +3273,7 @@ class VroonPhotoApp {
     }
 
     resetSection(s) {
+        if (!s) return;
         const photo = this.getActivePhoto();
         if (!photo) return;
         const d = this.getDefaultState();
@@ -3309,6 +3313,28 @@ class VroonPhotoApp {
                 for (let c = 0; c < 4; c++) dst.data[dI + c] = s.data[sI + c];
             }
         }
+        if (photo.inpaintMask && photo.inpaintMask.length === s.width * s.height) {
+            const newMask = new Uint8Array(s.width * s.height);
+            for (let y = 0; y < s.height; y++) {
+                for (let x = 0; x < s.width; x++) {
+                    const dx = deg === 90 ? s.height - 1 - y : y;
+                    const dy = deg === 90 ? x : s.width - 1 - x;
+                    newMask[dy * dst.width + dx] = photo.inpaintMask[y * s.width + x];
+                }
+            }
+            photo.inpaintMask = newMask;
+        }
+        if (photo.localMask && photo.localMask.length === s.width * s.height) {
+            const newLocalMask = new Uint8Array(s.width * s.height);
+            for (let y = 0; y < s.height; y++) {
+                for (let x = 0; x < s.width; x++) {
+                    const dx = deg === 90 ? s.height - 1 - y : y;
+                    const dy = deg === 90 ? x : s.width - 1 - x;
+                    newLocalMask[dy * dst.width + dx] = photo.localMask[y * s.width + x];
+                }
+            }
+            photo.localMask = newLocalMask;
+        }
         photo.originalImageData = dst;
         this.setActivePhoto(this.activePhotoIndex);
     }
@@ -3323,6 +3349,24 @@ class VroonPhotoApp {
                 const dI = (y * s.width + (s.width - 1 - x)) * 4;
                 for (let c = 0; c < 4; c++) dst.data[dI + c] = s.data[sI + c];
             }
+        }
+        if (photo.inpaintMask && photo.inpaintMask.length === s.width * s.height) {
+            const newMask = new Uint8Array(s.width * s.height);
+            for (let y = 0; y < s.height; y++) {
+                for (let x = 0; x < s.width; x++) {
+                    newMask[y * s.width + (s.width - 1 - x)] = photo.inpaintMask[y * s.width + x];
+                }
+            }
+            photo.inpaintMask = newMask;
+        }
+        if (photo.localMask && photo.localMask.length === s.width * s.height) {
+            const newLocalMask = new Uint8Array(s.width * s.height);
+            for (let y = 0; y < s.height; y++) {
+                for (let x = 0; x < s.width; x++) {
+                    newLocalMask[y * s.width + (s.width - 1 - x)] = photo.localMask[y * s.width + x];
+                }
+            }
+            photo.localMask = newLocalMask;
         }
         photo.originalImageData = dst;
         this.setActivePhoto(this.activePhotoIndex);
