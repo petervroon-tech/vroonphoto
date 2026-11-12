@@ -240,6 +240,7 @@ def update_version_file(version_path: str, forced_ver: str = None, forced_sha: s
         "git_hash": forced_sha or get_git_hash(),
         "features": [
             f"🚀 Versie v{new_version}: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+            "🌌 Preset Blauwe Uur (v1.5.8): Authentieke schemering/twilight preset met diepe indigo- en kobaltblauwe lucht, magentatoets, sfeervol contrast, ruisonderdrukking voor nacht/low-light, subtiel vignet en traploze schuifregelaar.",
             "🎞️ Vignettering naar Zowel Donker als Licht (v1.5.7): Volledige creatieve vignettering met traploze schuifregelaar van donker/diep zwart (-100) tot helder/high-key wit (+100). Inclusief fijnafstelling voor Middelpunt (reikwijdte) en Zachtheid (feather), snelle stijlknoppen en razendsnelle hardware-versnelde WebAssembly verwerking.",
             "📱 Flexibele Responsieve Bovenbalk (v1.5.6): Alle navigatieknoppen, gereedschappen, voorbeelden en exportknoppen blijven altijd 100% zichtbaar. Bij het verkleinen van het venster of op kleinere schermen/tablets vouwen de knoppen automatisch en ordelijk onder elkaar (flex-wrap) zonder overlap of afsnijden.",
             "⚡ 1-Klik Zwart-Wit Conversie & Pro B&W Tools (v1.5.5): Zet met 1 klik direct elke kleurenfoto om naar zwart-wit via de knoppenbalk of het rechterpaneel. Inclusief alle professionele tools om direct bij te stellen: Zone Contrast, Clarity Punch, Analoge Filmkorrel, Rood/Groen/Blauw Kleurfilter Mixer en 4 klassieke stijlen (Ansel Adams, Hoog Contrast, Film Noir, Straatfoto).",
@@ -253,7 +254,7 @@ def update_version_file(version_path: str, forced_ver: str = None, forced_sha: s
             "✏️ Muis, Hand & Pen (Apple Pencil) Ondersteuning: Bewerk foto's met muis, vinger/touch of drukgevoelige pen/stylus op iPads en touch laptops. Inclusief pinch-to-zoom (2 vingers), vloeiende penseellijnen zonder onderbrekingen, drukgevoeligheid en palm-rejection.",
             "🔍 Slimme Focus & Onscherpte Herstel met Gezichtsbehoud: Herstelt onscherpe en bewogen foto's naar haarscherpe foto's zonder menselijke gezichten te vervormen of onnatuurlijke rimpels/artefacten te veroorzaken.",
             "🪄 Objecten & Personen Verwijderen: Schilder over in de weg staande objecten (prullenbakken, lantaarnpalen, kabels, voorbijgangers) om ze direct en naadloos te wissen via contextuele achtergrondsynthese.",
-            "🎨 12 Populaire Lightroom Presets: Gouden Uur, Vintage Matte Film, Architectuur HDR, Zacht Portret, Moody Teal & Orange, Herfst Amber, Winter Koud, Ansel Adams B&W en Stage Red Fix.",
+            "🎨 13 Populaire Lightroom Presets: Gouden Uur, Blauwe Uur, Vintage Matte Film, Architectuur HDR, Zacht Portret, Moody Teal & Orange, Herfst Amber, Winter Koud, Ansel Adams B&W en Stage Red Fix.",
             "🖼️ Volledige JPG & RAW Ondersteuning: Bewerk en exporteer JPG-foto's net zo snel en krachtig als RAW en DNG, met uniforme knoppenbalk.",
             "🎞️ 25-Foto Batch Beheer & Filmstrip: Bewerk tot 25 foto's tegelijkertijd met onafhankelijke bewerkingsstaten per foto, filmstrip onderaan en rasteroverzicht.",
             "📁 Zelf Opslaglocatie Kiezen op Apparaat: Kies zelf elke gewenste map via de native Directory Picker op Mac/Windows/laptops of via 'Bewaar in Bestanden' op iPad."

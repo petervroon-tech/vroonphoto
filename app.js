@@ -643,6 +643,10 @@ const PRESET_DEFINITIONS = {
         name: '🌅 Gouden Uur',
         params: { bwEnabled: false, exposure: 0.25, contrast: 15, temp: 24, tint: 6, vibrance: 28, saturation: 12, smartDeblur: 15 }
     },
+    'blue_hour': {
+        name: '🌌 Blauwe Uur',
+        params: { bwEnabled: false, exposure: 0.1, contrast: 20, temp: -42, tint: 14, vibrance: 42, saturation: 12, smartDeblur: 20, denoiseLuma: 15, denoiseChroma: 20, vignetteAmount: -22 }
+    },
     'matte_film': {
         name: '🌲 Matte Film',
         params: { bwEnabled: false, exposure: 0.15, contrast: -12, temp: -4, tint: 8, vibrance: 14, saturation: -8, bwGrain: 15, vignetteAmount: -15 }
