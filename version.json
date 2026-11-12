@@ -1,0 +1,15 @@
+{
+  "name": "vroonphoto",
+  "version": "1.0.0",
+  "buildTime": "2026-11-12T10:55:00Z",
+  "features": [
+    "WASM Hardware-Accelerated Image Kernel",
+    "Stage Red Light & Bleed Recovery",
+    "Dual Bilateral & Chroma Noise Reduction",
+    "Knallend Zwart-Wit Engine with Zone Contrast & Film Grain",
+    "Topaz AI 2x/4x Super-Resolution Upscaling",
+    "Adobe Firefly Style Inpainting & Spot Healing",
+    "Full RAW, DNG, CR2, NEF, ARW, TIFF Support",
+    "Automatic New Version Detection & PWA Support"
+  ]
+}

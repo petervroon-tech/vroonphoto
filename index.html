@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="vroonphoto - Professionele WebAssembly RAW & Fotobewerker met Rood Licht Herstel, Ruisonderdrukking, Knallend Zwart-Wit en Topaz Super-Resolution">
+    <title>vroonphoto — WASM Fotobewerker</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📸</text></svg>">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="stylesheet" href="src/css/styles.css">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="app-brand">
+                <span style="font-size: 20px;">📸</span>
+                <span class="app-title">&lt;vroonphoto&gt;</span>
+                <span class="badge badge-wasm">WASM Core</span>
+                <span id="app-version-badge" class="badge badge-version" title="Klik om te controleren op updates">v1.0.0</span>
+            </div>
+
+            <label class="btn-primary" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                <span>📂 Foto Openen</span>
+                <input type="file" id="file-upload-input" accept="image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;">
+            </label>
+
+            <select id="sample-photos-select" class="form-select" title="Voorbeeldfoto's laden">
+                <option value="concert_red">🔴 Voorbeeld: Podium Rood Licht & Doorloop</option>
+                <option value="noisy_night">🌌 Voorbeeld: Hoge ISO Ruisopname</option>
+                <option value="landscape">🏔️ Voorbeeld: Berglandschap (Zwart-Wit Test)</option>
+            </select>
+        </div>
+
+        <div class="header-center">
+            <button id="btn-undo" class="btn-icon" title="Ongedaan maken (Ctrl+Z)">↩️</button>
+            <button id="btn-redo" class="btn-icon" title="Opnieuw uitvoeren (Ctrl+Y)">↪️</button>
+            <button id="btn-compare-toggle" class="btn-secondary" title="Voor / Na vergelijken (Toets: \)">
+                <span>Voor / Na (\)</span>
+            </button>
+        </div>
+
+        <div class="header-right">
+            <button id="btn-rotate-left" class="btn-icon" title="90° Links draaien">↺</button>
+            <button id="btn-rotate-right" class="btn-icon" title="90° Rechts draaien">↻</button>
+            <button id="btn-flip-h" class="btn-icon" title="Horizontaal spiegelen">⇆</button>
+            <button id="btn-open-export" class="btn-primary">💾 Exporteren</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="app-workspace">
+        
+        <!-- Left Sidebar: Tools & Presets -->
+        <aside class="sidebar-left">
+            <div class="sidebar-section">
+                <div class="sidebar-title">Gereedschappen</div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button id="tool-inpaint" class="btn-secondary" style="width: 100%; text-align: left;">
+                        🪄 Firefly Vlekken Herstel
+                    </button>
+                    <div id="inpaint-controls" style="display: flex; flex-direction: column; gap: 6px; padding: 6px; background: #0c1322; border-radius: 4px;">
+                        <div class="control-label-group">
+                            <span>Penseelgrootte</span>
+                            <span id="brush-size-val">25px</span>
+                        </div>
+                        <input type="range" id="inpaint-brush-size" min="5" max="80" value="25" class="param-slider">
+                        <div style="display: flex; gap: 6px; margin-top: 4px;">
+                            <button id="btn-apply-heal" class="btn-primary-small" style="flex: 1;">Vlekken Wissen</button>
+                            <button id="btn-clear-heal" class="btn-secondary" style="font-size: 11px;">Wis Masker</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Snelle Presets</div>
+                <div class="preset-grid">
+                    <div class="preset-card" data-preset="stage_fix">
+                        <span>🔴</span>
+                        <span>Stage Red Light Herstel</span>
+                    </div>
+                    <div class="preset-card" data-preset="punchy_bw">
+                        <span>⚡</span>
+                        <span>Knallend Zwart-Wit</span>
+                    </div>
+                    <div class="preset-card" data-preset="crisp_landscape">
+                        <span>🏔️</span>
+                        <span>Crisp Landschap</span>
+                    </div>
+                    <div class="preset-card" data-preset="portrait_clean">
+                        <span>👤</span>
+                        <span>Helder Portret</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section" style="margin-top: auto;">
+                <div class="sidebar-title">Foto Eigenschappen</div>
+                <div id="photo-info-display" style="font-size: 11px; color: var(--text-secondary); line-height: 1.5;">
+                    Geen foto geopend
+                </div>
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px;">
+                    Ondersteunt: RAW, DNG, CR2, NEF, ARW, RW2, RAF, TIFF, JPG, PNG, WebP
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Canvas Viewport -->
+        <section class="viewport-container" id="viewport-dropzone">
+            <!-- Stage Red Bleed Detection Pill -->
+            <div id="stage-red-detected-alert" class="stage-red-alert hidden"></div>
+
+            <div class="canvas-wrapper">
+                <canvas id="main-canvas"></canvas>
+            </div>
+
+            <!-- Loading Spinner Overlay -->
+            <div id="loading-overlay" class="loading-overlay hidden">
+                <div class="spinner"></div>
+                <div id="loading-text" style="font-size: 13px; font-weight: 600; color: #e2e8f0;">Foto wordt verwerkt met WASM...</div>
+            </div>
+        </section>
+
+        <!-- Right Sidebar: Lightroom Tuning Controls -->
+        <aside class="sidebar-right">
+            
+            <!-- Histogram -->
+            <div class="histogram-container">
+                <div class="sidebar-title" style="margin-bottom: 6px;">
+                    <span>Histogram (RGB + Luma)</span>
+                    <span style="font-size: 9px; color: #64748b;">Live WASM</span>
+                </div>
+                <canvas id="histogram-canvas" width="312" height="90"></canvas>
+            </div>
+
+            <!-- SECTION 1: ROOD LICHT & KLEURDOORLOOP HERSTEL -->
+            <div class="accordion-panel">
+                <div class="panel-header highlight-red">
+                    <span>🔴 Rood Licht &amp; Kleurdoorloop Herstel</span>
+                    <button class="btn-reset-section" data-section="stage_red">Reset</button>
+                </div>
+                <div class="panel-content">
+                    <p style="font-size: 11px; color: #94a3b8; line-height: 1.4;">
+                        Herstelt overbelicht rood podiumlicht, LED-clipping en kleurbloedingen. Brengt verloren gelaatstrekken en details terug.
+                    </p>
+
+                    <div class="control-row">
+                        <div class="control-label-group">
+                            <span>Rood Licht Herstel (Stage Fix)</span>
+                            <span id="slider-stage-red-val">0</span>
+                        </div>
+                        <div class="control-input-group">
+                            <input type="range" id="slider-stage-red" data-param="stageRedFix" min="0" max="100" value="0" class="param-slider">
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-label-group">
+                            <span>Bleed &amp; Doorloop Reductie</span>
+                            <span id="slider-bleed-red-val">0</span>
+                        </div>
+                        <div class="control-input-group">
+                            <input type="range" id="slider-bleed-red" data-param="colorBleedReduction" min="0" max="100" value="0" class="param-slider">
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-label-group">
+                            <span>Huidskleur &amp; Detail Behoud</span>
+                            <span id="slider-skin-protect-val">50</span>
+                        </div>
+                        <div class="control-input-group">
+                            <input type="range" id="slider-skin-protect" data-param="skinProtection" min="0" max="100" value="50" class="param-slider">
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-label-group">
+                            <span>Extreme Kleuren Gamut Compressie</span>
+                            <span id="slider-gamut-val">50</span>
+                        </div>
+                        <div class="control-input-group">
+                            <input type="range" id="slider-gamut" data-param="gamutCompress" min="0" max="100" value="50" class="param-slider">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: KNALLEND ZWART-WIT ENGINE -->
+            <div class="accordion-panel">
+                <div class="panel-header highlight-bw">
+                    <span>⚡ Knallend Zwart-Wit Engine</span>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: normal;">
+                        <input type="checkbox" id="toggle-bw-mode">
+                        <span>Aan</span>
+                    </label>
+                </div>
+                <div id="bw-mixer-panel" class="panel-content disabled">
+                    <div class="bw-preset-grid">
+                        <button class="bw-preset-btn" data-preset="knallend_contrast">⚡ Knallend Contrast</button>
+                        <button class="bw-preset-btn" data-preset="ansel_adams">🏞️ Ansel Adams</button>
+                        <button class="bw-preset-btn" data-preset="film_noir">🎬 Film Noir</button>
+                        <button class="bw-preset-btn" data-preset="dramatic_street">📷 Straatfoto</button>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-label-group">
+                            <span>Zone Contrast (Diep Zwart)</span>
+                            <span id="slider-bw-contrast-val">35</span>
+                        </div>
+                        <div class="control-input-group">
+                            <input type="range" id="slider-bw-contrast" data-param="bwContrast" min="0" max="100" value="35" class="param-slider">
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-label-group">
+                            <span>Micro-Contrast Punch (Clarity)</span>
+                            <span id="slider-bw-clarity-val">45</span>
+                        </div>
+                        <div class="control-input-group">
+                            <input type="range" id="slider-bw-clarity" data-param="bwClarity" min="0" max="100" value="45" class="param-slider">
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-label-group">
+                            <span>Analoge Filmkorrel (Grain)</span>
+                            <span id="slider-bw-grain-val">10</span>
+                        </div>
+                        <div class="control-input-group">
+                            <input type="range" id="slider-bw-grain" data-param="bwGrain" min="0" max="100" value="10" class="param-slider">
+                        </div>
+                    </div>
+
+                    <div class="sidebar-title" style="margin-top: 6px;">Kleurfilter Mixer</div>
+                    <div class="control-row">
+                        <div class="control-label-group"><span>Rood Filter</span><span id="slider-bw-red-val">40</span></div>
+                        <input type="range" id="slider-bw-red" data-param="bwRed" min="-100" max="100" value="40" class="param-slider">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label-group"><span>Groen Filter</span><span id="slider-bw-green-val">10</span></div>
+                        <input type="range" id="slider-bw-green" data-param="bwGreen" min="-100" max="100" value="10" class="param-slider">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label-group"><span>Blauw Filter</span><span id="slider-bw-blue-val">-10</span></div>
+                        <input type="range" id="slider-bw-blue" data-param="bwBlue" min="-100" max="100" value="-10" class="param-slider">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: GEAVANCEERDE RUISONDERDRUKKING -->
+            <div class="accordion-panel">
+                <div class="panel-header highlight-denoise">
+                    <span>🛡️ Geavanceerde Ruisonderdrukking</span>
+                    <button class="btn-reset-section" data-section="denoise">Reset</button>
+                </div>
+                <div class="panel-content">
+                    <p style="font-size: 11px; color: #94a3b8; line-height: 1.4;">
+                        Hardware-versnelde bilaterale filter voor luminantieruis en YCbCr guided filter voor kleurruis-spikkels.
+                    </p>
+
+                    <div class="control-row">
+                        <div class="control-label-group">
+                            <span>Luminantie Ruisonderdrukking</span>
+                            <span id="slider-denoise-luma-val">0</span>
+                        </div>
+                        <div class="control-input-group">
+                            <input type="range" id="slider-denoise-luma" data-param="denoiseLuma" min="0" max="100" value="0" class="param-slider">
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-label-group">
+                            <span>Kleurruis / Chroma Onderdrukking</span>
+                            <span id="slider-denoise-chroma-val">0</span>
+                        </div>
+                        <div class="control-input-group">
+                            <input type="range" id="slider-denoise-chroma" data-param="denoiseChroma" min="0" max="100" value="0" class="param-slider">
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-label-group">
+                            <span>Detail Behoud</span>
+                            <span id="slider-denoise-detail-val">50</span>
+                        </div>
+                        <div class="control-input-group">
+                            <input type="range" id="slider-denoise-detail" data-param="denoiseDetail" min="0" max="100" value="50" class="param-slider">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: TOPAZ AI SUPER-RESOLUTION UPSCALE -->
+            <div class="accordion-panel">
+                <div class="panel-header highlight-superres">
+                    <span>🚀 Topaz Super-Resolution (Vergroten)</span>
+                </div>
+                <div class="panel-content">
+                    <p style="font-size: 11px; color: #94a3b8; line-height: 1.4;">
+                        Vergroot foto's 2x of 4x met AI edge-directed interpolatie en unsharp textuurherstel zonder kartels of pixelatie.
+                    </p>
+
+                    <div class="control-row">
+                        <div class="control-label-group">
+                            <span>Scherpte &amp; Textuurbehoud</span>
+                            <span id="upscale-sharpness-val">50%</span>
+                        </div>
+                        <input type="range" id="upscale-sharpness" min="0" max="100" value="50" class="param-slider">
+                    </div>
+
+                    <div style="display: flex; gap: 8px; margin-top: 6px;">
+                        <button id="btn-upscale-2x" class="btn-primary" style="flex: 1;">🔍 2x Vergroten</button>
+                        <button id="btn-upscale-4x" class="btn-secondary" style="flex: 1;">🔎 4x Vergroten</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 5: LIGHTROOM BASICS (BELICHTING & KLEUR) -->
+            <div class="accordion-panel">
+                <div class="panel-header">
+                    <span>☀️ Belichting &amp; Tint (Lightroom Basics)</span>
+                    <button class="btn-reset-section" data-section="tone">Reset</button>
+                </div>
+                <div class="panel-content">
+                    <div class="control-row">
+                        <div class="control-label-group"><span>Belichting (EV)</span><span id="slider-exp-val">0.0</span></div>
+                        <input type="range" id="slider-exp" data-param="exposure" min="-5" max="5" step="0.1" value="0" class="param-slider">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label-group"><span>Contrast</span><span id="slider-cont-val">0</span></div>
+                        <input type="range" id="slider-cont" data-param="contrast" min="-100" max="100" value="0" class="param-slider">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label-group"><span>Hooglichten</span><span id="slider-hi-val">0</span></div>
+                        <input type="range" id="slider-hi" data-param="highlights" min="-100" max="100" value="0" class="param-slider">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label-group"><span>Schaduwen</span><span id="slider-sh-val">0</span></div>
+                        <input type="range" id="slider-sh" data-param="shadows" min="-100" max="100" value="0" class="param-slider">
+                    </div>
+
+                    <div class="sidebar-title" style="margin-top: 6px;">Kleurtemperatuur &amp; Verzadiging</div>
+                    <div class="control-row">
+                        <div class="control-label-group"><span>Temperatuur (Koud/Warm)</span><span id="slider-temp-val">0</span></div>
+                        <input type="range" id="slider-temp" data-param="temp" min="-100" max="100" value="0" class="param-slider">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label-group"><span>Kleurtoon / Tint (Groen/Magenta)</span><span id="slider-tint-val">0</span></div>
+                        <input type="range" id="slider-tint" data-param="tint" min="-100" max="100" value="0" class="param-slider">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label-group"><span>Levendigheid (Vibrance)</span><span id="slider-vib-val">0</span></div>
+                        <input type="range" id="slider-vib" data-param="vibrance" min="-100" max="100" value="0" class="param-slider">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label-group"><span>Verzadiging (Saturation)</span><span id="slider-sat-val">0</span></div>
+                        <input type="range" id="slider-sat" data-param="saturation" min="-100" max="100" value="0" class="param-slider">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 6: TONE CURVE -->
+            <div class="accordion-panel">
+                <div class="panel-header">
+                    <span>📈 Tonen &amp; Curves</span>
+                </div>
+                <div class="panel-content">
+                    <canvas id="curve-canvas" width="312" height="180"></canvas>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button id="btn-reset-curve" class="btn-secondary" style="font-size: 11px;">Curve Resetten</button>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+    </main>
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span>Foto Exporteren</span>
+                <button id="btn-close-export" class="btn-icon">✕</button>
+            </div>
+            <div class="modal-body">
+                <label>
+                    <div style="margin-bottom: 4px; font-weight: 600;">Bestandsformaat:</div>
+                    <select id="export-format" class="form-select" style="width: 100%;">
+                        <option value="image/jpeg">JPEG (.jpg) - Optimaal voor web &amp; print</option>
+                        <option value="image/png">PNG (.png) - Zonder kwaliteitsverlies (Lossless)</option>
+                        <option value="image/webp">WebP (.webp) - Modern ultra-compact</option>
+                    </select>
+                </label>
+
+                <label>
+                    <div style="margin-bottom: 4px; font-weight: 600;">Kwaliteit:</div>
+                    <select id="export-quality" class="form-select" style="width: 100%;">
+                        <option value="0.95">95% - Maximale Professionele Kwaliteit</option>
+                        <option value="0.85">85% - Hoge Kwaliteit (Aanbevolen)</option>
+                        <option value="0.75">75% - Compact</option>
+                    </select>
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-confirm-export" class="btn-primary">Downloaden</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="src/js/wasm_engine.js"></script>
+    <script src="src/js/raw_decoder.js"></script>
+    <script src="src/js/color_bleed_fix.js"></script>
+    <script src="src/js/denoise.js"></script>
+    <script src="src/js/punchy_bw.js"></script>
+    <script src="src/js/super_resolution.js"></script>
+    <script src="src/js/inpaint.js"></script>
+    <script src="src/js/tone_curve.js"></script>
+    <script src="src/js/histogram.js"></script>
+    <script src="src/js/version_checker.js"></script>
+    <script src="src/js/app.js"></script>
+</body>
+</html>
