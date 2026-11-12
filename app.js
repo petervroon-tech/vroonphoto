@@ -744,6 +744,12 @@ class VroonPhotoApp {
         this.lastPenTime = 0;
         this.lastTapTime = 0;
 
+        // Sessie directory handles voor directe 1-klik submap opslag & aangepaste opslaglocatie
+        this.activeSessionName = 'Fotosessie';
+        this.parentDestDirHandle = null;
+        this.sessionDirHandle = null;
+        this.sessionTargetLocationName = '';
+
         // Aangepast Automatisch Import Profiel (bv. ruisonderdrukking, rood licht, banding reductie)
         this.customImportPreset = this.loadCustomImportPreset();
     }
@@ -1072,6 +1078,8 @@ class VroonPhotoApp {
         document.getElementById('btn-close-sd-modal')?.addEventListener('click', () => document.getElementById('sd-import-modal')?.classList.add('hidden'));
         document.getElementById('btn-cancel-sd-import')?.addEventListener('click', () => document.getElementById('sd-import-modal')?.classList.add('hidden'));
         document.getElementById('btn-confirm-sd-picker')?.addEventListener('click', () => this.confirmSDImport());
+        document.getElementById('btn-pick-custom-target-dir')?.addEventListener('click', () => this.pickTargetDestinationDir());
+        document.getElementById('sd-session-name-input')?.addEventListener('input', () => this.updateTargetLocationDisplay());
         document.getElementById('sd-directory-fallback')?.addEventListener('change', (e) => {
             if (e.target.files && e.target.files.length > 0) this.loadMultipleFiles(e.target.files);
             e.target.value = '';
@@ -1096,6 +1104,9 @@ class VroonPhotoApp {
         });
         document.getElementById('btn-cull-keep-selection')?.addEventListener('click', () => {
             this.cullKeepSelection();
+        });
+        document.getElementById('btn-cull-direct-save')?.addEventListener('click', () => {
+            this.saveSelectionDirectly();
         });
         document.getElementById('btn-cull-export-subfolder')?.addEventListener('click', () => {
             this.openExportModalWithScope('selected');
@@ -1582,8 +1593,43 @@ class VroonPhotoApp {
             const now = new Date();
             const pad = (n) => String(n).padStart(2, '0');
             const defaultName = `Fotosessie_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
-            if (input) input.value = defaultName;
+            if (input && !input.value) input.value = defaultName;
+            this.updateTargetLocationDisplay();
             modal.classList.remove('hidden');
+        }
+    }
+
+    async pickTargetDestinationDir() {
+        if (!('showDirectoryPicker' in window)) {
+            alert("Uw browser ondersteunt geen directe lokale mapkeuze via File System Access API. Bij het opslaan kunt u exporteren via de standaard download optie.");
+            return;
+        }
+        try {
+            const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            if (handle) {
+                this.parentDestDirHandle = handle;
+                this.sessionTargetLocationName = handle.name;
+                this.updateTargetLocationDisplay();
+            }
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                console.warn("Fout bij kiezen doelmap:", err);
+            }
+        }
+    }
+
+    updateTargetLocationDisplay() {
+        const txt = document.getElementById('sd-target-location-txt');
+        const input = document.getElementById('sd-session-name-input');
+        const sessName = (input ? input.value.trim() : '') || 'Fotosessie';
+        if (txt) {
+            if (this.parentDestDirHandle) {
+                txt.textContent = `📁 ${this.parentDestDirHandle.name} / ${sessName}`;
+                txt.style.color = '#34d399';
+            } else {
+                txt.textContent = `(Nog niet gekozen — klik op 'Kies Locatie')`;
+                txt.style.color = '#94a3b8';
+            }
         }
     }
 
@@ -1592,6 +1638,16 @@ class VroonPhotoApp {
         const sessionName = input ? (input.value.trim() || 'Sessie_SD') : 'Sessie_SD';
         this.activeSessionName = sessionName;
 
+        // Als er een aangepaste doelmap/locatie op schijf is gekozen, maak direct de sessiemap daarin aan
+        if (this.parentDestDirHandle) {
+            try {
+                this.sessionDirHandle = await this.parentDestDirHandle.getDirectoryHandle(sessionName, { create: true });
+                console.log(`✅ Sessiemap '${sessionName}' aangemaakt in gekozen opslaglocatie.`);
+            } catch (err) {
+                console.warn("Kon sessiemap niet direct aanmaken in parent:", err);
+            }
+        }
+
         document.getElementById('sd-import-modal')?.classList.add('hidden');
 
         // Probeert Native showDirectoryPicker (Chrome / Edge / Opera / moderne browsers)
@@ -1599,7 +1655,7 @@ class VroonPhotoApp {
             try {
                 document.getElementById('loading-overlay')?.classList.remove('hidden');
                 const loadingText = document.getElementById('loading-text');
-                if (loadingText) loadingText.textContent = `SD-Kaart map selecteren voor sessie '${sessionName}'...`;
+                if (loadingText) loadingText.textContent = `Selecteer bronmap op SD-kaart / externe schijf...`;
 
                 const dirHandle = await window.showDirectoryPicker();
                 if (loadingText) loadingText.textContent = `Bezig met scannen van foto's op SD-kaart/schijf...`;
@@ -1645,6 +1701,113 @@ class VroonPhotoApp {
         // Fallback voor Safari/Firefox/iPad via webkitdirectory input
         const fallback = document.getElementById('sd-directory-fallback');
         if (fallback) fallback.click();
+    }
+
+    async saveSelectionDirectly() {
+        if (this.photos.length === 0) {
+            alert("Er zijn geen foto's geladen in de sessie.");
+            return;
+        }
+
+        const subNameInput = document.getElementById('cull-subfolder-name');
+        const subfolderName = (subNameInput ? subNameInput.value.trim() : '') || 'Selectie';
+
+        const filterVal = document.getElementById('filmstrip-filter-select')?.value || 'all';
+        let photosToSave = [];
+
+        if (filterVal !== 'all') {
+            photosToSave = this.getFilteredPhotos().map(it => it.photo);
+        } else {
+            photosToSave = this.photos.filter(p => (p.rating && p.rating > 0) || (p.colorLabel && p.colorLabel !== 'none'));
+        }
+
+        if (photosToSave.length === 0) {
+            alert(
+                "Geef eerst één of meerdere foto's een score (cijfer 1 t/m 7, ster of kleur) om direct op te slaan in de submap.\n\n" +
+                "Gebruik sneltoetsen 1 t/m 7 op het toetsenbord of de knoppen in de culling-balk."
+            );
+            return;
+        }
+
+        let targetSubDir = null;
+        let parentDirName = '';
+
+        if ('showDirectoryPicker' in window) {
+            try {
+                if (!this.sessionDirHandle) {
+                    if (this.parentDestDirHandle) {
+                        const sessName = this.activeSessionName || 'Fotosessie';
+                        this.sessionDirHandle = await this.parentDestDirHandle.getDirectoryHandle(sessName, { create: true });
+                    } else {
+                        alert(
+                            `Selecteer de hoofdmap (op uw computer of externe schijf) waarin de submap '${subfolderName}' moet worden aangemaakt:`
+                        );
+                        const chosen = await window.showDirectoryPicker({ mode: 'readwrite' });
+                        if (chosen) {
+                            this.sessionDirHandle = chosen;
+                        }
+                    }
+                }
+
+                if (this.sessionDirHandle) {
+                    parentDirName = this.sessionDirHandle.name;
+                    targetSubDir = await this.sessionDirHandle.getDirectoryHandle(subfolderName, { create: true });
+                }
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                console.warn("Fout bij selecteren/maken van submap via Directory Picker:", err);
+            }
+        }
+
+        if (targetSubDir) {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const loadingText = document.getElementById('loading-text');
+            loadingOverlay?.classList.remove('hidden');
+
+            try {
+                let savedCount = 0;
+                for (let i = 0; i < photosToSave.length; i++) {
+                    const p = photosToSave[i];
+                    if (loadingText) {
+                        loadingText.textContent = `1-Klik opslaan in submap '${subfolderName}' (${i + 1}/${photosToSave.length}): ${p.filename}...`;
+                    }
+                    const blob = await this.renderPhotoToBlob(p, 'image/jpeg', 0.95);
+                    const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_selectie.jpg`;
+                    const fileHandle = await targetSubDir.getFileHandle(cleanName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    savedCount++;
+                }
+
+                loadingOverlay?.classList.add('hidden');
+
+                const folderPathStr = parentDirName ? `'${parentDirName}/${subfolderName}'` : `'${subfolderName}'`;
+                const promptClean = confirm(
+                    `✅ ${savedCount} geselecteerde foto's zijn in 1 klik opgeslagen in submap ${folderPathStr}!\n\n` +
+                    `🛡️ VEILIGHEIDSGARANTIE: Uw originelen op de SD-kaart/bron blijven 100% onaangeroerd bewaard.\n\n` +
+                    `Wilt u nu ook direct alle onbeoordeelde foto's uit het werkgeheugen wissen om uitsluitend met de geselecteerde foto's verder te gaan?`
+                );
+
+                if (promptClean) {
+                    this.photos = photosToSave;
+                    this.activePhotoIndex = 0;
+                    this.updateFilmstripUI();
+                    this.updateGridUI();
+                    if (this.photos.length > 0) {
+                        this.renderActivePhoto();
+                    }
+                }
+                return;
+            } catch (err) {
+                loadingOverlay?.classList.add('hidden');
+                alert(`Er is een fout opgetreden bij het wegschrijven: ${err.message}`);
+                return;
+            }
+        }
+
+        // Fallback voor browsers zonder File System Access API
+        this.openExportModalWithScope('selected');
     }
 
     openExportModalWithScope(targetScope = 'all') {

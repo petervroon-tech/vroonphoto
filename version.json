@@ -1,11 +1,12 @@
 {
   "app_name": "vroonphoto",
-  "version": "1.5.9",
-  "build": 18,
-  "timestamp": "2026-11-12T18:21:15.899992+00:00",
-  "git_hash": "68cf959",
+  "version": "1.6.0",
+  "build": 19,
+  "timestamp": "2026-11-12T18:36:15.950724+00:00",
+  "git_hash": "3c1ae5d",
   "features": [
-    "🚀 Versie v1.5.9: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🚀 Versie v1.6.0: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "📁 Aangepaste Ingest Opslaglocatie & 1-Klik Direct Opslaan in Submap (v1.6.0): Kies bij het inlezen vanaf een SD-kaart of externe schijf zelf de exacte mapnaam én waar deze sessiemap op uw computer of externe schijf moet worden neergezet. Sla bij het selecteren van foto's met scores (1-7, sterren of kleuren) alle geselecteerde foto's in één enkele klik direct op in een zelf aangegeven submap (standaard binnen de sessiemap). Inclusief optie om na het opslaan de overige foto's direct uit de werkruimte te schonen terwijl de originelen op de SD/schijf 100% onaangeroerd blijven.",
     "💳 SD-Kaart Ingest, Oneindig Veel Foto's & Culling Beheer (v1.5.9): Lees onbeperkt foto's in vanaf een SD-kaart of externe schijf met unieke sessie/mapnaam. Beoordeel foto's razendsnel met cijfers 1-7, sterren en 5 kleurenlabels (inclusief sneltoetsen 1-7). Verplaats geselecteerde foto's naar een (sub)map en wis niet-geselecteerde foto's uit de werkruimte terwijl originelen op de SD-kaart/schijf 100% onaangeroerd blijven. Inclusief complete Lightroom tone sliders: Hooglichten, Schaduwen, Witte & Zwarte punten.",
     "🌌 Preset Blauwe Uur (v1.5.8): Authentieke schemering/twilight preset met diepe indigo- en kobaltblauwe lucht, magentatoets, sfeervol contrast, ruisonderdrukking voor nacht/low-light, subtiel vignet en traploze schuifregelaar.",
     "🎞️ Vignettering naar Zowel Donker als Licht (v1.5.7): Volledige creatieve vignettering met traploze schuifregelaar van donker/diep zwart (-100) tot helder/high-key wit (+100). Inclusief fijnafstelling voor Middelpunt (reikwijdte) en Zachtheid (feather), snelle stijlknoppen en razendsnelle hardware-versnelde WebAssembly verwerking.",
