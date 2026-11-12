@@ -1093,12 +1093,17 @@ class VroonPhotoApp {
         // Bestandsformaat wissel: update kwaliteitsopties dynamisch
         const exportFormatSel = document.getElementById('export-format');
         const exportQualitySel = document.getElementById('export-quality');
-        exportFormatSel?.addEventListener('change', (e) => {
-            const fmt = e.target.value;
-            if (fmt === 'image/tiff' || fmt === 'image/x-adobe-dng' || fmt === 'image/png') {
+        const updateExportQualityUI = (fmt) => {
+            if (fmt === 'original-raw') {
                 if (exportQualitySel) {
                     exportQualitySel.innerHTML = `
-                        <option value="1.0">100% — Ongecomprimeerd / Lossless (Volledige Kwaliteit)</option>
+                        <option value="1.0">100% — Origineel RAW Camerabestand (Onbewerkt &amp; Bit-Exact)</option>
+                    `;
+                }
+            } else if (fmt === 'image/tiff' || fmt === 'image/x-adobe-dng' || fmt === 'image/png') {
+                if (exportQualitySel) {
+                    exportQualitySel.innerHTML = `
+                        <option value="1.0">100% — Ongecomprimeerd / Lossless RAW (Volledige Kwaliteit)</option>
                     `;
                 }
             } else {
@@ -1110,7 +1115,9 @@ class VroonPhotoApp {
                     `;
                 }
             }
-        });
+        };
+        exportFormatSel?.addEventListener('change', (e) => updateExportQualityUI(e.target.value));
+        if (exportFormatSel) updateExportQualityUI(exportFormatSel.value);
 
         // Zoom knoppen (Hand, Pen & Muis)
         document.getElementById('btn-zoom-in')?.addEventListener('click', () => this.setZoom(this.zoomLevel + 0.35));
@@ -1503,7 +1510,9 @@ class VroonPhotoApp {
                 if (decoded && decoded.imageData) {
                     this.addPhotoToSession(decoded.imageData, {
                         filename: file.name,
-                        filesize: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+                        filesize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+                        originalFile: file,
+                        isRaw: this.rawDecoder.isRaw(file.name)
                     });
                     successCount++;
                 }
@@ -1518,7 +1527,9 @@ class VroonPhotoApp {
                     const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
                     this.addPhotoToSession(imgData, {
                         filename: file.name,
-                        filesize: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+                        filesize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+                        originalFile: file,
+                        isRaw: this.rawDecoder.isRaw(file.name)
                     });
                     successCount++;
                 } catch (e2) {
@@ -1555,10 +1566,14 @@ class VroonPhotoApp {
         tCtx.drawImage(tempCanvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
         const thumbUrl = thumbCanvas.toDataURL('image/jpeg', 0.7);
 
+        const isRaw = meta.isRaw !== undefined ? meta.isRaw : (this.rawDecoder ? this.rawDecoder.isRaw(meta.filename) : false);
+
         const photo = {
             id: 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
             filename: meta.filename || `Foto_${this.photos.length + 1}.jpg`,
             filesize: meta.filesize || '4.0 MB',
+            originalFile: meta.originalFile || null,
+            isRaw: isRaw,
             originalImageData: new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height),
             currentImageData: new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height),
             thumbUrl: thumbUrl,
@@ -1866,6 +1881,7 @@ class VroonPhotoApp {
 
         const subNameInput = document.getElementById('cull-subfolder-name');
         const subfolderName = (subNameInput ? subNameInput.value.trim() : '') || 'Selectie';
+        const cullFormat = document.getElementById('cull-format-select')?.value || 'raw';
 
         const filterVal = document.getElementById('filmstrip-filter-select')?.value || 'all';
         let photosToSave = [];
@@ -1926,8 +1942,40 @@ class VroonPhotoApp {
                     if (loadingText) {
                         loadingText.textContent = `1-Klik opslaan in submap '${subfolderName}' (${i + 1}/${photosToSave.length}): ${p.filename}...`;
                     }
-                    const blob = await this.renderPhotoToBlob(p, 'image/jpeg', 0.95);
-                    const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_selectie.jpg`;
+
+                    let blob;
+                    let ext = 'jpg';
+                    const origExt = (p.filename.split('.').pop() || 'jpg').toLowerCase();
+                    const isRaw = p.isRaw || (this.rawDecoder && this.rawDecoder.isRaw(p.filename));
+
+                    if (cullFormat === 'raw') {
+                        if (isRaw) {
+                            if (p.originalFile) {
+                                blob = p.originalFile;
+                                ext = origExt;
+                            } else {
+                                const dngBytes = this.encodeTiffOrDng(p.currentImageData, true);
+                                blob = new Blob([dngBytes.buffer], { type: 'image/x-adobe-dng' });
+                                ext = 'dng';
+                            }
+                        } else {
+                            blob = await this.renderPhotoToBlob(p, 'image/jpeg', 0.95);
+                            ext = origExt === 'png' ? 'png' : 'jpg';
+                        }
+                    } else if (cullFormat === 'dng') {
+                        const dngBytes = this.encodeTiffOrDng(p.currentImageData, true);
+                        blob = new Blob([dngBytes.buffer], { type: 'image/x-adobe-dng' });
+                        ext = 'dng';
+                    } else if (cullFormat === 'tiff') {
+                        const tiffBytes = this.encodeTiffOrDng(p.currentImageData, false);
+                        blob = new Blob([tiffBytes.buffer], { type: 'image/tiff' });
+                        ext = 'tif';
+                    } else {
+                        blob = await this.renderPhotoToBlob(p, 'image/jpeg', 0.95);
+                        ext = 'jpg';
+                    }
+
+                    const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_selectie.${ext}`;
                     const fileHandle = await targetSubDir.getFileHandle(cleanName, { create: true });
                     const writable = await fileHandle.createWritable();
                     await writable.write(blob);
@@ -3136,14 +3184,8 @@ class VroonPhotoApp {
 
     async exportWithFolderPicker() {
         const scope = document.getElementById('export-scope')?.value || 'all';
-        const format = document.getElementById('export-format')?.value || 'image/jpeg';
+        const format = document.getElementById('export-format')?.value || 'original-raw';
         const quality = parseFloat(document.getElementById('export-quality')?.value || 0.95);
-        
-        let ext = 'jpg';
-        if (format === 'image/png') ext = 'png';
-        else if (format === 'image/webp') ext = 'webp';
-        else if (format === 'image/tiff') ext = 'tif';
-        else if (format === 'image/x-adobe-dng') ext = 'dng';
 
         let photosToExport;
         if (scope === 'all') {
@@ -3163,6 +3205,45 @@ class VroonPhotoApp {
         document.getElementById('export-modal')?.classList.add('hidden');
         document.getElementById('loading-overlay')?.classList.remove('hidden');
 
+        const getPhotoExportData = async (p) => {
+            let blob;
+            let ext = 'jpg';
+            const origExt = (p.filename.split('.').pop() || 'jpg').toLowerCase();
+            const isRaw = p.isRaw || (this.rawDecoder && this.rawDecoder.isRaw(p.filename));
+
+            if (format === 'original-raw') {
+                if (p.originalFile) {
+                    blob = p.originalFile;
+                    ext = origExt;
+                } else if (isRaw) {
+                    const dngBytes = this.encodeTiffOrDng(p.currentImageData, true);
+                    blob = new Blob([dngBytes.buffer], { type: 'image/x-adobe-dng' });
+                    ext = 'dng';
+                } else {
+                    blob = await this.renderPhotoToBlob(p, 'image/jpeg', quality);
+                    ext = 'jpg';
+                }
+            } else if (format === 'image/x-adobe-dng') {
+                const dngBytes = this.encodeTiffOrDng(p.currentImageData, true);
+                blob = new Blob([dngBytes.buffer], { type: 'image/x-adobe-dng' });
+                ext = 'dng';
+            } else if (format === 'image/tiff') {
+                const tiffBytes = this.encodeTiffOrDng(p.currentImageData, false);
+                blob = new Blob([tiffBytes.buffer], { type: 'image/tiff' });
+                ext = 'tif';
+            } else if (format === 'image/png') {
+                blob = await this.renderPhotoToBlob(p, 'image/png', quality);
+                ext = 'png';
+            } else if (format === 'image/webp') {
+                blob = await this.renderPhotoToBlob(p, 'image/webp', quality);
+                ext = 'webp';
+            } else {
+                blob = await this.renderPhotoToBlob(p, 'image/jpeg', quality);
+                ext = 'jpg';
+            }
+            return { blob, ext };
+        };
+
         try {
             // OPTIE A: Moderne desktop/laptop native map-keuze (File System Access API)
             if ('showDirectoryPicker' in window && photosToExport.length > 1) {
@@ -3172,7 +3253,7 @@ class VroonPhotoApp {
 
                 for (let i = 0; i < photosToExport.length; i++) {
                     const p = photosToExport[i];
-                    const blob = await this.renderPhotoToBlob(p, format, quality);
+                    const { blob, ext } = await getPhotoExportData(p);
                     const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${ext}`;
                     const fileHandle = await dirHandle.getFileHandle(cleanName, { create: true });
                     const writable = await fileHandle.createWritable();
@@ -3181,7 +3262,7 @@ class VroonPhotoApp {
                     savedCount++;
                 }
 
-                alert(`✅ Succesvol ${savedCount} foto's geconverteerd en opgeslagen als .${ext} in de gekozen map!`);
+                alert(`✅ Succesvol ${savedCount} foto's opgeslagen in de gekozen map!`);
                 document.getElementById('loading-overlay')?.classList.add('hidden');
                 return;
             }
@@ -3189,15 +3270,16 @@ class VroonPhotoApp {
             // OPTIE B: Enkele foto met Save File Picker op laptop/desktop
             if ('showSaveFilePicker' in window && photosToExport.length === 1) {
                 const p = photosToExport[0];
+                const { blob, ext } = await getPhotoExportData(p);
                 const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt.${ext}`;
+                const mimeType = (ext === 'dng') ? 'image/x-adobe-dng' : (format === 'original-raw' ? 'application/octet-stream' : format);
                 const fileHandle = await window.showSaveFilePicker({
                     suggestedName: cleanName,
                     types: [{
-                        description: `Afbeelding (.${ext})`,
-                        accept: { [format]: [`.${ext}`] }
+                        description: `Bestand (.${ext})`,
+                        accept: { [mimeType]: [`.${ext}`] }
                     }]
                 });
-                const blob = await this.renderPhotoToBlob(p, format, quality);
                 const writable = await fileHandle.createWritable();
                 await writable.write(blob);
                 await writable.close();
@@ -3211,16 +3293,16 @@ class VroonPhotoApp {
                 const filesArray = [];
                 for (let i = 0; i < photosToExport.length; i++) {
                     const p = photosToExport[i];
-                    const blob = await this.renderPhotoToBlob(p, format, quality);
+                    const { blob, ext } = await getPhotoExportData(p);
                     const cleanName = p.filename.replace(/\.[^/.]+$/, "") + `_bewerkt_${i + 1}.${ext}`;
-                    filesArray.push(new File([blob], cleanName, { type: format }));
+                    filesArray.push(new File([blob], cleanName, { type: blob.type || 'application/octet-stream' }));
                 }
 
                 if (navigator.canShare({ files: filesArray })) {
                     await navigator.share({
                         files: filesArray,
                         title: 'vroonphoto export',
-                        text: `${filesArray.length} bewerkte foto('s) van vroonphoto (.${ext})`
+                        text: `${filesArray.length} bewerkte foto('s) van vroonphoto`
                     });
                     document.getElementById('loading-overlay')?.classList.add('hidden');
                     return;
@@ -3230,7 +3312,7 @@ class VroonPhotoApp {
             // OPTIE D: Standaard download fallback
             for (let i = 0; i < photosToExport.length; i++) {
                 const p = photosToExport[i];
-                const blob = await this.renderPhotoToBlob(p, format, quality);
+                const { blob, ext } = await getPhotoExportData(p);
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -3239,7 +3321,7 @@ class VroonPhotoApp {
                 await new Promise(r => setTimeout(r, 200));
                 URL.revokeObjectURL(url);
             }
-            alert(`✅ ${photosToExport.length} foto('s) succesvol geëxporteerd als .${ext} naar je apparaat!`);
+            alert(`✅ ${photosToExport.length} foto('s) succesvol geëxporteerd naar je apparaat!`);
 
         } catch (err) {
             if (err.name !== 'AbortError') {
@@ -3253,13 +3335,37 @@ class VroonPhotoApp {
 
     renderPhotoToBlob(photo, format, quality) {
         return new Promise(resolve => {
-            // TIFF (.tif) of Adobe Digital Negative (.dng) RAW Container
-            if (format === 'image/tiff' || format === 'image/x-adobe-dng') {
-                const isDNG = format === 'image/x-adobe-dng';
-                const tiffBytes = this.encodeTiffOrDng(photo.currentImageData, isDNG);
-                const blob = new Blob([tiffBytes.buffer], { type: format });
+            // Origineel RAW camerabestand (bv. .cr2, .nef, .arw, .dng)
+            if (format === 'original-raw') {
+                if (photo.originalFile) {
+                    resolve(photo.originalFile);
+                    return;
+                }
+                const tiffBytes = this.encodeTiffOrDng(photo.currentImageData, true);
+                const blob = new Blob([tiffBytes.buffer], { type: 'image/x-adobe-dng' });
                 resolve(blob);
                 return;
+            }
+
+            // TIFF (.tif) of Adobe Digital Negative (.dng) RAW Container
+            if (format === 'image/tiff' || format === 'image/x-adobe-dng' || format === 'dng') {
+                const isDNG = format === 'image/x-adobe-dng' || format === 'dng';
+                const tiffBytes = this.encodeTiffOrDng(photo.currentImageData, isDNG);
+                const mimeType = isDNG ? 'image/x-adobe-dng' : 'image/tiff';
+                const blob = new Blob([tiffBytes.buffer], { type: mimeType });
+                resolve(blob);
+                return;
+            }
+
+            // Standaard Canvas formaten: JPEG, PNG, WebP
+            const expCanvas = document.createElement('canvas');
+            expCanvas.width = photo.currentImageData.width;
+            expCanvas.height = photo.currentImageData.height;
+            const ctx = expCanvas.getContext('2d');
+            ctx.putImageData(photo.currentImageData, 0, 0);
+            expCanvas.toBlob(blob => resolve(blob), format, quality);
+        });
+    }
             }
 
             // Standaard Canvas formaten: JPEG, PNG, WebP

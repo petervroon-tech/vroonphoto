@@ -1,11 +1,12 @@
 {
   "app_name": "vroonphoto",
-  "version": "1.6.4",
-  "build": 23,
-  "timestamp": "2026-11-12T19:06:14.537662+00:00",
-  "git_hash": "cc59ae6",
+  "version": "1.6.5",
+  "build": 24,
+  "timestamp": "2026-11-12T19:15:57.161957+00:00",
+  "git_hash": "570a0de",
   "features": [
-    "🚀 Versie v1.6.4: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🚀 Versie v1.6.5: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "💾 Volledige RAW Export & Opslag (.cr2, .nef, .arw, .dng) (v1.6.5): RAW-bestanden kunnen nu ook direct als RAW worden opgeslagen! Behoud bij het exporteren of bij 1-klik submap opslag het originele camera RAW-bestand (bit-exact .cr2, .nef, .arw, .dng) of sla bewerkte foto's op als volwaardig Adobe DNG RAW containerbestand (.dng). Inclusief handige formaatkiezer in de culling-werkbalk en export-dialoog.",
     "🎨 Donkere Styling Keuzelijsten & Filters (v1.6.4): Het filter 'Toon Alle Foto's' en alle select-dropdowns zijn nu voorzien van dezelfde rustige donkere leisteen kleur, subtiele rand en witte tekst als de rest van de interface. Geen storende witte dropdowns of keuzelijsten meer.",
     "🎛️ Uniforme Knopafmetingen & Donkere Styling (v1.6.3): De SD-kaart knop en alle voorheen lichtblauwe knoppen zijn teruggebracht naar dezelfde compacte proporties en elegante donkere leisteen stijl als de rest van de knoppen. Geen overdreven grote of fel oplichtende knoppen meer, maar een rustige, strakke en perfect afgestemde navigatiebalk en interface.",
     "💡 Interactieve Help- & Handleiding Knop met Live Functieoverzicht (v1.6.2): Directe helpknop ('❓ Help') in de bovenbalk en in het startscherm. Bevat een complete, visueel gestructureerde handleiding van alle mogelijkheden (SD-ingest, mapkeuze, culling 1-7, 1-klik submap opslag, lokaal aanpassingspenseel, zwart-wit, presets, vignettering, inpainting, AI vergroten en sneltoetsen). Wordt na elke update automatisch en live gesynchroniseerd met de nieuwste situatie, zodat de gebruiker direct bij binnenkomst exact weet wat er allemaal kan en hoe het werkt.",

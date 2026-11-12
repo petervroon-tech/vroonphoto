@@ -22,7 +22,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.6.4</strong> beschikbaar &bull; <span id="upd-note">Donkere styling voor filter 'Toon Alle Foto's' en alle keuzelijsten conform de rest van de knoppen</span></span>
+      <span><strong id="upd-ver">v1.6.5</strong> beschikbaar &bull; <span id="upd-note">RAW bestanden opslaan als RAW (.cr2, .nef, .arw, .dng) &amp; Adobe DNG RAW export en 1-klik submap opslag</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -43,7 +43,7 @@
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)"
           title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.6.4</span> 🔄
+          <span id="ver-txt">v1.6.5</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -514,11 +514,18 @@
             <button id="btn-cull-keep-selection" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #f59e0b; border-color: rgba(245, 158, 11, 0.4);" title="Houd alleen de geselecteerde / beoordeelde foto's en wis de overige uit het werkgeheugen (Originelen op SD/schijf blijven 100% veilig bewaard!)">
               🧹 Culling: Wis Onbeoordeeld
             </button>
-            <!-- 1-KLIK DIRECT OPSLAAN IN SUBMAP -->
+            <!-- 1-KLIK DIRECT OPSLAAN IN SUBMAP (RAW & JPG SUPPORT) -->
             <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-panel-sub); border: 1px solid var(--border-glow); border-radius: 4px; padding: 2px 6px;">
-              <span style="font-size: 10.5px; color: var(--text-muted); font-weight: 600;">📁 Submap:</span>
-              <input type="text" id="cull-subfolder-name" value="Selectie" style="width: 75px; font-size: 11px; padding: 2px 5px; background: rgba(0,0,0,0.6); border: 1px solid var(--border-glow); border-radius: 3px; color: #fff;" title="Naam van de submap waarin de geselecteerde foto's worden opgeslagen">
-              <button id="btn-cull-direct-save" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;" title="Sla alle geselecteerde / beoordeelde foto's direct in 1 klik op in deze submap">
+              <span style="font-size: 10.5px; color: var(--text-muted); font-weight: 600;">Formaat:</span>
+              <select id="cull-format-select" class="form-select" style="font-size: 10.5px; padding: 2px 5px; background: var(--bg-panel-sub); color: var(--text-main); border: 1px solid var(--border-glow); border-radius: var(--radius-sm);" title="Kies bestandsformaat: Behoud RAW (.cr2/.nef/.arw/.dng) of converteer">
+                <option value="raw" selected>💾 RAW (Behoud RAW &amp; JPG)</option>
+                <option value="dng">🎞️ Adobe DNG RAW (.dng)</option>
+                <option value="jpeg">📸 JPEG (.jpg)</option>
+                <option value="tiff">🖼️ TIFF (.tif Lossless)</option>
+              </select>
+              <span style="font-size: 10.5px; color: var(--text-muted); font-weight: 600; margin-left: 2px;">📁 Submap:</span>
+              <input type="text" id="cull-subfolder-name" value="Selectie" style="width: 70px; font-size: 11px; padding: 2px 5px; background: rgba(0,0,0,0.6); border: 1px solid var(--border-glow); border-radius: 3px; color: #fff;" title="Naam van de submap waarin de geselecteerde foto's worden opgeslagen">
+              <button id="btn-cull-direct-save" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;" title="Sla alle geselecteerde / beoordeelde foto's direct in 1 klik op in deze submap (inclusief behoud van origineel RAW)">
                 💾 1-Klik: Sla Selectie Op in Submap
               </button>
             </div>
@@ -921,9 +928,10 @@
         <label>
           <div style="margin-bottom: 4px; font-weight: 600;">Bestandsformaat (Kies gewenst formaat):</div>
           <select id="export-format" class="form-select" style="width: 100%; background: var(--bg-panel-sub); color: var(--text-main); border: 1px solid var(--border-glow); border-radius: var(--radius-sm); padding: 6px 8px;">
+            <option value="original-raw" selected>💾 Origineel RAW (.cr2, .nef, .arw, .dng) — Behoud origineel camerabestand</option>
+            <option value="image/x-adobe-dng">🎞️ Adobe DNG RAW (.dng) — Digitaal Negatief RAW Container</option>
             <option value="image/jpeg">JPEG (.jpg) — Universeel voor web, print &amp; iPad</option>
             <option value="image/tiff">TIFF (.tif) — Ongecomprimeerd professioneel drukwerk (100% Lossless)</option>
-            <option value="image/x-adobe-dng">Adobe DNG (.dng) — Digital Negative RAW Container</option>
             <option value="image/png">PNG (.png) — Lossless grafisch &amp; web</option>
             <option value="image/webp">WebP (.webp) — Modern ultra-compact</option>
           </select>
@@ -1053,8 +1061,8 @@
               💾 3. In 1 Klik Opslaan van Selectie in een Submap
             </div>
             <div style="color: #cbd5e1; font-size: 11.5px;">
-              <strong>Wat kan het:</strong> Al uw beoordeelde of geselecteerde foto's in één enkele klik direct wegschrijven naar een eigen submap.<br>
-              <strong>Hoe werkt het:</strong> Typ eventueel een submapnaam in (standaard <code>Selectie</code>) in de culling-balk en klik op <code>💾 1-Klik: Sla Selectie Op in Submap</code>. Alle geselecteerde foto's worden direct geëxporteerd naar die submap op uw schijf.
+              <strong>Wat kan het:</strong> Al uw beoordeelde of geselecteerde foto's in één enkele klik direct wegschrijven naar een eigen submap, met behoud van het originele RAW-formaat (.cr2, .nef, .arw, .dng) of als Adobe DNG / JPG / TIFF naar keuze.<br>
+              <strong>Hoe werkt het:</strong> Kies eventueel het gewenste formaat (standaard: <code>💾 RAW (Behoud RAW &amp; JPG)</code>) en typ de gewenste submapnaam in (standaard <code>Selectie</code>) in de culling-balk. Klik op <code>💾 1-Klik: Sla Selectie Op in Submap</code>. Alle geselecteerde foto's worden direct geëxporteerd naar die submap op uw schijf. Originelen op de bron/SD blijven 100% onaangeroerd.
             </div>
           </div>
 
