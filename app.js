@@ -617,7 +617,7 @@ const PRESET_DEFINITIONS = {
     },
     'stage_fix': {
         name: '🔴 Stage Red Light Fix',
-        params: { bwEnabled: false, stageRedFix: 90, colorBleedReduction: 75, skinProtection: 65, exposure: 0.0, contrast: 10 }
+        params: { bwEnabled: false, stageRedFix: 90, colorBleedReduction: 75, skinProtection: 65, stageBandingReduction: 80, exposure: 0.0, contrast: 10 }
     },
     'denoise_high_iso': {
         name: '🛡️ Hoge ISO Ruis Fix',
@@ -699,14 +699,14 @@ class VroonPhotoApp {
             if (raw) {
                 const parsed = JSON.parse(raw);
                 return {
-                    enabled: parsed.enabled !== false,
+                    enabled: !!parsed.enabled && !!parsed.settings,
                     settings: parsed.settings || null
                 };
             }
         } catch (e) {
             console.warn('Kon opgeslagen import profiel niet laden:', e);
         }
-        return { enabled: true, settings: null };
+        return { enabled: false, settings: null };
     }
 
     saveCurrentAsImportPreset() {
@@ -1319,15 +1319,10 @@ class VroonPhotoApp {
             hasStageRed: false
         };
 
-        // Automatische podium rood licht en LED interferentiestrepen analyse per foto
-        photo.hasStageRed = this.checkStageRed(photo.originalImageData);
-        if (photo.hasStageRed) {
-            photo.state.stageRedFix = 85;
-            photo.state.colorBleedReduction = 65;
-            photo.state.stageBandingReduction = 75; // Bij aanvang verdwijnen interferentiestrepen direct!
-        }
+        // Geen geforceerde bewerkingen bij inlezen: foto's openen 100% neutraal/origineel.
+        // De gebruiker kiest zelf via de schuifregelaars of een preset gewenst is.
 
-        // Automatisch aangepast import profiel toepassen (indien ingeschakeld door gebruiker)
+        // Optioneel: alleen als de gebruiker zelf een import profiel heeft opgeslagen en aangevinkt
         if (this.customImportPreset && this.customImportPreset.enabled && this.customImportPreset.settings) {
             Object.assign(photo.state, JSON.parse(JSON.stringify(this.customImportPreset.settings)));
         }
@@ -1368,16 +1363,9 @@ class VroonPhotoApp {
             info.textContent = `${photo.filename} | ${photo.currentImageData.width}×${photo.currentImageData.height}px | ${photo.filesize}`;
         }
 
-        // Toon alert als rood podiumlicht actief is
+        // Alert permanent verborgen houden zodat foto's rustig en ongehinderd bekeken kunnen worden
         const alertBox = document.getElementById('stage-red-detected-alert');
-        if (alertBox) {
-            if (photo.hasStageRed) {
-                alertBox.classList.remove('hidden');
-                alertBox.innerHTML = `⚠️ <strong>Rood podiumlicht & LED interferentiestrepen gedetecteerd!</strong> Rood Licht Herstel & Banding Onderdrukking staan actief voor deze foto.`;
-            } else {
-                alertBox.classList.add('hidden');
-            }
-        }
+        if (alertBox) alertBox.classList.add('hidden');
 
         this.syncSliderUIFromPhoto(photo);
         if (photo.activePreset) {

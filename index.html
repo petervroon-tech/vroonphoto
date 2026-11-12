@@ -18,7 +18,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.5.3</strong> beschikbaar &bull; <span id="upd-note">Groter werkscherm &amp; alle functies links; slank rechterpaneel voor Lightroom &amp; preset schuifjes</span></span>
+      <span><strong id="upd-ver">v1.5.4</strong> beschikbaar &bull; <span id="upd-note">Rood podiumlicht &amp; interferentiestrepen niet meer geforceerd bij inlezen &bull; 100% zelf kiezen</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -37,7 +37,7 @@
         <span id="photo-counter-badge" class="badge-count">1 / 1 Foto's</span>
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)" title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.5.3</span> 🔄
+          <span id="ver-txt">v1.5.4</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -207,11 +207,11 @@
             Stel je eigen standaardbewerking in (bv. ruisonderdrukking, scherpte of rood licht) die direct automatisch op elke geopende foto wordt toegepast.
           </p>
           <label style="cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #fff;">
-            <input type="checkbox" id="toggle-auto-import-preset" checked>
+            <input type="checkbox" id="toggle-auto-import-preset">
             <span>Auto-toepassen bij openen foto's</span>
           </label>
           <div id="import-preset-summary" style="font-size: 10px; color: var(--accent-cyan); background: rgba(56, 189, 248, 0.08); padding: 5px 8px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.2); line-height: 1.3;">
-            Profiel: LED De-Banding &amp; Ruisonderdrukking actief
+            Standaard: Foto's openen 100% neutraal (origineel). Kies zelf gewenste bewerkingen.
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
             <button id="btn-save-as-import-preset" class="btn-primary" style="width: 100%;" title="Sla huidige schuifregelaars op als jouw standaardprofiel">
