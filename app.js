@@ -2234,8 +2234,7 @@ class VroonPhotoApp {
         const pill = document.getElementById('btn-toggle-bw-pill');
         if (pill) {
             pill.textContent = isBW ? 'Aan ✕' : 'Omzetten';
-            pill.classList.toggle('btn-primary', isBW);
-            pill.classList.toggle('btn-secondary', !isBW);
+            pill.classList.toggle('active', isBW);
         }
 
         const panel = document.getElementById('bw-mixer-panel');
@@ -2648,15 +2647,11 @@ class VroonPhotoApp {
         const brushBtn = document.getElementById('btn-local-brush-mode');
         const eraserBtn = document.getElementById('btn-local-eraser-mode');
         if (mode === 'brush') {
-            brushBtn?.classList.remove('btn-secondary');
-            brushBtn?.classList.add('btn-primary');
-            eraserBtn?.classList.remove('btn-primary');
-            eraserBtn?.classList.add('btn-secondary');
+            brushBtn?.classList.add('active');
+            eraserBtn?.classList.remove('active');
         } else {
-            eraserBtn?.classList.remove('btn-secondary');
-            eraserBtn?.classList.add('btn-primary');
-            brushBtn?.classList.remove('btn-primary');
-            brushBtn?.classList.add('btn-secondary');
+            eraserBtn?.classList.add('active');
+            brushBtn?.classList.remove('active');
         }
     }
 

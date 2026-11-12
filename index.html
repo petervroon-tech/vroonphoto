@@ -22,7 +22,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.6.2</strong> beschikbaar &bull; <span id="upd-note">Help &amp; Handleiding knop met live overzicht van alle mogelijkheden, SD-ingest, culling, lokaal penseel en Lightroom bewerking</span></span>
+      <span><strong id="upd-ver">v1.6.3</strong> beschikbaar &bull; <span id="upd-note">Uniforme knoppenstyling &amp; perfecte proporties voor SD-kaart en alle functieknoppen</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -43,16 +43,16 @@
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)"
           title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.6.2</span> 🔄
+          <span id="ver-txt">v1.6.3</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
 
-      <button id="btn-import-sd" class="btn-primary" style="background: linear-gradient(135deg, #059669, #047857); border-color: #34d399;" title="Lees foto's rechtstreeks in vanaf een SD-kaart, camera of externe schijf">
-        <span>💳 SD-Kaart / Schijf Inlezen</span>
+      <button id="btn-import-sd" class="btn-secondary" title="Lees foto's rechtstreeks in vanaf een SD-kaart, camera of externe schijf">
+        <span>💳 SD-Kaart</span>
       </button>
 
-      <label class="btn-primary" title="Voeg foto's toe (JPG, RAW, DNG, PNG, etc. - Onbeperkt)">
+      <label class="btn-secondary" title="Voeg foto's toe (JPG, RAW, DNG, PNG, etc. - Onbeperkt)">
         <span>📂 Foto's Openen</span>
         <input type="file" id="file-upload-input" multiple
           accept="image/jpeg,image/png,image/webp,image/*,.jpg,.jpeg,.png,.webp,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif"
@@ -61,7 +61,7 @@
 
       <button id="btn-load-sample-batch" class="btn-secondary"
         title="Laad 5 voorbeeldfoto's om direct alle functies te testen (Concert rood licht &amp; banding, Hoge ISO ruis, Zwart-wit landschap, Portret, Strand)">
-        <span>📸 5 Voorbeeldfoto's</span>
+        <span>📸 5 Voorbeelden</span>
       </button>
     </div>
 
@@ -70,15 +70,15 @@
         title="Wissel tussen Rasteroverzicht en Enkele Foto Bewerkscherm">
         <span>🔲 Raster</span>
       </button>
-      <button id="btn-hdr-local-brush" class="btn-secondary" style="font-weight: 700;"
+      <button id="btn-hdr-local-brush" class="btn-secondary"
         title="Activeer penseel om met pen, hand/touch of muis elk specifiek onderdeel van de foto afzonderlijk aan te passen">
-        <span>🖌️ Onderdeel Bewerken</span>
+        <span>🖌️ Penseel</span>
       </button>
       <button id="btn-sync-all" class="btn-secondary"
         title="Kopieer de huidige bewerkingsinstellingen naar alle geladen foto's">
-        <span>⚡ Sync naar Alle</span>
+        <span>⚡ Sync Alles</span>
       </button>
-      <button id="btn-hdr-bw-toggle" class="btn-secondary" style="font-weight: 700;"
+      <button id="btn-hdr-bw-toggle" class="btn-secondary"
         title="Zet huidige foto met 1 klik om naar Zwart-Wit (of terug naar kleur)">
         <span id="btn-hdr-bw-icon">⚡</span> <span id="btn-hdr-bw-txt">Zwart-Wit</span>
       </button>
@@ -88,9 +88,9 @@
     </div>
 
     <div class="header-right">
-      <button id="btn-open-help" class="btn-secondary" style="font-weight: 700; border-color: rgba(56, 189, 248, 0.45); color: var(--accent-cyan);"
+      <button id="btn-open-help" class="btn-secondary"
         title="Bekijk de complete handleiding en alle mogelijkheden van vroonphoto">
-        <span>❓ Help &amp; Mogelijkheden</span>
+        <span>❓ Help</span>
       </button>
       <button id="btn-prev-photo" class="btn-icon" title="Vorige foto (◀)">◀</button>
       <button id="btn-next-photo" class="btn-icon" title="Volgende foto (▶)">▶</button>
@@ -98,8 +98,8 @@
       <button id="btn-rotate-right" class="btn-icon" title="90° Rechts draaien">↻</button>
       <button id="btn-delete-active-photo" class="btn-icon btn-danger-icon"
         title="Verwijder huidige foto uit sessie (Del / Backspace)">🗑️</button>
-      <button id="btn-open-export" class="btn-primary" title="Foto's opslaan op apparaat">
-        <span>💾 Opslaan &amp; Exporteren</span>
+      <button id="btn-open-export" class="btn-secondary" title="Foto's opslaan op apparaat">
+        <span>💾 Opslaan</span>
       </button>
     </div>
   </header>
@@ -130,9 +130,9 @@
 
             <!-- Penseel & Gum Schakelaar + Overlay Knop -->
             <div style="display: flex; gap: 4px;">
-              <button id="btn-local-brush-mode" class="btn-primary" style="flex: 1; font-size: 10.5px; padding: 4px;" title="Schildermodus: selecteer onderdeel">🖌️ Penseel</button>
+              <button id="btn-local-brush-mode" class="btn-secondary active" style="flex: 1; font-size: 10.5px; padding: 4px;" title="Schildermodus: selecteer onderdeel">🖌️ Penseel</button>
               <button id="btn-local-eraser-mode" class="btn-secondary" style="flex: 1; font-size: 10.5px; padding: 4px;" title="Gummodus: wis selectie van onderdeel">🧹 Gum</button>
-              <button id="btn-local-toggle-overlay" class="btn-secondary" style="flex: 1; font-size: 10.5px; padding: 4px; color: #ef4444;" title="Toon/verberg robijnrode maskeroverlay (Sneltoets: O)">🔴 Masker (O)</button>
+              <button id="btn-local-toggle-overlay" class="btn-secondary" style="flex: 1; font-size: 10.5px; padding: 4px;" title="Toon/verberg robijnrode maskeroverlay (Sneltoets: O)">🔴 Masker (O)</button>
             </div>
 
             <!-- Penseelgrootte & Doezelaar -->
@@ -208,7 +208,7 @@
               <button id="btn-local-invert" class="btn-secondary" style="flex: 1; font-size: 10px; padding: 5px 4px;" title="Keer masker om (selecteer juist alles behalve wat geschilderd is)">🔄 Inverteer</button>
               <button id="btn-local-clear" class="btn-secondary" style="flex: 1; font-size: 10px; padding: 5px 4px;" title="Wis het geschilderde masker">↺ Wis Deel</button>
             </div>
-            <button id="btn-local-bake" class="btn-primary" style="width: 100%; font-size: 11px; padding: 7px; font-weight: 700; margin-top: 4px; background: linear-gradient(135deg, #059669, #047857); border-color: #34d399;" title="Brand deze lokale aanpassing definitief in de fotolaag in, zodat u eventueel een volgend onderdeel kunt schilderen">
+            <button id="btn-local-bake" class="btn-secondary" style="width: 100%; font-size: 11px; padding: 7px; font-weight: 600; margin-top: 4px;" title="Brand deze lokale aanpassing definitief in de fotolaag in, zodat u eventueel een volgend onderdeel kunt schilderen">
               ✨ Pas Definitief Toe op Foto
             </button>
           </div>
@@ -229,7 +229,7 @@
             </div>
             <input type="range" id="inpaint-brush-size" min="5" max="120" value="35" class="param-slider">
             <div style="display: flex; gap: 8px; margin-top: 6px;">
-              <button id="btn-apply-heal" class="btn-primary" style="flex: 1;"
+              <button id="btn-apply-heal" class="btn-secondary" style="flex: 1;"
                 title="Wis gemarkeerde objecten via contextuele synthese">✨ Wis Object</button>
               <button id="btn-clear-heal" class="btn-secondary" style="flex: 1;"
                 title="Wis het gemarkeerde schildermasker">↺ Wis Masker</button>
@@ -252,7 +252,7 @@
             </div>
             <input type="range" id="upscale-sharpness" min="0" max="100" value="50" class="param-slider">
             <div style="display: flex; gap: 6px; margin-top: 4px;">
-              <button id="btn-upscale-2x" class="btn-primary" style="flex: 1; font-size: 11px; padding: 6px 4px;">🔍
+              <button id="btn-upscale-2x" class="btn-secondary" style="flex: 1; font-size: 11px; padding: 6px 4px;">🔍
                 2x</button>
               <button id="btn-upscale-4x" class="btn-secondary" style="flex: 1; font-size: 11px; padding: 6px 4px;">🔎
                 4x</button>
@@ -363,7 +363,7 @@
             Standaard: Foto's openen 100% neutraal (origineel). Kies zelf gewenste bewerkingen.
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <button id="btn-save-as-import-preset" class="btn-primary" style="width: 100%;"
+            <button id="btn-save-as-import-preset" class="btn-secondary" style="width: 100%;"
               title="Sla huidige schuifregelaars op als jouw standaardprofiel">
               💾 Bewaar als Import Profiel
             </button>
@@ -403,7 +403,7 @@
               die foto te gaan.</p>
           </div>
           <div style="display: flex; gap: 8px;">
-            <label class="btn-primary" style="cursor: pointer;">
+            <label class="btn-secondary" style="cursor: pointer;">
               <span>➕ Voeg Meer Foto's Toe</span>
               <input type="file" id="grid-add-file-input" multiple
                 accept="image/jpeg,image/png,image/webp,image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif"
@@ -433,21 +433,21 @@
               style="font-size: 13px; color: var(--text-muted); max-width: 440px; line-height: 1.5; margin-bottom: 18px;">
               Sleep hier foto's naartoe (RAW, DNG, CR2, NEF, ARW, JPG, PNG, TIFF) of open ze via de knoppen:
             </p>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-              <button id="btn-import-sd-empty" class="btn-primary" style="background: linear-gradient(135deg, #059669, #047857); border-color: #34d399;">
-                <span>💳 SD-Kaart / Schijf Inlezen</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
+              <button id="btn-import-sd-empty" class="btn-secondary">
+                <span>💳 SD-Kaart Inlezen</span>
               </button>
-              <label class="btn-primary" style="cursor: pointer;">
+              <label class="btn-secondary" style="cursor: pointer;">
                 <span>📂 Foto's Openen</span>
                 <input type="file" multiple
                   accept="image/jpeg,image/png,image/webp,image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif"
                   style="display: none;" onchange="vroonApp.loadMultipleFiles(this.files); this.value='';">
               </label>
               <button class="btn-secondary" onclick="vroonApp.loadSampleBatch()">
-                <span>📸 5 Voorbeeldfoto's</span>
+                <span>📸 5 Voorbeelden</span>
               </button>
-              <button id="btn-open-help-empty" class="btn-secondary" style="font-weight: 700; border-color: rgba(56, 189, 248, 0.5); color: var(--accent-cyan);" title="Bekijk alle functies en de handleiding van vroonphoto">
-                <span>💡 Handleiding &amp; Mogelijkheden</span>
+              <button id="btn-open-help-empty" class="btn-secondary" title="Bekijk alle functies en de handleiding van vroonphoto">
+                <span>❓ Help &amp; Mogelijkheden</span>
               </button>
             </div>
           </div>
@@ -515,10 +515,10 @@
               🧹 Culling: Wis Onbeoordeeld
             </button>
             <!-- 1-KLIK DIRECT OPSLAAN IN SUBMAP -->
-            <div style="display: flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(52, 211, 153, 0.4); border-radius: 4px; padding: 2px 6px;">
-              <span style="font-size: 10.5px; color: #34d399; font-weight: 600;">📁 Submap:</span>
-              <input type="text" id="cull-subfolder-name" value="Selectie" style="width: 75px; font-size: 11px; padding: 2px 5px; background: rgba(0,0,0,0.6); border: 1px solid rgba(52, 211, 153, 0.5); border-radius: 3px; color: #fff;" title="Naam van de submap waarin de geselecteerde foto's worden opgeslagen">
-              <button id="btn-cull-direct-save" class="btn-primary" style="font-size: 11px; padding: 4px 8px; font-weight: 700; background: linear-gradient(135deg, #059669, #047857); border-color: #34d399;" title="Sla alle geselecteerde / beoordeelde foto's direct in 1 klik op in deze submap">
+            <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-panel-sub); border: 1px solid var(--border-glow); border-radius: 4px; padding: 2px 6px;">
+              <span style="font-size: 10.5px; color: var(--text-muted); font-weight: 600;">📁 Submap:</span>
+              <input type="text" id="cull-subfolder-name" value="Selectie" style="width: 75px; font-size: 11px; padding: 2px 5px; background: rgba(0,0,0,0.6); border: 1px solid var(--border-glow); border-radius: 3px; color: #fff;" title="Naam van de submap waarin de geselecteerde foto's worden opgeslagen">
+              <button id="btn-cull-direct-save" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;" title="Sla alle geselecteerde / beoordeelde foto's direct in 1 klik op in deze submap">
                 💾 1-Klik: Sla Selectie Op in Submap
               </button>
             </div>
@@ -648,8 +648,8 @@
         </div>
         <div id="bw-mixer-panel" class="panel-content disabled">
           <!-- 1-KLIK GROTE KNOP -->
-          <button id="btn-toggle-bw-big" class="btn-primary"
-            style="width: 100%; justify-content: center; font-size: 11px; font-weight: 700; padding: 7px 10px;">
+          <button id="btn-toggle-bw-big" class="btn-secondary"
+            style="width: 100%; justify-content: center; font-size: 11px; padding: 7px 10px;">
             ⚡ 1-Klik: Zet om naar Zwart-Wit
           </button>
 
@@ -940,7 +940,7 @@
       </div>
 
       <div class="modal-footer">
-        <button id="btn-choose-folder-export" class="btn-primary" style="flex: 1; justify-content: center;">
+        <button id="btn-choose-folder-export" class="btn-secondary" style="flex: 1; justify-content: center;">
           📁 Kies Map &amp; Opslaan op Apparaat
         </button>
       </div>
@@ -974,7 +974,7 @@
             <div style="font-weight: 700; font-size: 12px; color: var(--text-main);">
               2️⃣ Waar wilt u deze sessiemap neerzetten?
             </div>
-            <button id="btn-pick-custom-target-dir" type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; border-color: var(--accent-cyan); color: var(--accent-cyan); white-space: nowrap;">
+            <button id="btn-pick-custom-target-dir" type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; white-space: nowrap;">
               📂 Kies Locatie op Schijf / PC...
             </button>
           </div>
@@ -990,7 +990,7 @@
       </div>
       <div class="modal-footer" style="display: flex; gap: 8px;">
         <button id="btn-cancel-sd-import" class="btn-secondary" style="flex: 1;">Annuleren</button>
-        <button id="btn-confirm-sd-picker" class="btn-primary" style="flex: 2; justify-content: center; font-weight: 700; background: linear-gradient(135deg, #059669, #047857); border-color: #34d399;">
+        <button id="btn-confirm-sd-picker" class="btn-secondary" style="flex: 2; justify-content: center;">
           📥 Kies Bron op SD-Kaart &amp; Start Inlezen
         </button>
       </div>
@@ -1032,7 +1032,7 @@
             </div>
             <div style="color: #cbd5e1; font-size: 11.5px;">
               <strong>Wat kan het:</strong> Onbeperkt RAW, DNG, CR2, NEF, ARW, JPG en PNG foto's direct vanaf uw camera, SD-kaart of externe schijf inlezen.<br>
-              <strong>Hoe werkt het:</strong> Klik bovenaan op <code>💳 SD-Kaart / Schijf Inlezen</code>. Vul een unieke sessienaam in en klik op <code>📂 Kies Locatie op Schijf / PC...</code> om zelf aan te geven waar deze map op uw computer of externe schijf moet komen te staan. Klik op <code>Start Inlezen</code> om de bronmap (bijv. DCIM) te selecteren. Uw originelen op de SD-kaart blijven <strong>100% onaangeroerd</strong>.
+              <strong>Hoe werkt het:</strong> Klik bovenaan op <code>💳 SD-Kaart</code>. Vul een unieke sessienaam in en klik op <code>📂 Kies Locatie op Schijf / PC...</code> om zelf aan te geven waar deze map op uw computer of externe schijf moet komen te staan. Klik op <code>Start Inlezen</code> om de bronmap (bijv. DCIM) te selecteren. Uw originelen op de SD-kaart blijven <strong>100% onaangeroerd</strong>.
             </div>
           </div>
 
@@ -1145,9 +1145,9 @@
 
       <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
         <span style="font-size: 11px; color: #64748b;">
-          💡 Tip: U kunt dit overzicht op elk moment heropenen via de knop <strong>'❓ Help &amp; Mogelijkheden'</strong> in de menubalk.
+          💡 Tip: U kunt dit overzicht op elk moment heropenen via de knop <strong>'❓ Help'</strong> in de menubalk.
         </span>
-        <button id="btn-close-help-footer" class="btn-primary" style="padding: 6px 18px; font-weight: 700;">
+        <button id="btn-close-help-footer" class="btn-secondary" style="padding: 6px 18px;">
           Sluiten
         </button>
       </div>
