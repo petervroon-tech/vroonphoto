@@ -22,7 +22,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.6.1</strong> beschikbaar &bull; <span id="upd-note">Lokaal Aanpassingspenseel voor pen, hand &amp; muis: bewerk elk onderdeel afzonderlijk (Belichting, Kleur, Contrast, Z/W, Huidverzachting)</span></span>
+      <span><strong id="upd-ver">v1.6.2</strong> beschikbaar &bull; <span id="upd-note">Help &amp; Handleiding knop met live overzicht van alle mogelijkheden, SD-ingest, culling, lokaal penseel en Lightroom bewerking</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -43,7 +43,7 @@
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)"
           title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.6.1</span> 🔄
+          <span id="ver-txt">v1.6.2</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -88,6 +88,10 @@
     </div>
 
     <div class="header-right">
+      <button id="btn-open-help" class="btn-secondary" style="font-weight: 700; border-color: rgba(56, 189, 248, 0.45); color: var(--accent-cyan);"
+        title="Bekijk de complete handleiding en alle mogelijkheden van vroonphoto">
+        <span>❓ Help &amp; Mogelijkheden</span>
+      </button>
       <button id="btn-prev-photo" class="btn-icon" title="Vorige foto (◀)">◀</button>
       <button id="btn-next-photo" class="btn-icon" title="Volgende foto (▶)">▶</button>
       <button id="btn-rotate-left" class="btn-icon" title="90° Links draaien">↺</button>
@@ -441,6 +445,9 @@
               </label>
               <button class="btn-secondary" onclick="vroonApp.loadSampleBatch()">
                 <span>📸 5 Voorbeeldfoto's</span>
+              </button>
+              <button id="btn-open-help-empty" class="btn-secondary" style="font-weight: 700; border-color: rgba(56, 189, 248, 0.5); color: var(--accent-cyan);" title="Bekijk alle functies en de handleiding van vroonphoto">
+                <span>💡 Handleiding &amp; Mogelijkheden</span>
               </button>
             </div>
           </div>
@@ -985,6 +992,163 @@
         <button id="btn-cancel-sd-import" class="btn-secondary" style="flex: 1;">Annuleren</button>
         <button id="btn-confirm-sd-picker" class="btn-primary" style="flex: 2; justify-content: center; font-weight: 700; background: linear-gradient(135deg, #059669, #047857); border-color: #34d399;">
           📥 Kies Bron op SD-Kaart &amp; Start Inlezen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HELP & MOGELIJKHEDEN MODAL (ALTIJD GEAUTOMATISEERD BIJGEWERKT NAAR NIEUWSTE SITUATIE) -->
+  <div id="help-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 780px; max-height: 88vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 19px;">💡</span>
+          <strong>Handleiding &amp; Mogelijkheden van &lt;vroonphoto&gt; (<span id="help-modal-ver">v1.6.2</span>)</strong>
+        </span>
+        <button id="btn-close-help-modal" class="btn-icon">✕</button>
+      </div>
+
+      <div class="modal-body" style="overflow-y: auto; padding: 18px 20px; font-size: 12px; line-height: 1.55; color: #cbd5e1;">
+        <!-- Introductie -->
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 6px; padding: 12px 14px; margin-bottom: 16px;">
+          <div style="font-weight: 700; color: #38bdf8; font-size: 13px; margin-bottom: 4px;">
+            📸 Welkom bij &lt;vroonphoto&gt; — Snelle Professionele RAW &amp; Foto Studio
+          </div>
+          <div style="font-size: 11.5px; color: #94a3b8; line-height: 1.45;">
+            Draait 100% in uw webbrowser met hardware-versnelde <strong>WebAssembly (WASM)</strong>. Geen installatie of plugins nodig, volledige privacy (uw foto's verlaten uw apparaat nooit) en ontworpen voor <strong>muis, hand (touch) én pen (Apple Pencil / Stylus)</strong> op laptops, desktops en iPads.
+          </div>
+        </div>
+
+        <!-- Snelstartgids: Overzicht van alle Mogelijkheden & Hoe u ze gebruikt -->
+        <div style="font-weight: 700; font-size: 13px; color: #fff; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+          <span>🚀</span> Overzicht van Alle Functies &amp; Hoe u ze Gebruikt:
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+          <!-- 1. SD & Opslaglocatie -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 6px; padding: 10px 12px;">
+            <div style="font-weight: 700; color: #34d399; font-size: 12px; margin-bottom: 3px;">
+              💳 1. Foto's Inlezen vanaf SD-Kaart / Externe Schijf &amp; Zelf Opslaglocatie Kiezen
+            </div>
+            <div style="color: #cbd5e1; font-size: 11.5px;">
+              <strong>Wat kan het:</strong> Onbeperkt RAW, DNG, CR2, NEF, ARW, JPG en PNG foto's direct vanaf uw camera, SD-kaart of externe schijf inlezen.<br>
+              <strong>Hoe werkt het:</strong> Klik bovenaan op <code>💳 SD-Kaart / Schijf Inlezen</code>. Vul een unieke sessienaam in en klik op <code>📂 Kies Locatie op Schijf / PC...</code> om zelf aan te geven waar deze map op uw computer of externe schijf moet komen te staan. Klik op <code>Start Inlezen</code> om de bronmap (bijv. DCIM) te selecteren. Uw originelen op de SD-kaart blijven <strong>100% onaangeroerd</strong>.
+            </div>
+          </div>
+
+          <!-- 2. Culling 1-7, sterren & kleuren -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 6px; padding: 10px 12px;">
+            <div style="font-weight: 700; color: #fbbf24; font-size: 12px; margin-bottom: 3px;">
+              ⭐ 2. Culling &amp; Beoordelen (Cijfers 1-7, Sterren &amp; Kleuren)
+            </div>
+            <div style="color: #cbd5e1; font-size: 11.5px;">
+              <strong>Wat kan het:</strong> Razendsnel een fotosessie sorteren, cijfers 1 t/m 7 toekennen, sterren of 5 kleurenlabels geven.<br>
+              <strong>Hoe werkt het:</strong> Druk op de toetsen <code>1</code> t/m <code>7</code> op uw toetsenbord of klik op de score-knoppen onder de foto. Gebruik het dropdown-filter om bijv. alleen uw 5-sterren foto's te zien. Klik op <code>🧹 Culling: Wis Onbeoordeeld</code> om afgekeurde foto's uit het werkgeheugen te schonen (originelen op schijf blijven veilig bewaard).
+            </div>
+          </div>
+
+          <!-- 3. 1-Klik Opslaan in Submap -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 6px; padding: 10px 12px;">
+            <div style="font-weight: 700; color: #38bdf8; font-size: 12px; margin-bottom: 3px;">
+              💾 3. In 1 Klik Opslaan van Selectie in een Submap
+            </div>
+            <div style="color: #cbd5e1; font-size: 11.5px;">
+              <strong>Wat kan het:</strong> Al uw beoordeelde of geselecteerde foto's in één enkele klik direct wegschrijven naar een eigen submap.<br>
+              <strong>Hoe werkt het:</strong> Typ eventueel een submapnaam in (standaard <code>Selectie</code>) in de culling-balk en klik op <code>💾 1-Klik: Sla Selectie Op in Submap</code>. Alle geselecteerde foto's worden direct geëxporteerd naar die submap op uw schijf.
+            </div>
+          </div>
+
+          <!-- 4. Lokaal Aanpassingspenseel -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 6px; padding: 10px 12px;">
+            <div style="font-weight: 700; color: #a78bfa; font-size: 12px; margin-bottom: 3px;">
+              🖌️ 4. Lokaal Aanpassingspenseel (Pen, Hand &amp; Muis op Onderdelen)
+            </div>
+            <div style="color: #cbd5e1; font-size: 11.5px;">
+              <strong>Wat kan het:</strong> Elk specifiek onderdeel van een foto afzonderlijk schilderen en bewerken (gezichten, ogen, lucht, kleding, schaduwen).<br>
+              <strong>Hoe werkt het:</strong> Klik op <code>🖌️ Onderdeel Bewerken</code>. Schilder over het gewenste deel met de pen (met drukgevoeligheid!), vinger of muis. Pas belichting (Dodge &amp; Burn), contrast, schaduwen, temperatuur, verzadiging, clarity (huidverzachting) of selectief zwart-wit aan. Druk op <code>O</code> voor de rode masker-overlay en klik op <code>✨ Pas Toe</code> om het definitief in te branden en direct een volgend onderdeel te bewerken.
+            </div>
+          </div>
+
+          <!-- 5. 1-Klik Zwart-Wit -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 6px; padding: 10px 12px;">
+            <div style="font-weight: 700; color: #f1f5f9; font-size: 12px; margin-bottom: 3px;">
+              ⚡ 5. 1-Klik Zwart-Wit Conversie &amp; Professionele B&amp;W Tools
+            </div>
+            <div style="color: #cbd5e1; font-size: 11.5px;">
+              <strong>Wat kan het:</strong> Direct omzetten naar krachtig zwart-wit met professionele fine-tuning.<br>
+              <strong>Hoe werkt het:</strong> Klik op <code>⚡ Zwart-Wit</code> in de bovenbalk. Gebruik in het rechterpaneel de Zone Contrast, Clarity Punch, Analoge Filmkorrel en de Rood/Groen/Blauw Kleurfilter Mixer, of kies stijlen als Ansel Adams of Film Noir.
+            </div>
+          </div>
+
+          <!-- 6. Lightroom & AI Presets -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 6px; padding: 10px 12px;">
+            <div style="font-weight: 700; color: #f59e0b; font-size: 12px; margin-bottom: 3px;">
+              🎚️ 6. 13 Lightroom Presets met Traploze Schuifregelaar
+            </div>
+            <div style="color: #cbd5e1; font-size: 11.5px;">
+              <strong>Wat kan het:</strong> Populaire stijlen (Gouden Uur, Blauwe Uur, Vintage Matte Film, Architectuur HDR, Zacht Portret, Moody Teal &amp; Orange, etc.).<br>
+              <strong>Hoe werkt het:</strong> Klik op een preset in de linker zijbalk. Gebruik de schuifregelaar bovenaan in het rechterpaneel om de intensiteit aan te passen van 0% (origineel) tot 100% (standaard) tot 200% (dubbel effect).
+            </div>
+          </div>
+
+          <!-- 7. Vignettering -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 6px; padding: 10px 12px;">
+            <div style="font-weight: 700; color: #e2e8f0; font-size: 12px; margin-bottom: 3px;">
+              🎞️ 7. Creatieve Vignettering (Donker ◄► Licht)
+            </div>
+            <div style="color: #cbd5e1; font-size: 11.5px;">
+              <strong>Wat kan het:</strong> Vloeiende vignettering naar diep zwart (-100) of high-key wit (+100).<br>
+              <strong>Hoe werkt het:</strong> Gebruik in de rechterkolom de regelaars voor Bedrag, Middelpunt (reikwijdte) en Doezelaar (zachtheid), of klik op de 4 snelle knoppen.
+            </div>
+          </div>
+
+          <!-- 8. Objecten Wissen & Topaz AI -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 6px; padding: 10px 12px;">
+            <div style="font-weight: 700; color: #ec4899; font-size: 12px; margin-bottom: 3px;">
+              🪄 8. Objecten / Personen Wissen &amp; AI Vergroten
+            </div>
+            <div style="color: #cbd5e1; font-size: 11.5px;">
+              <strong>Wat kan het:</strong> Verwijder storende prullenbakken, palen of voorbijgangers via contextuele synthese, en vergroot foto's 2x of 4x.<br>
+              <strong>Hoe werkt het:</strong> Klik op <code>🪄 Object / Persoon Verwijderen</code>, schilder over het object en klik op <code>✨ Wis Object</code>. Gebruik <code>Topaz AI 2x / 4x</code> in de linkerzijbalk voor vergroten met behoud van scherpte.
+            </div>
+          </div>
+
+          <!-- 9. Sneltoetsen & Gebaren -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 6px; padding: 10px 12px;">
+            <div style="font-weight: 700; color: #38bdf8; font-size: 12px; margin-bottom: 3px;">
+              ⌨️ 9. Handige Sneltoetsen &amp; Touch Gebaren
+            </div>
+            <div style="color: #cbd5e1; font-size: 11.5px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px; margin-top: 4px;">
+              <div><code>1 t/m 7</code>: Beoordeel actieve foto</div>
+              <div><code>0</code>: Wis score</div>
+              <div><code>\</code> (Backslash): Voor / Na vergelijken</div>
+              <div><code>O</code>: Toon / verberg lokaal masker</div>
+              <div><code>[</code> en <code>]</code>: Penseel kleiner / groter</div>
+              <div><code>◀</code> / <code>▶</code>: Vorige / Volgende foto</div>
+              <div><code>Del / Backspace</code>: Foto verwijderen</div>
+              <div><code>2 Vingers</code>: Knijpen/spreiden voor zoom &amp; pan</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamische Feature Historie (Automatisch Bijgewerkt na Elke Update) -->
+        <div style="border-top: 1px solid rgba(255, 255, 255, 0.12); padding-top: 14px; margin-top: 10px;">
+          <div style="font-weight: 700; font-size: 12.5px; color: var(--accent-cyan); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <span>📋 Alle Mogelijkheden in deze Versie (Live Gesynchroniseerd):</span>
+            <span style="font-size: 10px; color: #34d399; font-weight: 600;">✓ Altijd Actueel</span>
+          </div>
+          <div id="help-features-dynamic-list" style="display: flex; flex-direction: column; gap: 6px;">
+            <!-- Dynamisch gevuld vanuit version.json -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 11px; color: #64748b;">
+          💡 Tip: U kunt dit overzicht op elk moment heropenen via de knop <strong>'❓ Help &amp; Mogelijkheden'</strong> in de menubalk.
+        </span>
+        <button id="btn-close-help-footer" class="btn-primary" style="padding: 6px 18px; font-weight: 700;">
+          Sluiten
         </button>
       </div>
     </div>

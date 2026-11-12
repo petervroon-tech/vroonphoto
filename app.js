@@ -54,6 +54,21 @@ async function forceAppUpdate() {
     }, 450);
 }
 
+function updateHelpModalFeatures(data) {
+    if (!data) return;
+    const verEl = document.getElementById('help-modal-ver');
+    if (verEl && data.version) verEl.textContent = `v${data.version}`;
+
+    const listEl = document.getElementById('help-features-dynamic-list');
+    if (listEl && Array.isArray(data.features)) {
+        listEl.innerHTML = data.features.map(f => `
+            <div style="padding: 9px 12px; background: rgba(15, 23, 42, 0.7); border-left: 3px solid var(--accent-cyan); border-radius: 4px; font-size: 11px; line-height: 1.45; color: #e2e8f0;">
+                ${f}
+            </div>
+        `).join('');
+    }
+}
+
 async function checkVersion(silent = true) {
     try {
         const res = await fetch(`${CFG.versionFile}?nocache=${Date.now()}`, { cache: 'no-store' });
@@ -62,6 +77,10 @@ async function checkVersion(silent = true) {
             return;
         }
         const data = await res.json();
+
+        if (data) {
+            updateHelpModalFeatures(data);
+        }
 
         const pillTxt = document.getElementById('ver-txt');
         if (pillTxt && !currentVersion) {
@@ -1132,6 +1151,12 @@ class VroonPhotoApp {
             else this.loadSingleSample(e.target.value);
         });
 
+        // Help & Mogelijkheden Modal
+        document.getElementById('btn-open-help')?.addEventListener('click', () => this.openHelpModal());
+        document.getElementById('btn-open-help-empty')?.addEventListener('click', () => this.openHelpModal());
+        document.getElementById('btn-close-help-modal')?.addEventListener('click', () => document.getElementById('help-modal')?.classList.add('hidden'));
+        document.getElementById('btn-close-help-footer')?.addEventListener('click', () => document.getElementById('help-modal')?.classList.add('hidden'));
+
         // SD-Kaart / Externe Schijf Inlezen & Modal
         document.getElementById('btn-import-sd')?.addEventListener('click', () => this.openSDImportModal());
         document.getElementById('btn-import-sd-empty')?.addEventListener('click', () => this.openSDImportModal());
@@ -1701,6 +1726,19 @@ class VroonPhotoApp {
         this.updateGridUI();
         this.setActivePhoto(this.activePhotoIndex);
         alert(`✅ Culling voltooid! ${kept.length} geselecteerde foto('s) behouden in uw werkruimte. Originelen op bron blijven veilig bewaard.`);
+    }
+
+    async openHelpModal() {
+        const modal = document.getElementById('help-modal');
+        if (!modal) return;
+        try {
+            const res = await fetch(`version.json?nocache=${Date.now()}`);
+            if (res.ok) {
+                const data = await res.json();
+                updateHelpModalFeatures(data);
+            }
+        } catch (e) {}
+        modal.classList.remove('hidden');
     }
 
     openSDImportModal() {
