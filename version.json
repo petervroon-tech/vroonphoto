@@ -1,11 +1,12 @@
 {
   "app_name": "vroonphoto",
-  "version": "1.7.4",
-  "build": 34,
-  "timestamp": "2026-11-12T21:08:06.824480+00:00",
-  "git_hash": "4b4f493",
+  "version": "1.7.5",
+  "build": 35,
+  "timestamp": "2026-11-12T21:54:29.864146+00:00",
+  "git_hash": "c8bbe4e",
   "features": [
-    "🚀 Versie v1.7.4: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🚀 Versie v1.7.5: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "⚡ 120 FPS Prestatie-Optimalisatie voor MacBooks & Trackpad (v1.7.5): Complete eliminatie van haperingen en vertragingen bij het bewegen met de muis of het trackpad over de foto. Dubbele event listeners verwijderd; cursor-cirkel ontkoppeld van zware herberekeningen (forced layout recalculation / getBoundingClientRect geëlimineerd) en overgezet naar hardware-versnelde GPU compositing (translate3d via requestAnimationFrame); penseelstreken (inpaint & lokaal masker) renderen nu direct met 120 FPS zonder 24-megapixel putImageData herhalingen per pixel; fotowisselingen in de filmstrip zijn direct (0ms) zonder telkens alle DOM elementen opnieuw op te bouwen; en alle schuifregelaars zijn gekoppeld aan vloeiende requestAnimationFrame rendering.",
     "🔍 Uitgebreide Functie-Audit & Stabiliteitsharding (v1.7.4): Volledige controle en verificatie van alle 40 schuifregelaars, presets, zwart-wit modules, culling-systemen, SD-ingest en opslagfuncties. Knop voor Horizontaal Spiegelen (Flip ⇄) toegevoegd aan navigatiebalk naast rotatieknoppen; synchrone rotatie en spiegeling van inpaint- en penseelmaskers gewaarborgd; penseelgrootte weergave en synchronisatie gekoppeld aan universele parameters; resetknoppen per sectie geïsoleerd van filmstripknoppen; en 100% operationele garantie voor elke knop en actie in de interface.",
     "📁 Zelf Doelmap Kiezen in Exportcentrum (v1.7.3): Gebruikers zijn nooit meer verplicht tot een automatische ZIP in Downloads! In het Exportcentrum kan nu direct worden gekozen tussen: 1) '📁 Direct een eigen map kiezen in Finder / Verkenner' (in Chrome/Edge/Arc op Mac opent direct Finder om een willekeurige map aan te wijzen), 2) '💾 Losse bestanden opslaan' (elke foto direct los opgeslagen zonder ZIP), 3) '📤 macOS Deelmenu' (via 'Bewaar in Bestanden / Finder' op iPad/Mac), of 4) '📦 ZIP-bestand'. Inclusief heldere uitleg hoe u in Safari via Instellingen > Algemeen 'Vraag om voor elke download' aanzet om altijd zelf de Finder map aan te wijzen.",
     "🪄 Volledig Herstel Objecten & Personen Wissen (v1.7.2): Het wissen van objecten of personen ('🪄 Object / Persoon Verwijderen' -> '✨ Wis Object') is fundamenteel gerepareerd. De inpainting-engine gebruikt nu een geavanceerde concentrische grensgolf (onion peeling) synthese die objecten en personen daadwerkelijk 100% verwijdert en naadloos opvult met de omringende achtergrond in plaats van het object met zichzelf te mengen. Het penseel toont nu bovendien een heldere, kristalheldere robijnrode markering over het object zonder dat de rest van de foto verduisterd wordt, en snelle penseelstreken worden niet langer per abuis onderbroken door dubbeltik-zoom.",

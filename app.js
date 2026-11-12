@@ -872,6 +872,41 @@ class VroonPhotoApp {
 
         // Aangepast Automatisch Import Profiel (bv. ruisonderdrukking, rood licht, banding reductie)
         this.customImportPreset = this.loadCustomImportPreset();
+
+        // Performance & Hardware Acceleratie Caching (120 FPS optimalisatie voor MacBook trackpad / muis)
+        this.cachedCanvasRect = null;
+        this.cursorCircle = null;
+        this.inpaintBrushSize = 35;
+        this.localBrushSize = 35;
+        this._renderRaf = null;
+    }
+
+    updateCachedCanvasRect() {
+        if (this.canvas) {
+            this.cachedCanvasRect = this.canvas.getBoundingClientRect();
+        }
+    }
+
+    scheduleRenderActivePhoto() {
+        if (this._renderRaf) return;
+        this._renderRaf = requestAnimationFrame(() => {
+            this._renderRaf = null;
+            this.renderActivePhoto();
+        });
+    }
+
+    updateFilmstripActiveOnly() {
+        const container = document.getElementById('filmstrip-scroll');
+        if (!container) return;
+        const items = container.querySelectorAll('.filmstrip-item');
+        if (items.length === 0) {
+            this.updateFilmstripUI();
+            return;
+        }
+        items.forEach((item) => {
+            const idx = parseInt(item.dataset.index, 10);
+            item.classList.toggle('active', idx === this.activePhotoIndex);
+        });
     }
 
     getDefaultState() {
@@ -991,6 +1026,13 @@ class VroonPhotoApp {
 
         setInterval(() => checkVersion(true), 5 * 60 * 1000);
 
+        this.cursorCircle = document.getElementById('brush-cursor-circle');
+        this.inpaintBrushSize = parseInt(document.getElementById('inpaint-brush-size')?.value || 35, 10);
+        this.localBrushSize = parseInt(document.getElementById('local-brush-size')?.value || 35, 10);
+        this.updateCachedCanvasRect();
+        window.addEventListener('resize', () => this.updateCachedCanvasRect(), { passive: true });
+        window.addEventListener('scroll', () => this.updateCachedCanvasRect(), { passive: true });
+
         this.initHistogram();
         this.initToneCurve();
         this.updateImportPresetUI();
@@ -1016,7 +1058,7 @@ class VroonPhotoApp {
         document.getElementById('btn-apply-import-preset-all')?.addEventListener('click', () => this.applyImportPresetToAll());
         document.getElementById('btn-reset-import-preset')?.addEventListener('click', () => this.resetImportPreset());
 
-        // Sliders binding
+        // Sliders binding met 120 FPS requestAnimationFrame scheduling
         document.querySelectorAll('.param-slider').forEach(slider => {
             const param = slider.dataset.param;
             const valSpan = document.getElementById(`${slider.id}-val`);
@@ -1026,7 +1068,7 @@ class VroonPhotoApp {
                 const val = parseFloat(e.target.value);
                 if (param) photo.state[param] = val;
                 if (valSpan) valSpan.textContent = val;
-                this.renderActivePhoto();
+                this.scheduleRenderActivePhoto();
             });
         });
 
@@ -1034,7 +1076,9 @@ class VroonPhotoApp {
         const brushSlider = document.getElementById('inpaint-brush-size');
         const brushSpan = document.getElementById('brush-size-val');
         const brushSpanNew = document.getElementById('inpaint-brush-size-val');
+        this.inpaintBrushSize = parseInt(brushSlider?.value || 35, 10);
         brushSlider?.addEventListener('input', (e) => {
+            this.inpaintBrushSize = parseInt(e.target.value, 10);
             if (brushSpan) brushSpan.textContent = `${e.target.value}px`;
             if (brushSpanNew) brushSpanNew.textContent = `${e.target.value}px`;
         });
@@ -1103,7 +1147,9 @@ class VroonPhotoApp {
         // Lokale Sliders
         const localSizeSlider = document.getElementById('local-brush-size');
         const localSizeVal = document.getElementById('local-brush-size-val');
+        this.localBrushSize = parseInt(localSizeSlider?.value || 35, 10);
         localSizeSlider?.addEventListener('input', (e) => {
+            this.localBrushSize = parseInt(e.target.value, 10);
             if (localSizeVal) localSizeVal.textContent = `${e.target.value}px`;
         });
 
@@ -1124,7 +1170,7 @@ class VroonPhotoApp {
                 const val = parseFloat(e.target.value);
                 photo.localState[param] = val;
                 if (valSpan) valSpan.textContent = val;
-                this.renderActivePhoto();
+                this.scheduleRenderActivePhoto();
             });
         });
 
@@ -1350,7 +1396,9 @@ class VroonPhotoApp {
 
     // Invoermodus Detectie & Badge (Muis, Hand / Touch, Pen / Apple Pencil)
     updateInputMode(pointerType, pressure = 0) {
-        this.activePointerType = pointerType || 'mouse';
+        pointerType = pointerType || 'mouse';
+        if (pointerType === this.activePointerType && pointerType !== 'pen') return;
+        this.activePointerType = pointerType;
         const badge = document.getElementById('input-mode-badge');
         const badge2 = document.getElementById('local-input-type-badge');
 
@@ -1387,16 +1435,15 @@ class VroonPhotoApp {
     // Vloeiende Penseelstreken met Drukgevoeligheid (Apple Pencil / Stylus)
     paintMaskStroke(clientX, clientY, pressure = 0.5, isStart = false) {
         if (!this.maskCtx || !this.canvas) return;
-        const rect = this.canvas.getBoundingClientRect();
+        const rect = this.cachedCanvasRect || this.canvas.getBoundingClientRect();
         const sx = this.canvas.width / rect.width;
         const sy = this.canvas.height / rect.height;
         const x = (clientX - rect.left) * sx;
         const y = (clientY - rect.top) * sy;
 
-        const baseSize = parseInt(document.getElementById('inpaint-brush-size')?.value || 35);
+        const baseSize = this.inpaintBrushSize || parseInt(document.getElementById('inpaint-brush-size')?.value || 35, 10);
         let effectiveRadius = baseSize;
         if (this.activePointerType === 'pen' && pressure > 0) {
-            // Apple Pencil / Stylus pen drukgevoeligheid
             effectiveRadius = Math.max(4, baseSize * (0.35 + 0.65 * pressure));
         }
 
@@ -1417,42 +1464,82 @@ class VroonPhotoApp {
             this.maskCtx.stroke();
         }
 
+        // Direct op het actieve canvas tekenen voor 120 FPS realtime feedback ZONDER putImageData vertraging
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.45;
+        this.ctx.fillStyle = '#ef4444';
+        this.ctx.strokeStyle = '#ef4444';
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        this.ctx.lineWidth = effectiveRadius * 2;
+        if (isStart || !this.lastPointerPos) {
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, effectiveRadius, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else {
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.lastPointerPos.x, this.lastPointerPos.y);
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+        }
+        this.ctx.restore();
+
         this.lastPointerPos = { x, y };
-        this.drawActiveCanvas();
     }
 
     // Geünificeerde Pointer Events (Muis, Hand / Touch, Pen / Apple Pencil)
     setupTouchInteractions() {
-        const updateCursorCircle = (clientX, clientY, pressure = 0.5) => {
-            const circle = document.getElementById('brush-cursor-circle');
-            if (!circle) return;
+        let cursorRafPending = false;
+        let lastCursorX = 0, lastCursorY = 0, lastPressure = 0.5;
+
+        const renderCursorCircle = () => {
+            cursorRafPending = false;
+            if (!this.cursorCircle) this.cursorCircle = document.getElementById('brush-cursor-circle');
+            if (!this.cursorCircle) return;
+
             if (this.activeTool !== 'inpaint' && this.activeTool !== 'local_adjust') {
-                circle.style.display = 'none';
+                if (this.cursorCircle.style.display !== 'none') this.cursorCircle.style.display = 'none';
                 return;
             }
-            const rect = this.canvas.getBoundingClientRect();
-            if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
-                circle.style.display = 'none';
+
+            const rect = this.cachedCanvasRect || (this.canvas ? this.canvas.getBoundingClientRect() : null);
+            if (!rect || lastCursorX < rect.left || lastCursorX > rect.right || lastCursorY < rect.top || lastCursorY > rect.bottom) {
+                if (this.cursorCircle.style.display !== 'none') this.cursorCircle.style.display = 'none';
                 return;
             }
-            let baseBrushSize = 35;
-            if (this.activeTool === 'inpaint') {
-                baseBrushSize = parseInt(document.getElementById('inpaint-brush-size')?.value || 35, 10);
-            } else if (this.activeTool === 'local_adjust') {
-                baseBrushSize = parseInt(document.getElementById('local-brush-size')?.value || 35, 10);
-            }
+
+            const baseBrushSize = this.activeTool === 'inpaint'
+                ? (this.inpaintBrushSize || 35)
+                : (this.localBrushSize || 35);
+
             let brushSize = baseBrushSize;
-            if (this.activePointerType === 'pen' && pressure > 0) {
-                brushSize = Math.max(4, baseBrushSize * (0.35 + 0.65 * pressure));
+            if (this.activePointerType === 'pen' && lastPressure > 0) {
+                brushSize = Math.max(4, baseBrushSize * (0.35 + 0.65 * lastPressure));
             }
-            const scale = rect.width / this.canvas.width;
+            const scale = rect.width / (this.canvas.width || 1);
             const displayDiam = Math.max(10, brushSize * 2 * scale);
-            circle.style.display = 'block';
-            circle.style.width = `${displayDiam}px`;
-            circle.style.height = `${displayDiam}px`;
-            circle.style.left = `${clientX}px`;
-            circle.style.top = `${clientY}px`;
-            circle.style.borderColor = this.activeTool === 'local_adjust' ? '#38bdf8' : '#ef4444';
+
+            if (this.cursorCircle.style.display !== 'block') this.cursorCircle.style.display = 'block';
+            this.cursorCircle.style.width = `${displayDiam}px`;
+            this.cursorCircle.style.height = `${displayDiam}px`;
+            this.cursorCircle.style.transform = `translate3d(${lastCursorX}px, ${lastCursorY}px, 0) translate(-50%, -50%)`;
+            this.cursorCircle.style.borderColor = this.activeTool === 'local_adjust' ? '#38bdf8' : '#ef4444';
+        };
+
+        const updateCursorCircle = (clientX, clientY, pressure = 0.5) => {
+            if (this.activeTool !== 'inpaint' && this.activeTool !== 'local_adjust') {
+                if (this.cursorCircle && this.cursorCircle.style.display !== 'none') {
+                    this.cursorCircle.style.display = 'none';
+                }
+                return;
+            }
+            lastCursorX = clientX;
+            lastCursorY = clientY;
+            lastPressure = pressure;
+            if (!cursorRafPending) {
+                cursorRafPending = true;
+                requestAnimationFrame(renderCursorCircle);
+            }
         };
 
         // Pointer Down
@@ -1488,7 +1575,7 @@ class VroonPhotoApp {
                 } else if (this.activeTool === 'local_adjust') {
                     this.paintLocalStroke(e.clientX, e.clientY, e.pressure, true);
                 } else if (this.isBeforeAfterActive) {
-                    const rect = this.canvas.getBoundingClientRect();
+                    const rect = this.cachedCanvasRect || this.canvas.getBoundingClientRect();
                     this.splitComparePos = Math.max(0.05, Math.min(0.95, (e.clientX - rect.left) / rect.width));
                     this.drawActiveCanvas();
                 }
@@ -1499,13 +1586,12 @@ class VroonPhotoApp {
                 const pts = Array.from(this.activePointers.values());
                 this.initialPinchDist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
                 this.initialZoom = this.zoomLevel;
-                const circle = document.getElementById('brush-cursor-circle');
-                if (circle) circle.style.display = 'none';
+                if (this.cursorCircle) this.cursorCircle.style.display = 'none';
             }
             updateCursorCircle(e.clientX, e.clientY, e.pressure);
         });
 
-        // Pointer Move
+        // Pointer Move (uitsluitend op window als er actieve touches/slepen zijn)
         window.addEventListener('pointermove', (e) => {
             if (this.activePointers.has(e.pointerId)) {
                 this.activePointers.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY, type: e.pointerType });
@@ -1517,7 +1603,7 @@ class VroonPhotoApp {
                     } else if (this.activeTool === 'local_adjust') {
                         this.paintLocalStroke(e.clientX, e.clientY, e.pressure, false);
                     } else if (this.isBeforeAfterActive) {
-                        const rect = this.canvas.getBoundingClientRect();
+                        const rect = this.cachedCanvasRect || this.canvas.getBoundingClientRect();
                         this.splitComparePos = Math.max(0.05, Math.min(0.95, (e.clientX - rect.left) / rect.width));
                         this.drawActiveCanvas();
                     } else if (this.zoomLevel > 1.0) {
@@ -1535,9 +1621,25 @@ class VroonPhotoApp {
                         this.setZoom(this.initialZoom * scaleFactor);
                     }
                 }
+                updateCursorCircle(e.clientX, e.clientY, e.pressure);
             }
+        }, { passive: true });
+
+        // Hover cursor op canvas (alleen actief wanneer penseeltools aan staan)
+        this.canvas.addEventListener('pointermove', (e) => {
+            if (this.activePointers.size === 0) {
+                updateCursorCircle(e.clientX, e.clientY, e.pressure);
+            }
+        }, { passive: true });
+
+        this.canvas.addEventListener('pointerenter', (e) => {
+            this.updateCachedCanvasRect();
             updateCursorCircle(e.clientX, e.clientY, e.pressure);
-        });
+        }, { passive: true });
+
+        this.canvas.addEventListener('pointerleave', () => {
+            if (this.cursorCircle) this.cursorCircle.style.display = 'none';
+        }, { passive: true });
 
         // Pointer Up & Pointer Cancel
         const handlePointerUp = (e) => {
@@ -1548,27 +1650,17 @@ class VroonPhotoApp {
                 this.activePointers.delete(e.pointerId);
             }
             if (this.activePointers.size === 0) {
+                if (this.activeTool === 'inpaint') {
+                    this.drawActiveCanvas();
+                } else if (this.activeTool === 'local_adjust') {
+                    this.renderActivePhoto();
+                }
                 this.lastPointerPos = null;
                 this.lastLocalPointerPos = null;
             }
         };
         window.addEventListener('pointerup', handlePointerUp);
         window.addEventListener('pointercancel', handlePointerUp);
-
-        this.canvas.addEventListener('pointermove', (e) => {
-            updateCursorCircle(e.clientX, e.clientY, e.pressure);
-        });
-        this.canvas.addEventListener('mousemove', (e) => {
-            updateCursorCircle(e.clientX, e.clientY, 0.5);
-        });
-        this.canvas.addEventListener('pointerenter', (e) => {
-            updateCursorCircle(e.clientX, e.clientY, e.pressure);
-        });
-
-        this.canvas.addEventListener('pointerleave', () => {
-            const circle = document.getElementById('brush-cursor-circle');
-            if (circle) circle.style.display = 'none';
-        });
     }
 
     setupShortcuts() {
@@ -1753,6 +1845,7 @@ class VroonPhotoApp {
         this.canvas.width = photo.currentImageData.width;
         this.canvas.height = photo.currentImageData.height;
         this.initMask(photo.currentImageData.width, photo.currentImageData.height);
+        this.updateCachedCanvasRect();
 
         // Update info badge
         const badge = document.getElementById('photo-counter-badge');
@@ -1782,8 +1875,35 @@ class VroonPhotoApp {
         this.syncPresetUI();
         this.updateRatingUI(photo);
         this.renderActivePhoto();
-        this.updateFilmstripUI();
-        this.updateGridUI();
+        this.updateFilmstripActiveOnly();
+        if (this.viewMode === 'grid') {
+            this.updateGridUI();
+        }
+    }
+
+    updateActiveFilmstripCard(photo) {
+        const activeItem = document.querySelector(`.filmstrip-item[data-index="${this.activePhotoIndex}"]`);
+        if (!activeItem) {
+            this.updateFilmstripUI();
+            return;
+        }
+        let ratingBadge = activeItem.querySelector('.filmstrip-rating-badge');
+        if (photo.rating && photo.rating > 0) {
+            if (!ratingBadge) {
+                ratingBadge = document.createElement('span');
+                ratingBadge.className = 'filmstrip-rating-badge';
+                activeItem.appendChild(ratingBadge);
+            }
+            ratingBadge.textContent = `⭐${photo.rating}`;
+        } else if (ratingBadge) {
+            ratingBadge.remove();
+        }
+        const colorCode = this.getColorCode(photo.colorLabel);
+        if (colorCode) {
+            activeItem.style.borderBottom = `3.5px solid ${colorCode}`;
+        } else {
+            activeItem.style.borderBottom = '';
+        }
     }
 
     rateActivePhoto(rating) {
@@ -1791,8 +1911,8 @@ class VroonPhotoApp {
         if (!photo) return;
         photo.rating = (rating >= 0 && rating <= 7) ? rating : 0;
         this.updateRatingUI(photo);
-        this.updateFilmstripUI();
-        this.updateGridUI();
+        this.updateActiveFilmstripCard(photo);
+        if (this.viewMode === 'grid') this.updateGridUI();
     }
 
     setColorLabelActivePhoto(color) {
@@ -1800,8 +1920,8 @@ class VroonPhotoApp {
         if (!photo) return;
         photo.colorLabel = color || 'none';
         this.updateRatingUI(photo);
-        this.updateFilmstripUI();
-        this.updateGridUI();
+        this.updateActiveFilmstripCard(photo);
+        if (this.viewMode === 'grid') this.updateGridUI();
     }
 
     updateRatingUI(photo = null) {
@@ -2443,6 +2563,7 @@ class VroonPhotoApp {
         visibleItems.forEach(({ photo, originalIndex }) => {
             const item = document.createElement('div');
             item.className = `filmstrip-item ${originalIndex === this.activePhotoIndex ? 'active' : ''}`;
+            item.dataset.index = originalIndex;
             item.title = `${photo.filename} (Foto ${originalIndex + 1}) - Score: ${photo.rating || 0}`;
             item.onclick = () => this.setActivePhoto(originalIndex);
 
@@ -2478,6 +2599,7 @@ class VroonPhotoApp {
 
     // Raster Overzicht UI rendering (onbeperkt foto's overzichtelijk scherm)
     updateGridUI() {
+        if (this.viewMode !== 'grid') return;
         const grid = document.getElementById('photos-grid');
         const countTxt = document.getElementById('grid-count-txt');
         if (!grid) return;
@@ -2598,7 +2720,6 @@ class VroonPhotoApp {
 
         this.syncSliderUIFromPhoto(photo);
         this.renderActivePhoto();
-        this.updateFilmstripUI();
 
         if (photo.state.bwEnabled) {
             document.getElementById('section-bw-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -3007,13 +3128,13 @@ class VroonPhotoApp {
         const ctx = photo.localMaskCtx;
         if (!ctx || !this.canvas) return;
 
-        const rect = this.canvas.getBoundingClientRect();
+        const rect = this.cachedCanvasRect || this.canvas.getBoundingClientRect();
         const sx = this.canvas.width / rect.width;
         const sy = this.canvas.height / rect.height;
         const x = (clientX - rect.left) * sx;
         const y = (clientY - rect.top) * sy;
 
-        const baseSize = parseInt(document.getElementById('local-brush-size')?.value || 35, 10);
+        const baseSize = this.localBrushSize || parseInt(document.getElementById('local-brush-size')?.value || 35, 10);
         const feather = parseInt(document.getElementById('local-brush-feather')?.value || 40, 10);
         let effectiveRadius = baseSize;
         if (this.activePointerType === 'pen' && pressure > 0) {
@@ -3057,9 +3178,18 @@ class VroonPhotoApp {
         }
         ctx.restore();
 
+        // Directe realtime visuele feedback zonder zware herberekening tijdens de streek
+        if (this.showLocalMaskOverlay) {
+            this.ctx.save();
+            this.ctx.fillStyle = isEraser ? 'rgba(11, 17, 30, 0.45)' : 'rgba(239, 68, 68, 0.35)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, effectiveRadius, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+
         this.lastLocalPointerPos = { x, y };
         photo.hasLocalMask = true;
-        this.renderActivePhoto();
     }
 
     applyLocalAdjustmentsToImage(img, photo) {
