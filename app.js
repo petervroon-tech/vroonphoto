@@ -166,6 +166,84 @@ class WasmKernel {
         }
     }
 
+    removeStageBanding(imageData, strength) {
+        const { data, width, height } = imageData;
+        const totalBytes = width * height * 4;
+
+        if (this.isReady && this.instance.exports.vroon_remove_stage_banding) {
+            this.ensureMemory(totalBytes);
+            const mem = new Uint8Array(this.memory.buffer);
+            mem.set(data.subarray(0, totalBytes), 0);
+            this.instance.exports.vroon_remove_stage_banding(0, width, height, strength);
+            data.set(mem.subarray(0, totalBytes));
+            return;
+        }
+
+        // JS Fallback
+        if (strength <= 0.01) return;
+        const s = strength / 100.0;
+        const halfWin = 10;
+        const rowAvgR = new Float32Array(height);
+        const rowAvgG = new Float32Array(height);
+        const rowAvgB = new Float32Array(height);
+
+        for (let y = 0; y < height; y++) {
+            let sumR = 0, sumG = 0, sumB = 0;
+            const rOffset = y * width * 4;
+            for (let x = 0; x < width; x++) {
+                const idx = rOffset + x * 4;
+                sumR += data[idx];
+                sumG += data[idx + 1];
+                sumB += data[idx + 2];
+            }
+            rowAvgR[y] = sumR / width;
+            rowAvgG[y] = sumG / width;
+            rowAvgB[y] = sumB / width;
+        }
+
+        const baseR = new Float32Array(height);
+        const baseG = new Float32Array(height);
+        const baseB = new Float32Array(height);
+
+        for (let y = 0; y < height; y++) {
+            let bR = 0, bG = 0, bB = 0, cnt = 0;
+            for (let dy = -halfWin; dy <= halfWin; dy++) {
+                const py = y + dy;
+                if (py >= 0 && py < height) {
+                    bR += rowAvgR[py];
+                    bG += rowAvgG[py];
+                    bB += rowAvgB[py];
+                    cnt++;
+                }
+            }
+            baseR[y] = bR / cnt;
+            baseG[y] = bG / cnt;
+            baseB[y] = bB / cnt;
+        }
+
+        for (let y = 0; y < height; y++) {
+            const rawR = rowAvgR[y], bR = baseR[y];
+            const rawG = rowAvgG[y], bG = baseG[y];
+            const rawB = rowAvgB[y], bB = baseB[y];
+
+            const corrR = rawR > 1.0 ? 1.0 + ((bR / rawR) - 1.0) * s : 1.0;
+            const corrG = rawG > 1.0 ? 1.0 + ((bG / rawG) - 1.0) * s : 1.0;
+            const corrB = rawB > 1.0 ? 1.0 + ((bB / rawB) - 1.0) * s : 1.0;
+
+            const clampR = Math.max(0.65, Math.min(1.45, corrR));
+            const clampG = Math.max(0.65, Math.min(1.45, corrG));
+            const clampB = Math.max(0.65, Math.min(1.45, corrB));
+
+            const rOffset = y * width * 4;
+            for (let x = 0; x < width; x++) {
+                const idx = rOffset + x * 4;
+                data[idx]     = Math.min(255, Math.max(0, (data[idx] * clampR) | 0));
+                data[idx + 1] = Math.min(255, Math.max(0, (data[idx + 1] * clampG) | 0));
+                data[idx + 2] = Math.min(255, Math.max(0, (data[idx + 2] * clampB) | 0));
+            }
+        }
+    }
+
     denoise(imageData, radius, spatialSigma, rangeSigma, chromaStrength) {
         const { data, width, height } = imageData;
         const totalBytes = width * height * 4;
@@ -419,6 +497,9 @@ class VroonPhotoApp {
         this.initialZoom = 1.0;
         this.lastPenTime = 0;
         this.lastTapTime = 0;
+
+        // Aangepast Automatisch Import Profiel (bv. ruisonderdrukking, rood licht, banding reductie)
+        this.customImportPreset = this.loadCustomImportPreset();
     }
 
     getDefaultState() {
@@ -426,11 +507,101 @@ class VroonPhotoApp {
             exposure: 0, contrast: 0, highlights: 0, shadows: 0,
             temp: 0, tint: 0, vibrance: 0, saturation: 0,
             stageRedFix: 0, colorBleedReduction: 0, skinProtection: 50, gamutCompress: 50,
+            stageBandingReduction: 0,
             smartDeblur: 0, deblurSkinProtect: 75,
             denoiseLuma: 0, denoiseChroma: 0, denoiseDetail: 50,
             bwEnabled: false, bwRed: 40, bwGreen: 10, bwBlue: -10,
             bwContrast: 35, bwClarity: 45, bwGrain: 10
         };
+    }
+
+    loadCustomImportPreset() {
+        try {
+            const raw = localStorage.getItem('vroonphoto_import_preset');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                return {
+                    enabled: parsed.enabled !== false,
+                    settings: parsed.settings || null
+                };
+            }
+        } catch (e) {
+            console.warn('Kon opgeslagen import profiel niet laden:', e);
+        }
+        return { enabled: true, settings: null };
+    }
+
+    saveCurrentAsImportPreset() {
+        const photo = this.getActivePhoto();
+        if (!photo) {
+            alert("Open eerst een foto of pas sliders aan om als import profiel op te slaan.");
+            return;
+        }
+
+        const settingsCopy = JSON.parse(JSON.stringify(photo.state));
+        this.customImportPreset = {
+            enabled: true,
+            settings: settingsCopy
+        };
+        try {
+            localStorage.setItem('vroonphoto_import_preset', JSON.stringify(this.customImportPreset));
+        } catch (e) {
+            console.warn('Kon import profiel niet opslaan in localStorage:', e);
+        }
+
+        this.updateImportPresetUI();
+        alert("✅ Huidige bewerkingsinstellingen zijn opgeslagen als automatisch import profiel! Nieuwe foto's krijgen deze instellingen automatisch bij het importeren.");
+    }
+
+    resetImportPreset() {
+        try {
+            localStorage.removeItem('vroonphoto_import_preset');
+        } catch (e) {}
+        this.customImportPreset = { enabled: false, settings: null };
+        this.updateImportPresetUI();
+        alert("ℹ️ Automatisch import profiel gereset naar fabrieksinstellingen.");
+    }
+
+    updateImportPresetUI() {
+        const toggle = document.getElementById('toggle-auto-import-preset');
+        const summary = document.getElementById('import-preset-summary');
+        if (!summary) return;
+
+        if (toggle) {
+            toggle.checked = this.customImportPreset && this.customImportPreset.enabled;
+        }
+
+        if (this.customImportPreset && this.customImportPreset.settings) {
+            const s = this.customImportPreset.settings;
+            const parts = [];
+            if (s.stageRedFix > 0) parts.push(`Rood ${s.stageRedFix}%`);
+            if (s.stageBandingReduction > 0) parts.push(`Banding ${s.stageBandingReduction}%`);
+            if (s.denoiseLuma > 0 || s.denoiseChroma > 0) parts.push(`Ruis ${s.denoiseLuma || s.denoiseChroma}%`);
+            if (s.smartDeblur > 0) parts.push(`Focus ${s.smartDeblur}%`);
+            if (s.exposure !== 0) parts.push(`Belichting ${s.exposure > 0 ? '+' : ''}${s.exposure}`);
+            if (s.bwEnabled) parts.push(`Zwart-Wit`);
+            const desc = parts.length > 0 ? parts.join(', ') : 'Aangepaste waarden';
+            summary.innerHTML = `<span style="color: #38bdf8;">⚡ Actief profiel:</span> ${desc}`;
+        } else {
+            summary.innerHTML = `Standaard fabrieksinstellingen (geen profiel opgeslagen)`;
+        }
+    }
+
+    applyImportPresetToAll() {
+        if (!this.customImportPreset || !this.customImportPreset.settings) {
+            alert("Er is nog geen import profiel opgeslagen. Pas eerst de gewenste sliders aan en klik op 'Huidige sliders opslaan als Import Profiel'.");
+            return;
+        }
+        const s = this.customImportPreset.settings;
+        let count = 0;
+        this.photos.forEach(photo => {
+            Object.assign(photo.state, JSON.parse(JSON.stringify(s)));
+            count++;
+        });
+        const active = this.getActivePhoto();
+        if (active) this.syncSliderUIFromPhoto(active);
+        this.renderActivePhoto();
+        alert(`✅ Automatisch import profiel succesvol toegepast op alle ${count} foto's in de sessie!`);
     }
 
     getActivePhoto() {
@@ -448,16 +619,29 @@ class VroonPhotoApp {
 
         this.initHistogram();
         this.initToneCurve();
+        this.updateImportPresetUI();
         this.setupEventListeners();
         this.setupTouchInteractions();
         this.setupShortcuts();
         this.setupDropzone();
 
-        // Standaard batch van 5 voorbeeldfoto's laden voor directe demonstratie
+        // Standaard batch van voorbeeldfoto's laden voor directe demonstratie
         this.loadSampleBatch();
     }
 
     setupEventListeners() {
+        // Automatisch Import Profiel bediening
+        document.getElementById('toggle-auto-import-preset')?.addEventListener('change', (e) => {
+            this.customImportPreset.enabled = e.target.checked;
+            try {
+                localStorage.setItem('vroonphoto_import_preset', JSON.stringify(this.customImportPreset));
+            } catch (err) {}
+            this.updateImportPresetUI();
+        });
+        document.getElementById('btn-save-as-import-preset')?.addEventListener('click', () => this.saveCurrentAsImportPreset());
+        document.getElementById('btn-apply-import-preset-all')?.addEventListener('click', () => this.applyImportPresetToAll());
+        document.getElementById('btn-reset-import-preset')?.addEventListener('click', () => this.resetImportPreset());
+
         // Sliders binding
         document.querySelectorAll('.param-slider').forEach(slider => {
             const param = slider.dataset.param;
@@ -905,11 +1089,17 @@ class VroonPhotoApp {
             hasStageRed: false
         };
 
-        // Automatische podium rood licht analyse per foto
+        // Automatische podium rood licht en LED interferentiestrepen analyse per foto
         photo.hasStageRed = this.checkStageRed(photo.originalImageData);
         if (photo.hasStageRed) {
             photo.state.stageRedFix = 85;
             photo.state.colorBleedReduction = 65;
+            photo.state.stageBandingReduction = 75; // Bij aanvang verdwijnen interferentiestrepen direct!
+        }
+
+        // Automatisch aangepast import profiel toepassen (indien ingeschakeld door gebruiker)
+        if (this.customImportPreset && this.customImportPreset.enabled && this.customImportPreset.settings) {
+            Object.assign(photo.state, JSON.parse(JSON.stringify(this.customImportPreset.settings)));
         }
 
         this.photos.push(photo);
@@ -945,7 +1135,7 @@ class VroonPhotoApp {
         if (alertBox) {
             if (photo.hasStageRed) {
                 alertBox.classList.remove('hidden');
-                alertBox.innerHTML = `⚠️ <strong>Rood podiumlicht gedetecteerd!</strong> Rood Licht Herstel staat actief voor deze foto.`;
+                alertBox.innerHTML = `⚠️ <strong>Rood podiumlicht & LED interferentiestrepen gedetecteerd!</strong> Rood Licht Herstel & Banding Onderdrukking staan actief voor deze foto.`;
             } else {
                 alertBox.classList.add('hidden');
             }
@@ -1134,6 +1324,11 @@ class VroonPhotoApp {
                 photo.state.skinProtection / 100.0,
                 photo.state.colorBleedReduction / 100.0
             );
+        }
+
+        // 1b. Podium LED Interferentiestrepen verwijderen (PWM Rolling Shutter Banding)
+        if (photo.state.stageBandingReduction > 0) {
+            this.wasm.removeStageBanding(img, photo.state.stageBandingReduction);
         }
 
         // 2. Ruisonderdrukking
@@ -1410,7 +1605,7 @@ class VroonPhotoApp {
         const photo = this.getActivePhoto();
         if (!photo) return;
         const d = this.getDefaultState();
-        if (s === 'stage_red') ['stageRedFix', 'colorBleedReduction', 'skinProtection', 'gamutCompress'].forEach(k => photo.state[k] = d[k]);
+        if (s === 'stage_red') ['stageRedFix', 'colorBleedReduction', 'skinProtection', 'gamutCompress', 'stageBandingReduction'].forEach(k => photo.state[k] = d[k]);
         if (s === 'deblur') ['smartDeblur', 'deblurSkinProtect'].forEach(k => photo.state[k] = d[k]);
         if (s === 'denoise') ['denoiseLuma', 'denoiseChroma', 'denoiseDetail'].forEach(k => photo.state[k] = d[k]);
         if (s === 'tone') ['exposure', 'contrast', 'highlights', 'shadows', 'temp', 'tint', 'vibrance', 'saturation'].forEach(k => photo.state[k] = d[k]);
@@ -1820,7 +2015,7 @@ class VroonPhotoApp {
 
         const w = 1200, h = 800;
 
-        // 1. Concert Podium Rood Licht
+        // 1. Concert Podium Rood Licht (met LED Rolling Shutter Interferentiestrepen)
         const c1 = document.createElement('canvas'); c1.width = w; c1.height = h;
         const ctx1 = c1.getContext('2d');
         const bg1 = ctx1.createLinearGradient(0, 0, w, h);
@@ -1836,6 +2031,20 @@ class VroonPhotoApp {
         ctx1.fillStyle = redGlow; ctx1.fillRect(0, 0, w, h);
         ctx1.strokeStyle = '#e2e8f0'; ctx1.lineWidth = 6;
         ctx1.beginPath(); ctx1.moveTo(560, 490); ctx1.lineTo(600, 410); ctx1.stroke();
+
+        // Simuleer realistische LED podiumverlichting interferentiestrepen (PWM rolling shutter banding)
+        const imgD1 = ctx1.getImageData(0, 0, w, h);
+        for (let y = 0; y < h; y++) {
+            const ripple = Math.sin(y * 0.14) * 32.0 + Math.sin(y * 0.045) * 14.0;
+            const rOffset = y * w * 4;
+            for (let x = 0; x < w; x++) {
+                const idx = rOffset + x * 4;
+                imgD1.data[idx]     = Math.min(255, Math.max(0, imgD1.data[idx] + ripple * 1.1));
+                imgD1.data[idx + 1] = Math.min(255, Math.max(0, imgD1.data[idx + 1] + ripple * 0.5));
+                imgD1.data[idx + 2] = Math.min(255, Math.max(0, imgD1.data[idx + 2] + ripple * 0.7));
+            }
+        }
+        ctx1.putImageData(imgD1, 0, 0);
         this.addPhotoToSession(ctx1.getImageData(0, 0, w, h), { filename: 'Concert_Stage_Red.dng' });
 
         // 2. Hoge ISO Nachtopname (Ruis)

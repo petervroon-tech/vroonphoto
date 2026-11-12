@@ -434,3 +434,98 @@ void vroon_smart_deblur(
         }
     }
 }
+
+/*
+ * 8. STAGE LED FLICKER & INTERFERENCE BANDING REMOVAL
+ * Verwijdert periodieke interferentiestrepen veroorzaakt door LED podiumverlichting en rolling shutter
+ */
+__attribute__((visibility("default")))
+void vroon_remove_stage_banding(
+    unsigned char* pixels,
+    int width,
+    int height,
+    float strength // 0.0f tot 100.0f
+) {
+    if (strength <= 0.01f || width < 16 || height < 16) return;
+    float blend = (strength / 100.0f);
+
+    // Gebruik buffer direct achter pixeldata voor rij-gemiddelden
+    float* row_avgs = (float*)(pixels + width * height * 4);
+    float* smooth_avgs = row_avgs + height * 3;
+
+    // 1. Bereken gemiddelde kleur per rij over een steekproef van kolommen
+    int col_step = width > 400 ? (width / 200) : 1;
+    for (int y = 0; y < height; y++) {
+        float sum_r = 0.0f, sum_g = 0.0f, sum_b = 0.0f;
+        int count = 0;
+        int row_start = y * width * 4;
+        for (int x = 0; x < width; x += col_step) {
+            int idx = row_start + x * 4;
+            sum_r += (float)pixels[idx];
+            sum_g += (float)pixels[idx + 1];
+            sum_b += (float)pixels[idx + 2];
+            count++;
+        }
+        int r_idx = y * 3;
+        row_avgs[r_idx]     = sum_r / (float)count;
+        row_avgs[r_idx + 1] = sum_g / (float)count;
+        row_avgs[r_idx + 2] = sum_b / (float)count;
+    }
+
+    // 2. Filter venster over rijen (moving average over 21 rijen)
+    int window = height > 600 ? 21 : 11;
+    int half_w = window / 2;
+    for (int y = 0; y < height; y++) {
+        float sw_r = 0.0f, sw_g = 0.0f, sw_b = 0.0f;
+        int w_count = 0;
+        for (int dy = -half_w; dy <= half_w; dy++) {
+            int ny = y + dy;
+            if (ny < 0 || ny >= height) continue;
+            int n_idx = ny * 3;
+            sw_r += row_avgs[n_idx];
+            sw_g += row_avgs[n_idx + 1];
+            sw_b += row_avgs[n_idx + 2];
+            w_count++;
+        }
+        int r_idx = y * 3;
+        smooth_avgs[r_idx]     = sw_r / (float)w_count;
+        smooth_avgs[r_idx + 1] = sw_g / (float)w_count;
+        smooth_avgs[r_idx + 2] = sw_b / (float)w_count;
+    }
+
+    // 3. Corrigeer elke rij om de interferentiestrepen te neutraliseren
+    for (int y = 0; y < height; y++) {
+        int r_idx = y * 3;
+        float actual_r = row_avgs[r_idx];
+        float actual_g = row_avgs[r_idx + 1];
+        float actual_b = row_avgs[r_idx + 2];
+
+        float target_r = smooth_avgs[r_idx];
+        float target_g = smooth_avgs[r_idx + 1];
+        float target_b = smooth_avgs[r_idx + 2];
+
+        float gain_r = target_r / (actual_r + 0.01f);
+        float gain_g = target_g / (actual_g + 0.01f);
+        float gain_b = target_b / (actual_b + 0.01f);
+
+        gain_r = CLAMP(gain_r, 0.80f, 1.25f);
+        gain_g = CLAMP(gain_g, 0.80f, 1.25f);
+        gain_b = CLAMP(gain_b, 0.80f, 1.25f);
+
+        float eff_gain_r = 1.0f + (gain_r - 1.0f) * blend;
+        float eff_gain_g = 1.0f + (gain_g - 1.0f) * blend;
+        float eff_gain_b = 1.0f + (gain_b - 1.0f) * blend;
+
+        int row_start = y * width * 4;
+        for (int x = 0; x < width; x++) {
+            int idx = row_start + x * 4;
+            float r = (float)pixels[idx] * eff_gain_r;
+            float g = (float)pixels[idx + 1] * eff_gain_g;
+            float b = (float)pixels[idx + 2] * eff_gain_b;
+
+            pixels[idx]     = (unsigned char)CLAMP(r, 0.0f, 255.0f);
+            pixels[idx + 1] = (unsigned char)CLAMP(g, 0.0f, 255.0f);
+            pixels[idx + 2] = (unsigned char)CLAMP(b, 0.0f, 255.0f);
+        }
+    }
+}

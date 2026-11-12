@@ -18,7 +18,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.4.0</strong> beschikbaar &bull; <span id="upd-note">Kies zelf het gewenste exportformaat bij opslaan: RAW naar JPEG, TIFF (.tif lossless), Adobe DNG (.dng), PNG of WebP</span></span>
+      <span><strong id="upd-ver">v1.5.0</strong> beschikbaar &bull; <span id="upd-note">Podium LED interferentiestrepen automatisch verwijderen bij import &amp; zelf instelbare standaard import-preset</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -37,7 +37,7 @@
         <span id="photo-counter-badge" class="badge-count">1 / 1 Foto's</span>
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)" title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.4.0</span> 🔄
+          <span id="ver-txt">v1.5.0</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -158,6 +158,34 @@
           <div class="preset-card" data-preset="denoise_high_iso" title="Bilateral luma & chroma ruisonderdrukking">
             <span>🛡️</span>
             <span>Hoge ISO Ruis Fix</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- EIGEN AUTOMATISCH IMPORT PROFIEL -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">⚙️ Automatisch Import Profiel</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <p style="font-size: 10.5px; color: var(--text-muted); line-height: 1.35; margin: 0;">
+            Stel je eigen standaardbewerking in (bv. ruisonderdrukking, scherpte of rood licht) die direct automatisch op elke geopende foto wordt toegepast.
+          </p>
+          <label style="cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #fff;">
+            <input type="checkbox" id="toggle-auto-import-preset" checked>
+            <span>Auto-toepassen bij openen foto's</span>
+          </label>
+          <div id="import-preset-summary" style="font-size: 10px; color: var(--accent-cyan); background: rgba(56, 189, 248, 0.08); padding: 5px 8px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.2); line-height: 1.3;">
+            Profiel: LED De-Banding &amp; Ruisonderdrukking actief
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <button id="btn-save-as-import-preset" class="btn-primary-small" style="width: 100%;" title="Sla huidige schuifregelaars op als jouw standaardprofiel">
+              💾 Bewaar als Import Profiel
+            </button>
+            <button id="btn-apply-import-preset-all" class="btn-secondary" style="font-size: 11px; padding: 5px 8px; text-align: center;" title="Pas je standaardprofiel direct toe op alle geladen foto's">
+              ⚡ Toepassen op alle foto's
+            </button>
+            <button id="btn-reset-import-preset" class="btn-reset-section" style="font-size: 10px; align-self: flex-start; cursor: pointer;">
+              ↺ Herstel fabrieksinstellingen
+            </button>
           </div>
         </div>
       </div>
@@ -295,6 +323,16 @@
             </div>
             <div class="control-input-group">
               <input type="range" id="slider-gamut" data-param="gamutCompress" min="0" max="100" value="50" class="param-slider">
+            </div>
+          </div>
+
+          <div class="control-row">
+            <div class="control-label-group">
+              <span>LED Banding &amp; Interferentiestrepen</span>
+              <span id="slider-stage-banding-val">0</span>
+            </div>
+            <div class="control-input-group">
+              <input type="range" id="slider-stage-banding" data-param="stageBandingReduction" min="0" max="100" value="0" class="param-slider">
             </div>
           </div>
         </div>

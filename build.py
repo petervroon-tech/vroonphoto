@@ -15,7 +15,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "vroonphoto"
-DEFAULT_VERSION = "1.4.0"
+DEFAULT_VERSION = "1.5.0"
 
 def encode_u32(val: int) -> bytes:
     res = bytearray()
@@ -110,7 +110,7 @@ def build_wasm(output_path: str) -> int:
     out += encode_u32(len(mem_payload))
     out += mem_payload
 
-    # 4. Export section: export memory and 7 functions
+    # 4. Export section: export memory and 8 functions
     funcs = [
         "vroon_recover_red_light",
         "vroon_denoise_bilateral",
@@ -118,7 +118,8 @@ def build_wasm(output_path: str) -> int:
         "vroon_punchy_bw",
         "vroon_super_res_2x",
         "vroon_smart_inpaint",
-        "vroon_smart_deblur"
+        "vroon_smart_deblur",
+        "vroon_remove_stage_banding"
     ]
     exp_payload = bytearray()
     exp_payload += encode_u32(1 + len(funcs))
@@ -175,8 +176,10 @@ def update_version_file(version_path: str, forced_sha: str = None, forced_build:
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "git_hash": forced_sha or get_git_hash(),
         "features": [
+            "🔴 Automatisch Podium LED Interferentiestrepen Verwijderen (v1.5.0): Verwijdert hinderlijke periodieke rolling shutter en PWM LED interferentiestrepen bij concert- en podiumverlichting direct bij het laden.",
+            "⚙️ Zelf Instelbare Automatische Import Preset (v1.5.0): Stel zelf een gepersonaliseerde bewerking in (ruisonderdrukking, scherpte, rood licht, etc.) die direct automatisch wordt toegepast zodra een foto wordt geopend of geïmporteerd.",
             "💾 Universele Export Formaten (v1.4.0): Kies bij opslaan zelf het gewenste bestandsformaat: converteer RAW naar JPEG (.jpg), professioneel drukwerk TIFF (.tif 100% Lossless), Adobe Digital Negative (.dng RAW container), PNG (.png) of WebP (.webp).",
-            "✏️ Muis, Hand & Pen (Apple Pencil) Ondersteuning (v1.3.0): Bewerk foto's met muis, vinger/touch of drukgevoelige pen/stylus op iPads en touch laptops. Inclusief pinch-to-zoom (2 vingers), vloeiende penseellijnen zonder onderbrekingen, drukgevoeligheid en palm-rejection.",
+            "✏️ Muis, Hand & Pen (Apple Pencil) Ondersteuning: Bewerk foto's met muis, vinger/touch of drukgevoelige pen/stylus op iPads en touch laptops. Inclusief pinch-to-zoom (2 vingers), vloeiende penseellijnen zonder onderbrekingen, drukgevoeligheid en palm-rejection.",
             "🔍 Slimme Focus & Onscherpte Herstel met Gezichtsbehoud: Herstelt onscherpe en bewogen foto's naar haarscherpe foto's zonder menselijke gezichten te vervormen of onnatuurlijke rimpels/artefacten te veroorzaken.",
             "🪄 Objecten & Personen Verwijderen: Schilder over in de weg staande objecten (prullenbakken, lantaarnpalen, kabels, voorbijgangers) om ze direct en naadloos te wissen via contextuele achtergrondsynthese.",
             "🎨 12 Populaire Lightroom Presets: Gouden Uur, Vintage Matte Film, Architectuur HDR, Zacht Portret, Moody Teal & Orange, Herfst Amber, Winter Koud, Ansel Adams B&W en Stage Red Fix.",
