@@ -69,6 +69,7 @@
       <button id="btn-next-photo" class="btn-icon" title="Volgende foto (▶)">▶</button>
       <button id="btn-rotate-left" class="btn-icon" title="90° Links draaien">↺</button>
       <button id="btn-rotate-right" class="btn-icon" title="90° Rechts draaien">↻</button>
+      <button id="btn-delete-active-photo" class="btn-icon btn-danger-icon" title="Verwijder huidige foto uit sessie (Del / Backspace)">🗑️</button>
       <button id="btn-open-export" class="btn-primary" title="Foto's opslaan op apparaat">
         <span>💾 Opslaan &amp; Exporteren</span>
       </button>
@@ -221,9 +222,27 @@
       <div id="develop-viewport" style="flex: 1; display: flex; flex-direction: column; width: 100%; height: 100%;">
         <div class="canvas-area">
           <div id="stage-red-detected-alert" class="stage-red-alert hidden"></div>
-          <div class="canvas-wrapper">
+          <div class="canvas-wrapper" id="canvas-wrapper">
             <canvas id="main-canvas"></canvas>
             <div id="brush-cursor-circle"></div>
+          </div>
+
+          <!-- Lege Sessie Weergave (als alle foto's verwijderd zijn) -->
+          <div id="empty-session-state" class="empty-session-state hidden">
+            <span style="font-size: 52px; margin-bottom: 12px;">🖼️</span>
+            <h2 style="font-size: 19px; font-weight: 700; color: #fff; margin-bottom: 6px;">Geen foto's in de sessie</h2>
+            <p style="font-size: 13px; color: var(--text-muted); max-width: 440px; line-height: 1.5; margin-bottom: 18px;">
+              Sleep hier foto's naartoe (RAW, DNG, CR2, NEF, ARW, JPG, PNG, TIFF) of open ze via de knoppen:
+            </p>
+            <div style="display: flex; gap: 10px;">
+              <label class="btn-primary" style="cursor: pointer;">
+                <span>📂 Foto's Openen</span>
+                <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display: none;" onchange="vroonApp.loadMultipleFiles(this.files); this.value='';">
+              </label>
+              <button class="btn-secondary" onclick="vroonApp.loadSampleBatch()">
+                <span>📸 5 Voorbeeldfoto's</span>
+              </button>
+            </div>
           </div>
 
           <!-- Touch / Pen Zoom & Pan Controls -->
@@ -242,6 +261,7 @@
               🎞️ Filmstrip (<span id="filmstrip-count-txt">1 / 25</span>)
             </span>
             <div style="display: flex; gap: 8px;">
+              <button id="btn-filmstrip-delete-current" class="btn-reset-section" style="cursor: pointer; color: #ef4444; border-color: rgba(239, 68, 68, 0.35);" title="Verwijder huidige geselecteerde foto uit de sessie">🗑️ Foto Verwijderen</button>
               <button id="btn-filmstrip-sync" class="btn-reset-section" style="cursor: pointer;">⚡ Kopieer instellingen naar alle foto's</button>
             </div>
           </div>

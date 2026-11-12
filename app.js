@@ -91,6 +91,112 @@ async function applyUpdate() {
 }
 
 // ═══════════════════════════════════════════════════════
+//  1.5 UNIVERSELE RAW & AFBEELDING DECODER
+// ═══════════════════════════════════════════════════════
+
+class RawDecoder {
+    constructor() {
+        this.rawExtensions = ['raw', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'rw2', 'raf', 'orf', 'pef', 'tiff', 'tif'];
+    }
+
+    isRaw(filename) {
+        if (!filename) return false;
+        const ext = filename.split('.').pop().toLowerCase();
+        return this.rawExtensions.includes(ext);
+    }
+
+    async decode(file) {
+        // 1. Probeer eerst createImageBitmap voor standaard webformaten (JPG, PNG, WebP)
+        if (!this.isRaw(file.name)) {
+            try {
+                const bitmap = await createImageBitmap(file);
+                const c = document.createElement('canvas');
+                c.width = bitmap.width;
+                c.height = bitmap.height;
+                const ctx = c.getContext('2d', { willReadFrequently: true });
+                ctx.drawImage(bitmap, 0, 0);
+                const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+                return {
+                    imageData: imgData,
+                    width: bitmap.width,
+                    height: bitmap.height
+                };
+            } catch (e) {}
+        }
+
+        // 2. Camera RAW / DNG / TIFF scanner voor ingebedde JPEG-stream met hoge resolutie
+        try {
+            const buffer = await file.arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+            const embedded = await this.extractEmbeddedJpeg(bytes, file.name);
+            if (embedded) return embedded;
+        } catch (e) {}
+
+        // 3. Fallback via Image element (werkt voor Safari/macOS native TIFF en standaard formaten)
+        return await this.decodeViaImageElement(file);
+    }
+
+    async extractEmbeddedJpeg(bytes, filename) {
+        let largestStart = -1;
+        let largestLen = 0;
+
+        // Scan naar JPEG SOI marker (0xFF, 0xD8, 0xFF)
+        for (let i = 0; i < bytes.length - 4; i++) {
+            if (bytes[i] === 0xFF && bytes[i + 1] === 0xD8 && bytes[i + 2] === 0xFF) {
+                let eoi = -1;
+                const maxScan = Math.min(i + 35000000, bytes.length - 1);
+                for (let j = i + 2; j < maxScan; j++) {
+                    if (bytes[j] === 0xFF && bytes[j + 1] === 0xD9) {
+                        eoi = j + 2;
+                    }
+                }
+                if (eoi > i) {
+                    const length = eoi - i;
+                    if (length > largestLen && length > 65536) { // Minimaal 64KB voor preview
+                        largestLen = length;
+                        largestStart = i;
+                    }
+                }
+            }
+        }
+
+        if (largestStart >= 0) {
+            const jpegBytes = bytes.subarray(largestStart, largestStart + largestLen);
+            const blob = new Blob([jpegBytes], { type: 'image/jpeg' });
+            return await this.decodeViaImageElement(blob);
+        }
+
+        return null;
+    }
+
+    decodeViaImageElement(blobOrFile) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(blobOrFile);
+            const img = new Image();
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                const c = document.createElement('canvas');
+                c.width = img.naturalWidth || img.width;
+                c.height = img.naturalHeight || img.height;
+                const ctx = c.getContext('2d', { willReadFrequently: true });
+                ctx.drawImage(img, 0, 0);
+                const imgData = ctx.getImageData(0, 0, c.width, c.height);
+                resolve({
+                    imageData: imgData,
+                    width: c.width,
+                    height: c.height
+                });
+            };
+            img.onerror = (err) => {
+                URL.revokeObjectURL(url);
+                reject(err);
+            };
+            img.src = url;
+        });
+    }
+}
+
+// ═══════════════════════════════════════════════════════
 //  2. WEBASSEMBLY HARDWARE KERNEL
 // ═══════════════════════════════════════════════════════
 
@@ -471,6 +577,7 @@ class WasmKernel {
 class VroonPhotoApp {
     constructor() {
         this.wasm = new WasmKernel();
+        this.rawDecoder = new RawDecoder();
         this.canvas = document.getElementById('main-canvas');
         this.ctx = this.canvas ? this.canvas.getContext('2d', { willReadFrequently: true }) : null;
 
@@ -770,10 +877,20 @@ class VroonPhotoApp {
 
         // Bestanden openen (Header & Grid - Volledige JPG & RAW support)
         document.getElementById('file-upload-input')?.addEventListener('change', (e) => {
-            if (e.target.files) this.loadMultipleFiles(e.target.files);
+            if (e.target.files && e.target.files.length > 0) this.loadMultipleFiles(e.target.files);
+            e.target.value = '';
         });
         document.getElementById('grid-add-file-input')?.addEventListener('change', (e) => {
-            if (e.target.files) this.loadMultipleFiles(e.target.files);
+            if (e.target.files && e.target.files.length > 0) this.loadMultipleFiles(e.target.files);
+            e.target.value = '';
+        });
+
+        // Verwijderknoppen (Header & Filmstrip)
+        document.getElementById('btn-delete-active-photo')?.addEventListener('click', () => {
+            this.removeActivePhoto();
+        });
+        document.getElementById('btn-filmstrip-delete-current')?.addEventListener('click', () => {
+            this.removeActivePhoto();
         });
 
         // Voorbeelden laden (Uniforme knop '📸 5 Voorbeeldfoto's')
@@ -1011,6 +1128,9 @@ class VroonPhotoApp {
                 this.selectNextPhoto();
             } else if (e.key === 'ArrowLeft' && !e.target.matches('input, select')) {
                 this.selectPrevPhoto();
+            } else if ((e.key === 'Delete' || e.key === 'Backspace') && !e.target.matches('input, select, textarea')) {
+                e.preventDefault();
+                this.removeActivePhoto();
             }
         });
     }
@@ -1035,34 +1155,58 @@ class VroonPhotoApp {
 
         const remainingSlots = CFG.maxPhotos - this.photos.length;
         if (remainingSlots <= 0) {
-            alert(`Het maximum van ${CFG.maxPhotos} foto's is bereikt. Verwijder eerst foto's om nieuwe toe te voegen.`);
+            alert(`Het maximum van ${CFG.maxPhotos} foto's is bereikt. Verwijder eerst een foto om nieuwe toe te voegen.`);
             document.getElementById('loading-overlay')?.classList.add('hidden');
             return;
         }
 
         const filesToLoad = Array.from(fileList).slice(0, remainingSlots);
+        const startIndex = this.photos.length;
+        let successCount = 0;
 
         for (const file of filesToLoad) {
             try {
-                const bitmap = await createImageBitmap(file);
-                const c = document.createElement('canvas');
-                c.width = bitmap.width; c.height = bitmap.height;
-                const ctx = c.getContext('2d');
-                ctx.drawImage(bitmap, 0, 0);
-                const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
-
-                this.addPhotoToSession(imgData, {
-                    filename: file.name,
-                    filesize: `${(file.size / 1024 / 1024).toFixed(2)} MB`
-                });
+                // Decodeer met RawDecoder voor volledige RAW (DNG, CR2, NEF, ARW), TIFF, JPG, PNG ondersteuning
+                const decoded = await this.rawDecoder.decode(file);
+                if (decoded && decoded.imageData) {
+                    this.addPhotoToSession(decoded.imageData, {
+                        filename: file.name,
+                        filesize: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+                    });
+                    successCount++;
+                }
             } catch (err) {
-                console.warn('Fout bij importeren van foto:', file.name, err);
+                console.warn('Fout bij inlezen van bestand via RawDecoder:', file.name, err);
+                try {
+                    const bitmap = await createImageBitmap(file);
+                    const c = document.createElement('canvas');
+                    c.width = bitmap.width; c.height = bitmap.height;
+                    const ctx = c.getContext('2d');
+                    ctx.drawImage(bitmap, 0, 0);
+                    const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+                    this.addPhotoToSession(imgData, {
+                        filename: file.name,
+                        filesize: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+                    });
+                    successCount++;
+                } catch (e2) {
+                    alert(`⚠️ Kon bestand '${file.name}' niet inlezen.`);
+                }
             }
         }
 
         document.getElementById('loading-overlay')?.classList.add('hidden');
         this.updateFilmstripUI();
         this.updateGridUI();
+
+        if (this.viewMode === 'grid') {
+            this.toggleGridMode(false);
+        }
+
+        // SCHAKEL ONMIDDELLIJK OVER NAAR DE NIEUW GEÏMPORTEERDE FOTO ZODAT DEZE GELIJK ZICHTBAAR IS!
+        if (successCount > 0 && this.photos.length > startIndex) {
+            this.setActivePhoto(this.photos.length - 1);
+        }
     }
 
     addPhotoToSession(imageData, meta = {}) {
@@ -1116,9 +1260,17 @@ class VroonPhotoApp {
     }
 
     setActivePhoto(index) {
-        if (index < 0 || index >= this.photos.length) return;
+        if (index < 0 || index >= this.photos.length) {
+            if (this.photos.length === 0) {
+                this.showEmptyState();
+            }
+            return;
+        }
         this.activePhotoIndex = index;
         const photo = this.photos[index];
+
+        document.getElementById('empty-session-state')?.classList.add('hidden');
+        document.getElementById('canvas-wrapper')?.classList.remove('hidden');
 
         this.canvas.width = photo.currentImageData.width;
         this.canvas.height = photo.currentImageData.height;
@@ -1150,6 +1302,28 @@ class VroonPhotoApp {
         this.updateGridUI();
     }
 
+    showEmptyState() {
+        this.activePhotoIndex = -1;
+        const badge = document.getElementById('photo-counter-badge');
+        if (badge) badge.textContent = `0 / ${CFG.maxPhotos} Foto's`;
+
+        const info = document.getElementById('photo-info-display');
+        if (info) info.textContent = 'Geen foto geopend';
+
+        const alertBox = document.getElementById('stage-red-detected-alert');
+        if (alertBox) alertBox.classList.add('hidden');
+
+        if (this.ctx && this.canvas) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+
+        document.getElementById('empty-session-state')?.classList.remove('hidden');
+        document.getElementById('canvas-wrapper')?.classList.add('hidden');
+
+        this.updateFilmstripUI();
+        this.updateGridUI();
+    }
+
     selectPrevPhoto() {
         if (this.photos.length <= 1) return;
         const nextIdx = (this.activePhotoIndex - 1 + this.photos.length) % this.photos.length;
@@ -1164,15 +1338,34 @@ class VroonPhotoApp {
 
     removePhoto(index, e) {
         if (e) e.stopPropagation();
-        if (this.photos.length <= 1) {
-            alert('Je moet minstens één foto in de sessie behouden.');
+        if (index < 0 || index >= this.photos.length) return;
+
+        const removedName = this.photos[index].filename;
+        this.photos.splice(index, 1);
+
+        if (this.photos.length === 0) {
+            this.showEmptyState();
             return;
         }
-        this.photos.splice(index, 1);
+
         if (this.activePhotoIndex >= this.photos.length) {
             this.activePhotoIndex = this.photos.length - 1;
+        } else if (this.activePhotoIndex > index) {
+            this.activePhotoIndex--;
         }
         this.setActivePhoto(this.activePhotoIndex);
+    }
+
+    removeActivePhoto() {
+        if (this.activePhotoIndex < 0 || this.photos.length === 0) {
+            alert('Er is momenteel geen actieve foto om te verwijderen.');
+            return;
+        }
+        const photo = this.getActivePhoto();
+        const name = photo ? photo.filename : 'deze foto';
+        if (confirm(`Wil je '${name}' verwijderen uit de sessie?`)) {
+            this.removePhoto(this.activePhotoIndex);
+        }
     }
 
     // Synchroniseer huidige bewerking naar alle foto's in de batch
@@ -1228,7 +1421,7 @@ class VroonPhotoApp {
             item.innerHTML = `
                 <img src="${photo.thumbUrl}" alt="Thumb ${idx + 1}">
                 <span class="filmstrip-badge">#${idx + 1}</span>
-                <span class="filmstrip-close" title="Verwijderen" onclick="vroonApp.removePhoto(${idx}, event)">✕</span>
+                <span class="filmstrip-close" title="Verwijder foto #${idx + 1} (${photo.filename})" onclick="vroonApp.removePhoto(${idx}, event)">✕</span>
             `;
             container.appendChild(item);
         });
@@ -1241,7 +1434,7 @@ class VroonPhotoApp {
             addCard.innerHTML = `
                 <span style="font-size: 16px;">➕</span>
                 <span>Toevoegen</span>
-                <input type="file" multiple accept="image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display:none;" onchange="vroonApp.loadMultipleFiles(this.files)">
+                <input type="file" multiple accept="image/*,.raw,.dng,.cr2,.cr3,.nef,.arw,.rw2,.raf,.orf,.pef,.tiff,.tif" style="display:none;" onchange="vroonApp.loadMultipleFiles(this.files); this.value='';">
             `;
             container.appendChild(addCard);
         }
@@ -1266,6 +1459,7 @@ class VroonPhotoApp {
 
             card.innerHTML = `
                 <img class="grid-photo-thumb" src="${photo.thumbUrl}" alt="Photo ${idx + 1}">
+                <span class="grid-photo-delete-btn" title="Verwijder foto #${idx + 1} (${photo.filename})" onclick="vroonApp.removePhoto(${idx}, event)">🗑️</span>
                 <div class="grid-photo-meta">
                     <span class="grid-photo-title">#${idx + 1} ${photo.filename}</span>
                     <span class="grid-photo-sub">
@@ -2013,10 +2207,17 @@ class VroonPhotoApp {
     // ═══════════════════════════════════════════════════════
 
     loadSampleBatch() {
-        this.photos = [];
-        this.activePhotoIndex = -1;
-
         const w = 1200, h = 800;
+
+        // Als voorbeeldfoto's al geladen zijn in de sessie, schakel er naar toe zonder iets te wissen!
+        const sample1Idx = this.photos.findIndex(p => p.filename === 'Concert_Stage_Red.dng');
+        if (sample1Idx >= 0) {
+            this.setActivePhoto(sample1Idx);
+            return;
+        }
+
+        // Bewaar bestaande foto's: voorbeelden worden toegevoegd zonder iets te overschrijven!
+        const startIndex = this.photos.length;
 
         // 1. Concert Podium Rood Licht (met LED Rolling Shutter Interferentiestrepen)
         const c1 = document.createElement('canvas'); c1.width = w; c1.height = h;
@@ -2162,7 +2363,7 @@ class VroonPhotoApp {
         ctx7.putImageData(blurImgD, 0, 0);
         this.addPhotoToSession(ctx7.getImageData(0, 0, w, h), { filename: 'Bewogen_Portret_Focus_Test.jpg' });
 
-        this.setActivePhoto(0);
+        this.setActivePhoto(startIndex);
     }
 
     loadSingleSample(id) {

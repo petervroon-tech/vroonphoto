@@ -637,23 +637,30 @@ body {
 
 .filmstrip-close {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 16px;
-  height: 16px;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: rgba(239, 68, 68, 0.85);
+  background: rgba(239, 68, 68, 0.9);
   color: #fff;
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s;
+  opacity: 0.85;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  z-index: 5;
 }
 
-.filmstrip-item:hover .filmstrip-close {
+.filmstrip-close:hover {
   opacity: 1;
+  transform: scale(1.15);
+  background: #dc2626;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
 }
 
 .filmstrip-add-card {
@@ -760,6 +767,60 @@ body {
   color: var(--text-muted);
   display: flex;
   justify-content: space-between;
+}
+
+.grid-photo-delete-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  z-index: 5;
+}
+
+.grid-photo-delete-btn:hover {
+  background: #ef4444;
+  color: #fff;
+  transform: scale(1.15);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+}
+
+.empty-session-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+
+.btn-danger-icon {
+  color: #ef4444 !important;
+}
+
+.btn-danger-icon:hover {
+  color: #ffffff !important;
+  background: rgba(239, 68, 68, 0.3) !important;
+  border-color: rgba(239, 68, 68, 0.7) !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4) !important;
+}
+
+.btn-filmstrip-del:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: #ef4444 !important;
 }
 
 /* ==============================================================================
