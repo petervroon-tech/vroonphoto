@@ -568,6 +568,70 @@ class WasmKernel {
             }
         }
     }
+
+    applyVignette(imageData, amount = 0, midpoint = 50, feather = 50) {
+        if (!imageData || Math.abs(amount) < 0.01) return;
+        const { data, width, height } = imageData;
+        const totalBytes = width * height * 4;
+
+        if (this.isReady && this.instance.exports.vroon_apply_vignette) {
+            this.ensureMemory(totalBytes);
+            const mem = new Uint8Array(this.memory.buffer);
+            mem.set(data.subarray(0, totalBytes), 0);
+            this.instance.exports.vroon_apply_vignette(
+                0, width, height, amount, midpoint, feather
+            );
+            data.set(mem.subarray(0, totalBytes));
+            return;
+        }
+
+        // JS Fallback
+        const cx = width * 0.5;
+        const cy = height * 0.5;
+        const invCx = 1.0 / (cx > 0 ? cx : 1.0);
+        const invCy = 1.0 / (cy > 0 ? cy : 1.0);
+
+        const m = Math.max(10, Math.min(90, midpoint)) / 100.0;
+        const f = Math.max(10, Math.min(100, feather)) / 100.0;
+        const mSq = m * m * 1.25;
+        let maxSq = 1.0 + f * 1.0;
+        if (maxSq <= mSq + 0.01) maxSq = mSq + 0.01;
+        const invRange = 1.0 / (maxSq - mSq);
+
+        const amt = Math.max(-100, Math.min(100, amount)) / 100.0;
+        const isLight = amt > 0;
+        const absAmt = isLight ? amt : -amt;
+
+        for (let y = 0; y < height; y++) {
+            const ny = (y - cy) * invCy;
+            const nySq = ny * ny;
+            const rowOffset = y * width * 4;
+
+            for (let x = 0; x < width; x++) {
+                const nx = (x - cx) * invCx;
+                const distSq = nx * nx + nySq;
+                if (distSq <= mSq) continue;
+
+                let t = distSq >= maxSq ? 1.0 : (distSq - mSq) * invRange;
+                const s = t * t * (3.0 - 2.0 * t);
+                const factor = s * absAmt;
+
+                const idx = rowOffset + x * 4;
+                const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+
+                if (isLight) {
+                    data[idx]     = Math.min(255, Math.max(0, (r + (255 - r) * factor) | 0));
+                    data[idx + 1] = Math.min(255, Math.max(0, (g + (255 - g) * factor) | 0));
+                    data[idx + 2] = Math.min(255, Math.max(0, (b + (255 - b) * factor) | 0));
+                } else {
+                    const darkMult = 1.0 - factor;
+                    data[idx]     = Math.min(255, Math.max(0, (r * darkMult) | 0));
+                    data[idx + 1] = Math.min(255, Math.max(0, (g * darkMult) | 0));
+                    data[idx + 2] = Math.min(255, Math.max(0, (b * darkMult) | 0));
+                }
+            }
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -581,7 +645,7 @@ const PRESET_DEFINITIONS = {
     },
     'matte_film': {
         name: '🌲 Matte Film',
-        params: { bwEnabled: false, exposure: 0.15, contrast: -12, temp: -4, tint: 8, vibrance: 14, saturation: -8, bwGrain: 15 }
+        params: { bwEnabled: false, exposure: 0.15, contrast: -12, temp: -4, tint: 8, vibrance: 14, saturation: -8, bwGrain: 15, vignetteAmount: -15 }
     },
     'hdr_arch': {
         name: '🏛️ Architectuur & HDR',
@@ -613,7 +677,7 @@ const PRESET_DEFINITIONS = {
     },
     'film_noir': {
         name: '🎬 Film Noir (B&W)',
-        params: { bwEnabled: true, bwRed: 50, bwGreen: -10, bwBlue: -35, bwContrast: 65, bwClarity: 50, bwGrain: 25 }
+        params: { bwEnabled: true, bwRed: 50, bwGreen: -10, bwBlue: -35, bwContrast: 65, bwClarity: 50, bwGrain: 25, vignetteAmount: -40 }
     },
     'stage_fix': {
         name: '🔴 Stage Red Light Fix',
@@ -689,7 +753,8 @@ class VroonPhotoApp {
             smartDeblur: 0, deblurSkinProtect: 75,
             denoiseLuma: 0, denoiseChroma: 0, denoiseDetail: 50,
             bwEnabled: false, bwRed: 40, bwGreen: 10, bwBlue: -10,
-            bwContrast: 35, bwClarity: 45, bwGrain: 10
+            bwContrast: 35, bwClarity: 45, bwGrain: 10,
+            vignetteAmount: 0, vignetteMidpoint: 50, vignetteFeather: 50
         };
     }
 
@@ -758,6 +823,7 @@ class VroonPhotoApp {
             if (s.smartDeblur > 0) parts.push(`Focus ${s.smartDeblur}%`);
             if (s.exposure !== 0) parts.push(`Belichting ${s.exposure > 0 ? '+' : ''}${s.exposure}`);
             if (s.bwEnabled) parts.push(`Zwart-Wit`);
+            if (s.vignetteAmount && Math.abs(s.vignetteAmount) > 0.01) parts.push(`Vignet ${s.vignetteAmount > 0 ? '+' : ''}${s.vignetteAmount}`);
             const desc = parts.length > 0 ? parts.join(', ') : 'Aangepaste waarden';
             summary.innerHTML = `<span style="color: #38bdf8;">⚡ Actief profiel:</span> ${desc}`;
         } else {
@@ -857,6 +923,18 @@ class VroonPhotoApp {
         });
         document.querySelectorAll('.preset-card').forEach(card => {
             card.addEventListener('click', (e) => this.applyGlobalPreset(e.currentTarget.dataset.preset, 100));
+        });
+
+        // Vignette Snelle Knoppen (Donker ◄► Wit)
+        document.querySelectorAll('.vignette-quick-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const photo = this.getActivePhoto();
+                if (!photo) return;
+                const amt = parseFloat(e.currentTarget.dataset.amount);
+                photo.state.vignetteAmount = amt;
+                this.syncSliderUIFromPhoto(photo);
+                this.renderActivePhoto();
+            });
         });
 
         // Lightroom & AI Preset Verhouding / Intensiteit Schuifregelaar
@@ -1759,6 +1837,16 @@ class VroonPhotoApp {
             );
         }
 
+        // 6. Vignettering (Donker ◄► Licht)
+        if (photo.state.vignetteAmount && Math.abs(photo.state.vignetteAmount) > 0.01) {
+            this.wasm.applyVignette(
+                img,
+                photo.state.vignetteAmount,
+                photo.state.vignetteMidpoint !== undefined ? photo.state.vignetteMidpoint : 50,
+                photo.state.vignetteFeather !== undefined ? photo.state.vignetteFeather : 50
+            );
+        }
+
         photo.currentImageData = img;
         this.drawActiveCanvas();
         this.updateHistogram(img);
@@ -1894,7 +1982,8 @@ class VroonPhotoApp {
             'stageRedFix', 'colorBleedReduction', 'skinProtection', 'gamutCompress',
             'smartDeblur', 'deblurSkinProtect',
             'denoiseLuma', 'denoiseChroma', 'denoiseDetail',
-            'bwEnabled', 'bwRed', 'bwGreen', 'bwBlue', 'bwContrast', 'bwClarity', 'bwGrain'
+            'bwEnabled', 'bwRed', 'bwGreen', 'bwBlue', 'bwContrast', 'bwClarity', 'bwGrain',
+            'vignetteAmount', 'vignetteMidpoint', 'vignetteFeather'
         ];
 
         // Reset beïnvloede parameters naar schone neutrale basis
@@ -1915,7 +2004,7 @@ class VroonPhotoApp {
 
                 if (key === 'exposure') {
                     scaled = Math.max(-5, Math.min(5, Math.round(scaled * 10) / 10));
-                } else if (['contrast', 'temp', 'tint', 'vibrance', 'saturation', 'bwRed', 'bwGreen', 'bwBlue'].includes(key)) {
+                } else if (['contrast', 'temp', 'tint', 'vibrance', 'saturation', 'bwRed', 'bwGreen', 'bwBlue', 'vignetteAmount'].includes(key)) {
                     scaled = Math.max(-100, Math.min(100, Math.round(scaled)));
                 } else {
                     scaled = Math.max(0, Math.min(100, Math.round(scaled)));
@@ -1938,6 +2027,7 @@ class VroonPhotoApp {
         if (s === 'tone') ['exposure', 'contrast', 'highlights', 'shadows', 'temp', 'tint', 'vibrance', 'saturation'].forEach(k => photo.state[k] = d[k]);
         if (s === 'bw_filters') ['bwRed', 'bwGreen', 'bwBlue'].forEach(k => photo.state[k] = d[k]);
         if (s === 'bw') ['bwEnabled', 'bwRed', 'bwGreen', 'bwBlue', 'bwContrast', 'bwClarity', 'bwGrain'].forEach(k => photo.state[k] = d[k]);
+        if (s === 'vignette') ['vignetteAmount', 'vignetteMidpoint', 'vignetteFeather'].forEach(k => photo.state[k] = d[k]);
         this.syncSliderUIFromPhoto(photo);
         if (photo.activePreset) {
             this.activePresetKey = photo.activePreset.key;

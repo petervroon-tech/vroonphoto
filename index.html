@@ -18,7 +18,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.5.6</strong> beschikbaar &bull; <span id="upd-note">Flexibele bovenbalk: alle knoppen blijven zichtbaar en vouwen ordelijk onder elkaar bij kleiner scherm</span></span>
+      <span><strong id="upd-ver">v1.5.7</strong> beschikbaar &bull; <span id="upd-note">Vignetteren naar zowel donker/zwart als licht/wit met traploze schuifregelaar</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -37,7 +37,7 @@
         <span id="photo-counter-badge" class="badge-count">1 / 1 Foto's</span>
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)" title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.5.6</span> 🔄
+          <span id="ver-txt">v1.5.7</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -437,7 +437,54 @@
         </div>
       </div>
 
-      <!-- SECTIE 2: ROOD LICHT & KLEURDOORLOOP HERSTEL -->
+      <!-- SECTIE 3: VIGNETTERING (ZOWEL DONKER ALS LICHT) -->
+      <div class="accordion-panel" id="section-vignette-panel">
+        <div class="panel-header highlight-vignette">
+          <span>🎞️ Vignettering (Donker / Licht)</span>
+          <button class="btn-reset-section" data-section="vignette">Reset</button>
+        </div>
+        <div class="panel-content">
+          <!-- SNELLE VIGNET KEUZES -->
+          <div style="font-size: 9.5px; color: var(--text-dim); margin-bottom: 2px;">Snelle vignet keuzes:</div>
+          <div class="vignette-quick-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 6px;">
+            <button class="vignette-quick-btn btn-secondary" data-amount="-40" style="font-size: 10px; padding: 4px 6px;">⚫ Donker (-40)</button>
+            <button class="vignette-quick-btn btn-secondary" data-amount="40" style="font-size: 10px; padding: 4px 6px;">⚪ Wit (+40)</button>
+            <button class="vignette-quick-btn btn-secondary" data-amount="-75" style="font-size: 10px; padding: 4px 6px;">🎬 Diep Zwart (-75)</button>
+            <button class="vignette-quick-btn btn-secondary" data-amount="75" style="font-size: 10px; padding: 4px 6px;">✨ High-Key (+75)</button>
+          </div>
+
+          <div class="control-row">
+            <div class="control-label-group">
+              <span>Hoeveelheid (Donker ◄► Licht)</span>
+              <span id="slider-vignette-amount-val">0</span>
+            </div>
+            <input type="range" id="slider-vignette-amount" data-param="vignetteAmount" min="-100" max="100" value="0" class="param-slider" title="Naar links voor donker/zwart vignet, naar rechts voor helder/wit vignet">
+            <div style="display: flex; justify-content: space-between; font-size: 8.5px; color: var(--text-dim); margin-top: 1px;">
+              <span>-100 Zwart</span>
+              <span>0 Neutraal</span>
+              <span>+100 Wit</span>
+            </div>
+          </div>
+
+          <div class="control-row">
+            <div class="control-label-group">
+              <span>Middelpunt (Reikwijdte)</span>
+              <span id="slider-vignette-midpoint-val">50</span>
+            </div>
+            <input type="range" id="slider-vignette-midpoint" data-param="vignetteMidpoint" min="10" max="90" value="50" class="param-slider">
+          </div>
+
+          <div class="control-row">
+            <div class="control-label-group">
+              <span>Zachtheid (Vloeiend verloop)</span>
+              <span id="slider-vignette-feather-val">50</span>
+            </div>
+            <input type="range" id="slider-vignette-feather" data-param="vignetteFeather" min="10" max="100" value="50" class="param-slider">
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTIE 4: ROOD LICHT & KLEURDOORLOOP HERSTEL -->
       <div class="accordion-panel">
         <div class="panel-header highlight-red">
           <span>🔴 Rood Licht &amp; Kleurdoorloop</span>

@@ -110,7 +110,7 @@ def build_wasm(output_path: str) -> int:
     out += encode_u32(len(mem_payload))
     out += mem_payload
 
-    # 4. Export section: export memory and 8 functions
+    # 4. Export section: export memory and 9 functions
     funcs = [
         "vroon_recover_red_light",
         "vroon_denoise_bilateral",
@@ -119,7 +119,8 @@ def build_wasm(output_path: str) -> int:
         "vroon_super_res_2x",
         "vroon_smart_inpaint",
         "vroon_smart_deblur",
-        "vroon_remove_stage_banding"
+        "vroon_remove_stage_banding",
+        "vroon_apply_vignette"
     ]
     exp_payload = bytearray()
     exp_payload += encode_u32(1 + len(funcs))
@@ -159,6 +160,7 @@ def verify_wasm_locally(wasm_path: str):
             var inst = new WebAssembly.Instance(module, {{}});
             if (!inst.exports.vroon_smart_deblur) throw new Error('Functie vroon_smart_deblur ontbreekt');
             if (!inst.exports.vroon_smart_inpaint) throw new Error('Functie vroon_smart_inpaint ontbreekt');
+            if (!inst.exports.vroon_apply_vignette) throw new Error('Functie vroon_apply_vignette ontbreekt');
             print('VERIFY_OK');
             """
             p = subprocess.run([jsc_path, "-e", js_test], capture_output=True, text=True)
@@ -238,6 +240,7 @@ def update_version_file(version_path: str, forced_ver: str = None, forced_sha: s
         "git_hash": forced_sha or get_git_hash(),
         "features": [
             f"🚀 Versie v{new_version}: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+            "🎞️ Vignettering naar Zowel Donker als Licht (v1.5.7): Volledige creatieve vignettering met traploze schuifregelaar van donker/diep zwart (-100) tot helder/high-key wit (+100). Inclusief fijnafstelling voor Middelpunt (reikwijdte) en Zachtheid (feather), snelle stijlknoppen en razendsnelle hardware-versnelde WebAssembly verwerking.",
             "📱 Flexibele Responsieve Bovenbalk (v1.5.6): Alle navigatieknoppen, gereedschappen, voorbeelden en exportknoppen blijven altijd 100% zichtbaar. Bij het verkleinen van het venster of op kleinere schermen/tablets vouwen de knoppen automatisch en ordelijk onder elkaar (flex-wrap) zonder overlap of afsnijden.",
             "⚡ 1-Klik Zwart-Wit Conversie & Pro B&W Tools (v1.5.5): Zet met 1 klik direct elke kleurenfoto om naar zwart-wit via de knoppenbalk of het rechterpaneel. Inclusief alle professionele tools om direct bij te stellen: Zone Contrast, Clarity Punch, Analoge Filmkorrel, Rood/Groen/Blauw Kleurfilter Mixer en 4 klassieke stijlen (Ansel Adams, Hoog Contrast, Film Noir, Straatfoto).",
             "🎛️ Neutrale Import & Zelf Kiezen (v1.5.4): Rood podiumlicht en interferentiestrepen worden niet meer automatisch geforceerd bij inlezen. Foto's openen 100% origineel/neutraal en u kiest altijd zelf via de schuifregelaars of en hoeveel correctie gewenst is.",

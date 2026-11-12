@@ -529,3 +529,90 @@ void vroon_remove_stage_banding(
         }
     }
 }
+
+/*
+ * 9. VIGNETTE FILTER (DARK & LIGHT / DONKER & LICHT VIGNET)
+ * Creëert een cinematografisch of high-key vignet.
+ * amount < 0: randen en hoeken verdonkeren naar diep zwart.
+ * amount > 0: randen en hoeken verlichten naar zacht/helder wit.
+ * midpoint (10-90): reikwijdte vanaf het centrum.
+ * feather (10-100): zachtheid en geleidelijke overgang van de randen.
+ */
+__attribute__((visibility("default")))
+void vroon_apply_vignette(
+    unsigned char* pixels,
+    int width,
+    int height,
+    float amount,    // -100.0f (donker) tot +100.0f (licht)
+    float midpoint,  // 10.0f tot 90.0f (standaard 50.0f)
+    float feather    // 10.0f tot 100.0f (standaard 50.0f)
+) {
+    if (amount >= -0.01f && amount <= 0.01f) return;
+    if (width <= 0 || height <= 0) return;
+
+    float cx = (float)width * 0.5f;
+    float cy = (float)height * 0.5f;
+    float inv_cx = 1.0f / (cx > 0.0f ? cx : 1.0f);
+    float inv_cy = 1.0f / (cy > 0.0f ? cy : 1.0f);
+
+    float m = CLAMP(midpoint, 10.0f, 90.0f) / 100.0f;
+    float f = CLAMP(feather, 10.0f, 100.0f) / 100.0f;
+
+    float m_sq = m * m * 1.25f;
+    float max_sq = 1.0f + f * 1.0f;
+    if (max_sq <= m_sq + 0.01f) max_sq = m_sq + 0.01f;
+    float inv_range = 1.0f / (max_sq - m_sq);
+
+    float amt = CLAMP(amount, -100.0f, 100.0f) / 100.0f;
+    int is_light = (amt > 0.0f);
+    float abs_amt = is_light ? amt : -amt;
+
+    for (int y = 0; y < height; y++) {
+        float ny = ((float)y - cy) * inv_cy;
+        float ny_sq = ny * ny;
+        int row_offset = y * width * 4;
+
+        for (int x = 0; x < width; x++) {
+            float nx = ((float)x - cx) * inv_cx;
+            float dist_sq = nx * nx + ny_sq;
+
+            if (dist_sq <= m_sq) {
+                continue;
+            }
+
+            float t;
+            if (dist_sq >= max_sq) {
+                t = 1.0f;
+            } else {
+                t = (dist_sq - m_sq) * inv_range;
+            }
+
+            // Smoothstep voor vloeiende overgang
+            float s = t * t * (3.0f - 2.0f * t);
+            float factor = s * abs_amt;
+
+            int idx = row_offset + x * 4;
+            float r = (float)pixels[idx];
+            float g = (float)pixels[idx + 1];
+            float b = (float)pixels[idx + 2];
+
+            if (is_light) {
+                // Verlichten naar wit (high-key)
+                r = r + (255.0f - r) * factor;
+                g = g + (255.0f - g) * factor;
+                b = b + (255.0f - b) * factor;
+            } else {
+                // Verdonkeren naar diep zwart
+                float dark_mult = 1.0f - factor;
+                r = r * dark_mult;
+                g = g * dark_mult;
+                b = b * dark_mult;
+            }
+
+            pixels[idx]     = (unsigned char)CLAMP(r, 0.0f, 255.0f);
+            pixels[idx + 1] = (unsigned char)CLAMP(g, 0.0f, 255.0f);
+            pixels[idx + 2] = (unsigned char)CLAMP(b, 0.0f, 255.0f);
+        }
+    }
+}
+

@@ -1,11 +1,12 @@
 {
   "app_name": "vroonphoto",
-  "version": "1.5.6",
-  "build": 26,
-  "timestamp": "2026-11-12T12:28:37.909470+00:00",
-  "git_hash": "c9f832c",
+  "version": "1.5.7",
+  "build": 16,
+  "timestamp": "2026-11-12T12:37:47.345568+00:00",
+  "git_hash": "6ec3903",
   "features": [
-    "🚀 Versie v1.5.6: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🚀 Versie v1.5.7: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🎞️ Vignettering naar Zowel Donker als Licht (v1.5.7): Volledige creatieve vignettering met traploze schuifregelaar van donker/diep zwart (-100) tot helder/high-key wit (+100). Inclusief fijnafstelling voor Middelpunt (reikwijdte) en Zachtheid (feather), snelle stijlknoppen en razendsnelle hardware-versnelde WebAssembly verwerking.",
     "📱 Flexibele Responsieve Bovenbalk (v1.5.6): Alle navigatieknoppen, gereedschappen, voorbeelden en exportknoppen blijven altijd 100% zichtbaar. Bij het verkleinen van het venster of op kleinere schermen/tablets vouwen de knoppen automatisch en ordelijk onder elkaar (flex-wrap) zonder overlap of afsnijden.",
     "⚡ 1-Klik Zwart-Wit Conversie & Pro B&W Tools (v1.5.5): Zet met 1 klik direct elke kleurenfoto om naar zwart-wit via de knoppenbalk of het rechterpaneel. Inclusief alle professionele tools om direct bij te stellen: Zone Contrast, Clarity Punch, Analoge Filmkorrel, Rood/Groen/Blauw Kleurfilter Mixer en 4 klassieke stijlen (Ansel Adams, Hoog Contrast, Film Noir, Straatfoto).",
     "🎛️ Neutrale Import & Zelf Kiezen (v1.5.4): Rood podiumlicht en interferentiestrepen worden niet meer automatisch geforceerd bij inlezen. Foto's openen 100% origineel/neutraal en u kiest altijd zelf via de schuifregelaars of en hoeveel correctie gewenst is.",

@@ -903,6 +903,7 @@ body {
 .panel-header.highlight-denoise { border-left-color: var(--accent-green); }
 .panel-header.highlight-superres { border-left-color: var(--accent-cyan); }
 .panel-header.highlight-cyan { border-left-color: var(--accent-cyan); }
+.panel-header.highlight-vignette { border-left-color: #c084fc; }
 
 .panel-content {
   padding: 8px 10px;
