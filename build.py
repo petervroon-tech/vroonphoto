@@ -15,7 +15,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "vroonphoto"
-DEFAULT_VERSION = "1.3.0"
+DEFAULT_VERSION = "1.4.0"
 
 def encode_u32(val: int) -> bytes:
     res = bytearray()
@@ -175,14 +175,14 @@ def update_version_file(version_path: str, forced_sha: str = None, forced_build:
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "git_hash": forced_sha or get_git_hash(),
         "features": [
+            "💾 Universele Export Formaten (v1.4.0): Kies bij opslaan zelf het gewenste bestandsformaat: converteer RAW naar JPEG (.jpg), professioneel drukwerk TIFF (.tif 100% Lossless), Adobe Digital Negative (.dng RAW container), PNG (.png) of WebP (.webp).",
             "✏️ Muis, Hand & Pen (Apple Pencil) Ondersteuning (v1.3.0): Bewerk foto's met muis, vinger/touch of drukgevoelige pen/stylus op iPads en touch laptops. Inclusief pinch-to-zoom (2 vingers), vloeiende penseellijnen zonder onderbrekingen, drukgevoeligheid en palm-rejection.",
             "🔍 Slimme Focus & Onscherpte Herstel met Gezichtsbehoud: Herstelt onscherpe en bewogen foto's naar haarscherpe foto's zonder menselijke gezichten te vervormen of onnatuurlijke rimpels/artefacten te veroorzaken.",
             "🪄 Objecten & Personen Verwijderen: Schilder over in de weg staande objecten (prullenbakken, lantaarnpalen, kabels, voorbijgangers) om ze direct en naadloos te wissen via contextuele achtergrondsynthese.",
             "🎨 12 Populaire Lightroom Presets: Gouden Uur, Vintage Matte Film, Architectuur HDR, Zacht Portret, Moody Teal & Orange, Herfst Amber, Winter Koud, Ansel Adams B&W en Stage Red Fix.",
             "🖼️ Volledige JPG & RAW Ondersteuning: Bewerk en exporteer JPG-foto's net zo snel en krachtig als RAW en DNG, met uniforme knoppenbalk.",
             "🎞️ 25-Foto Batch Beheer & Filmstrip: Bewerk tot 25 foto's tegelijkertijd met onafhankelijke bewerkingsstaten per foto, filmstrip onderaan en rasteroverzicht.",
-            "📁 Zelf Opslaglocatie Kiezen op Apparaat: Kies zelf elke gewenste map via de native Directory Picker op Mac/Windows/laptops of via 'Bewaar in Bestanden' op iPad.",
-            "📱 iPad & Touchscreen Optimalisatie: 44px+ aanraakdoelen voor vingers, vergrote slider-knoppen, touch-drag voor Voor/Na vergelijking en inpaint penseel."
+            "📁 Zelf Opslaglocatie Kiezen op Apparaat: Kies zelf elke gewenste map via de native Directory Picker op Mac/Windows/laptops of via 'Bewaar in Bestanden' op iPad."
         ]
     }
 

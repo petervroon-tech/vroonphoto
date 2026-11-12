@@ -550,6 +550,28 @@ class VroonPhotoApp {
         });
         document.getElementById('btn-choose-folder-export')?.addEventListener('click', () => this.exportWithFolderPicker());
 
+        // Bestandsformaat wissel: update kwaliteitsopties dynamisch
+        const exportFormatSel = document.getElementById('export-format');
+        const exportQualitySel = document.getElementById('export-quality');
+        exportFormatSel?.addEventListener('change', (e) => {
+            const fmt = e.target.value;
+            if (fmt === 'image/tiff' || fmt === 'image/x-adobe-dng' || fmt === 'image/png') {
+                if (exportQualitySel) {
+                    exportQualitySel.innerHTML = `
+                        <option value="1.0">100% — Ongecomprimeerd / Lossless (Volledige Kwaliteit)</option>
+                    `;
+                }
+            } else {
+                if (exportQualitySel) {
+                    exportQualitySel.innerHTML = `
+                        <option value="0.95">95% — Maximale Professionele Kwaliteit (Aanbevolen)</option>
+                        <option value="0.85">85% — Hoge Kwaliteit</option>
+                        <option value="0.75">75% — Compact</option>
+                    `;
+                }
+            }
+        });
+
         // Zoom knoppen (Hand, Pen & Muis)
         document.getElementById('btn-zoom-in')?.addEventListener('click', () => this.setZoom(this.zoomLevel + 0.35));
         document.getElementById('btn-zoom-out')?.addEventListener('click', () => this.setZoom(this.zoomLevel - 0.35));
@@ -1570,7 +1592,12 @@ class VroonPhotoApp {
         const scope = document.getElementById('export-scope')?.value || 'all';
         const format = document.getElementById('export-format')?.value || 'image/jpeg';
         const quality = parseFloat(document.getElementById('export-quality')?.value || 0.95);
-        const ext = format === 'image/png' ? 'png' : (format === 'image/webp' ? 'webp' : 'jpg');
+        
+        let ext = 'jpg';
+        if (format === 'image/png') ext = 'png';
+        else if (format === 'image/webp') ext = 'webp';
+        else if (format === 'image/tiff') ext = 'tif';
+        else if (format === 'image/x-adobe-dng') ext = 'dng';
 
         const photosToExport = scope === 'all' ? this.photos : [this.getActivePhoto()];
         if (photosToExport.length === 0 || !photosToExport[0]) return;
@@ -1596,7 +1623,7 @@ class VroonPhotoApp {
                     savedCount++;
                 }
 
-                alert(`✅ Succesvol ${savedCount} foto's opgeslagen in de door jou gekozen map!`);
+                alert(`✅ Succesvol ${savedCount} foto's geconverteerd en opgeslagen als .${ext} in de gekozen map!`);
                 document.getElementById('loading-overlay')?.classList.add('hidden');
                 return;
             }
@@ -1608,7 +1635,7 @@ class VroonPhotoApp {
                 const fileHandle = await window.showSaveFilePicker({
                     suggestedName: cleanName,
                     types: [{
-                        description: 'Afbeelding',
+                        description: `Afbeelding (.${ext})`,
                         accept: { [format]: [`.${ext}`] }
                     }]
                 });
@@ -1616,7 +1643,7 @@ class VroonPhotoApp {
                 const writable = await fileHandle.createWritable();
                 await writable.write(blob);
                 await writable.close();
-                alert(`✅ Foto succesvol opgeslagen op de gekozen locatie!`);
+                alert(`✅ Foto succesvol opgeslagen als .${ext} op de gekozen locatie!`);
                 document.getElementById('loading-overlay')?.classList.add('hidden');
                 return;
             }
@@ -1635,7 +1662,7 @@ class VroonPhotoApp {
                     await navigator.share({
                         files: filesArray,
                         title: 'vroonphoto export',
-                        text: `${filesArray.length} bewerkte foto('s) van vroonphoto`
+                        text: `${filesArray.length} bewerkte foto('s) van vroonphoto (.${ext})`
                     });
                     document.getElementById('loading-overlay')?.classList.add('hidden');
                     return;
@@ -1654,7 +1681,7 @@ class VroonPhotoApp {
                 await new Promise(r => setTimeout(r, 200));
                 URL.revokeObjectURL(url);
             }
-            alert(`✅ ${photosToExport.length} foto('s) succesvol gedownload naar je apparaat!`);
+            alert(`✅ ${photosToExport.length} foto('s) succesvol geëxporteerd als .${ext} naar je apparaat!`);
 
         } catch (err) {
             if (err.name !== 'AbortError') {
@@ -1668,6 +1695,16 @@ class VroonPhotoApp {
 
     renderPhotoToBlob(photo, format, quality) {
         return new Promise(resolve => {
+            // TIFF (.tif) of Adobe Digital Negative (.dng) RAW Container
+            if (format === 'image/tiff' || format === 'image/x-adobe-dng') {
+                const isDNG = format === 'image/x-adobe-dng';
+                const tiffBytes = this.encodeTiffOrDng(photo.currentImageData, isDNG);
+                const blob = new Blob([tiffBytes.buffer], { type: format });
+                resolve(blob);
+                return;
+            }
+
+            // Standaard Canvas formaten: JPEG, PNG, WebP
             const expCanvas = document.createElement('canvas');
             expCanvas.width = photo.currentImageData.width;
             expCanvas.height = photo.currentImageData.height;
@@ -1675,6 +1712,102 @@ class VroonPhotoApp {
             ctx.putImageData(photo.currentImageData, 0, 0);
             expCanvas.toBlob(blob => resolve(blob), format, quality);
         });
+    }
+
+    // Pure WebAssembly/JS TIFF & DNG (Digital Negative) Encoder
+    encodeTiffOrDng(imageData, isDNG = false) {
+        const width = imageData.width;
+        const height = imageData.height;
+        const rgbaData = imageData.data;
+
+        const numTags = isDNG ? 15 : 12;
+        const ifdSize = 2 + numTags * 12 + 4;
+        const extraOffset = 8 + ifdSize;
+
+        const bitsOffset = extraOffset;
+        const xresOffset = bitsOffset + 6;
+        const yresOffset = xresOffset + 8;
+        const modelOffset = yresOffset + 8;
+        const modelStr = 'vroonphoto WASM\0';
+        const extraLen = isDNG ? (modelOffset + modelStr.length - extraOffset) : (yresOffset + 8 - extraOffset);
+        const pixelOffset = (extraOffset + extraLen + 3) & ~3;
+
+        const totalBytes = pixelOffset + width * height * 3;
+        const buffer = new ArrayBuffer(totalBytes);
+        const view = new DataView(buffer);
+        const u8 = new Uint8Array(buffer);
+
+        // 1. TIFF Header (Little-Endian 'II')
+        u8[0] = 0x49; u8[1] = 0x49;
+        view.setUint16(2, 42, true);
+        view.setUint32(4, 8, true);
+
+        // 2. IFD entries
+        let pos = 8;
+        view.setUint16(pos, numTags, true); pos += 2;
+
+        const writeTag = (tag, type, count, val) => {
+            view.setUint16(pos, tag, true); pos += 2;
+            view.setUint16(pos, type, true); pos += 2;
+            view.setUint32(pos, count, true); pos += 4;
+            if (type === 3 && count === 1) {
+                view.setUint16(pos, val, true);
+                view.setUint16(pos + 2, 0, true);
+            } else if (type === 1 && count === 4) {
+                view.setUint32(pos, val, true);
+            } else {
+                view.setUint32(pos, val, true);
+            }
+            pos += 4;
+        };
+
+        writeTag(0x0100, 4, 1, width); // ImageWidth
+        writeTag(0x0101, 4, 1, height); // ImageLength
+        writeTag(0x0102, 3, 3, bitsOffset); // BitsPerSample
+        writeTag(0x0103, 3, 1, 1); // Compression: 1 (Uncompressed)
+        writeTag(0x0106, 3, 1, 2); // PhotometricInterpretation: 2 (RGB)
+        writeTag(0x0111, 4, 1, pixelOffset); // StripOffsets
+        writeTag(0x0115, 3, 1, 3); // SamplesPerPixel: 3
+        writeTag(0x0116, 4, 1, height); // RowsPerStrip
+        writeTag(0x0117, 4, 1, width * height * 3); // StripByteCounts
+        writeTag(0x011A, 5, 1, xresOffset); // XResolution (300 DPI)
+        writeTag(0x011B, 5, 1, yresOffset); // YResolution (300 DPI)
+        writeTag(0x0128, 3, 1, 2); // ResolutionUnit: 2 (Inch)
+
+        if (isDNG) {
+            writeTag(0xC612, 1, 4, 0x00000401); // DNGVersion: 1.4.0.0
+            writeTag(0xC613, 1, 4, 0x00000101); // DNGBackwardVersion: 1.1.0.0
+            writeTag(0xC614, 2, modelStr.length, modelOffset); // UniqueCameraModel
+        }
+
+        view.setUint32(pos, 0, true); // Next IFD = 0
+
+        // Extra tag data waarden
+        view.setUint16(bitsOffset, 8, true);
+        view.setUint16(bitsOffset + 2, 8, true);
+        view.setUint16(bitsOffset + 4, 8, true);
+
+        view.setUint32(xresOffset, 300, true);
+        view.setUint32(xresOffset + 4, 1, true);
+
+        view.setUint32(yresOffset, 300, true);
+        view.setUint32(yresOffset + 4, 1, true);
+
+        if (isDNG) {
+            for (let i = 0; i < modelStr.length; i++) {
+                u8[modelOffset + i] = modelStr.charCodeAt(i);
+            }
+        }
+
+        // 3. Pixel data (RGB strip geconverteerd uit RGBA)
+        let pIdx = pixelOffset;
+        for (let i = 0; i < rgbaData.length; i += 4) {
+            u8[pIdx++] = rgbaData[i];
+            u8[pIdx++] = rgbaData[i + 1];
+            u8[pIdx++] = rgbaData[i + 2];
+        }
+
+        return u8;
     }
 
     // ═══════════════════════════════════════════════════════

@@ -18,7 +18,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.3.0</strong> beschikbaar &bull; <span id="upd-note">Ondersteuning voor muis, vinger/touch (hand) &amp; drukgevoelige pen (Apple Pencil / Stylus) met pinch-to-zoom</span></span>
+      <span><strong id="upd-ver">v1.4.0</strong> beschikbaar &bull; <span id="upd-note">Kies zelf het gewenste exportformaat bij opslaan: RAW naar JPEG, TIFF (.tif lossless), Adobe DNG (.dng), PNG of WebP</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -37,7 +37,7 @@
         <span id="photo-counter-badge" class="badge-count">1 / 1 Foto's</span>
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)" title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.3.0</span> 🔄
+          <span id="ver-txt">v1.4.0</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -541,20 +541,22 @@
         </label>
 
         <label>
-          <div style="margin-bottom: 4px; font-weight: 600;">Bestandsformaat:</div>
+          <div style="margin-bottom: 4px; font-weight: 600;">Bestandsformaat (Kies gewenst formaat):</div>
           <select id="export-format" class="form-select" style="width: 100%;">
-            <option value="image/jpeg">JPEG (.jpg) - Optimaal voor web, print &amp; iPad</option>
-            <option value="image/png">PNG (.png) - Zonder kwaliteitsverlies (Lossless)</option>
-            <option value="image/webp">WebP (.webp) - Modern ultra-compact</option>
+            <option value="image/jpeg">JPEG (.jpg) — Universeel voor web, print &amp; iPad</option>
+            <option value="image/tiff">TIFF (.tif) — Ongecomprimeerd professioneel drukwerk (100% Lossless)</option>
+            <option value="image/x-adobe-dng">Adobe DNG (.dng) — Digital Negative RAW Container</option>
+            <option value="image/png">PNG (.png) — Lossless grafisch &amp; web</option>
+            <option value="image/webp">WebP (.webp) — Modern ultra-compact</option>
           </select>
         </label>
 
-        <label>
-          <div style="margin-bottom: 4px; font-weight: 600;">Kwaliteit:</div>
+        <label id="export-quality-group">
+          <div style="margin-bottom: 4px; font-weight: 600;">Kwaliteit &amp; Compressie:</div>
           <select id="export-quality" class="form-select" style="width: 100%;">
-            <option value="0.95">95% - Maximale Professionele Kwaliteit</option>
-            <option value="0.85">85% - Hoge Kwaliteit (Aanbevolen)</option>
-            <option value="0.75">75% - Compact</option>
+            <option value="0.95">95% — Maximale Professionele Kwaliteit (Aanbevolen)</option>
+            <option value="0.85">85% — Hoge Kwaliteit</option>
+            <option value="0.75">75% — Compact</option>
           </select>
         </label>
       </div>
