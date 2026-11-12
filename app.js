@@ -407,6 +407,18 @@ class VroonPhotoApp {
 
         this.maskCanvas = null;
         this.maskCtx = null;
+
+        // Touch, Hand & Pen (Apple Pencil / Stylus) & Zoom State
+        this.zoomLevel = 1.0;
+        this.panX = 0;
+        this.panY = 0;
+        this.activePointerType = 'mouse';
+        this.activePointers = new Map();
+        this.lastPointerPos = null;
+        this.initialPinchDist = 0;
+        this.initialZoom = 1.0;
+        this.lastPenTime = 0;
+        this.lastTapTime = 0;
     }
 
     getDefaultState() {
@@ -538,6 +550,12 @@ class VroonPhotoApp {
         });
         document.getElementById('btn-choose-folder-export')?.addEventListener('click', () => this.exportWithFolderPicker());
 
+        // Zoom knoppen (Hand, Pen & Muis)
+        document.getElementById('btn-zoom-in')?.addEventListener('click', () => this.setZoom(this.zoomLevel + 0.35));
+        document.getElementById('btn-zoom-out')?.addEventListener('click', () => this.setZoom(this.zoomLevel - 0.35));
+        document.getElementById('btn-zoom-reset')?.addEventListener('click', () => this.resetZoom());
+        document.getElementById('zoom-level-text')?.addEventListener('click', () => this.resetZoom());
+
         // Update banner knoppen
         document.getElementById('btn-apply-upd')?.addEventListener('click', () => applyUpdate());
         document.getElementById('btn-dismiss-upd')?.addEventListener('click', () => {
@@ -559,11 +577,98 @@ class VroonPhotoApp {
         });
     }
 
-    // Touch & Muis Interacties (Geoptimaliseerd voor iPad vingers & laptop trackpad)
-    setupTouchInteractions() {
-        let isDown = false;
+    // Zoom & Pan Functies voor Hand (Touch), Pen en Muis
+    setZoom(level, px = null, py = null) {
+        this.zoomLevel = Math.max(1.0, Math.min(5.0, level));
+        if (this.zoomLevel <= 1.02) {
+            this.zoomLevel = 1.0;
+            this.panX = 0;
+            this.panY = 0;
+        } else {
+            if (px !== null) this.panX = px;
+            if (py !== null) this.panY = py;
+        }
+        this.updateCanvasTransform();
+        const txt = document.getElementById('zoom-level-text');
+        if (txt) txt.textContent = `${Math.round(this.zoomLevel * 100)}%`;
+    }
 
-        const updateCursorCircle = (clientX, clientY) => {
+    resetZoom() {
+        this.setZoom(1.0, 0, 0);
+    }
+
+    updateCanvasTransform() {
+        if (!this.canvas) return;
+        if (this.zoomLevel === 1.0 && this.panX === 0 && this.panY === 0) {
+            this.canvas.style.transform = 'none';
+        } else {
+            this.canvas.style.transform = `scale(${this.zoomLevel}) translate(${this.panX / this.zoomLevel}px, ${this.panY / this.zoomLevel}px)`;
+        }
+    }
+
+    // Invoermodus Detectie & Badge (Muis, Hand / Touch, Pen / Apple Pencil)
+    updateInputMode(pointerType, pressure = 0) {
+        this.activePointerType = pointerType || 'mouse';
+        const badge = document.getElementById('input-mode-badge');
+        if (!badge) return;
+
+        badge.classList.remove('pen-mode', 'touch-mode');
+        if (pointerType === 'pen') {
+            this.lastPenTime = Date.now();
+            badge.classList.add('pen-mode');
+            const pressTxt = pressure > 0 ? ` (${Math.round(pressure * 100)}%)` : '';
+            badge.textContent = `✏️ Pen / Stylus${pressTxt}`;
+            badge.title = 'Apple Pencil of stylus pen actief met drukgevoeligheid';
+        } else if (pointerType === 'touch') {
+            badge.classList.add('touch-mode');
+            badge.textContent = `👆 Hand / Touch`;
+            badge.title = 'Aanraakscherm / vingerbediening actief';
+        } else {
+            badge.textContent = `🖱️ Muis`;
+            badge.title = 'Muis of trackpad actief';
+        }
+    }
+
+    // Vloeiende Penseelstreken met Drukgevoeligheid (Apple Pencil / Stylus)
+    paintMaskStroke(clientX, clientY, pressure = 0.5, isStart = false) {
+        if (!this.maskCtx || !this.canvas) return;
+        const rect = this.canvas.getBoundingClientRect();
+        const sx = this.canvas.width / rect.width;
+        const sy = this.canvas.height / rect.height;
+        const x = (clientX - rect.left) * sx;
+        const y = (clientY - rect.top) * sy;
+
+        const baseSize = parseInt(document.getElementById('inpaint-brush-size')?.value || 35);
+        let effectiveRadius = baseSize;
+        if (this.activePointerType === 'pen' && pressure > 0) {
+            // Apple Pencil / Stylus pen drukgevoeligheid
+            effectiveRadius = Math.max(4, baseSize * (0.35 + 0.65 * pressure));
+        }
+
+        this.maskCtx.fillStyle = '#ffffff';
+        this.maskCtx.strokeStyle = '#ffffff';
+        this.maskCtx.lineCap = 'round';
+        this.maskCtx.lineJoin = 'round';
+        this.maskCtx.lineWidth = effectiveRadius * 2;
+
+        if (isStart || !this.lastPointerPos) {
+            this.maskCtx.beginPath();
+            this.maskCtx.arc(x, y, effectiveRadius, 0, Math.PI * 2);
+            this.maskCtx.fill();
+        } else {
+            this.maskCtx.beginPath();
+            this.maskCtx.moveTo(this.lastPointerPos.x, this.lastPointerPos.y);
+            this.maskCtx.lineTo(x, y);
+            this.maskCtx.stroke();
+        }
+
+        this.lastPointerPos = { x, y };
+        this.drawActiveCanvas();
+    }
+
+    // Geünificeerde Pointer Events (Muis, Hand / Touch, Pen / Apple Pencil)
+    setupTouchInteractions() {
+        const updateCursorCircle = (clientX, clientY, pressure = 0.5) => {
             const circle = document.getElementById('brush-cursor-circle');
             if (!circle) return;
             if (this.activeTool !== 'inpaint') {
@@ -575,9 +680,13 @@ class VroonPhotoApp {
                 circle.style.display = 'none';
                 return;
             }
-            const brushSize = parseInt(document.getElementById('inpaint-brush-size')?.value || 35);
+            const baseBrushSize = parseInt(document.getElementById('inpaint-brush-size')?.value || 35);
+            let brushSize = baseBrushSize;
+            if (this.activePointerType === 'pen' && pressure > 0) {
+                brushSize = Math.max(4, baseBrushSize * (0.35 + 0.65 * pressure));
+            }
             const scale = rect.width / this.canvas.width;
-            const displayDiam = Math.max(12, brushSize * 2 * scale);
+            const displayDiam = Math.max(10, brushSize * 2 * scale);
             circle.style.display = 'block';
             circle.style.width = `${displayDiam}px`;
             circle.style.height = `${displayDiam}px`;
@@ -585,84 +694,103 @@ class VroonPhotoApp {
             circle.style.top = `${clientY}px`;
         };
 
-        const handlePointerStart = (clientX, clientY) => {
-            isDown = true;
-            if (this.activeTool === 'inpaint') {
-                this.paintMaskAtPoint(clientX, clientY);
-            } else if (this.isBeforeAfterActive) {
-                const rect = this.canvas.getBoundingClientRect();
-                this.splitComparePos = (clientX - rect.left) / rect.width;
-                this.drawActiveCanvas();
+        // Pointer Down
+        this.canvas.addEventListener('pointerdown', (e) => {
+            this.updateInputMode(e.pointerType, e.pressure);
+
+            // Palm Rejection: negeer onbedoelde palm touches als pen recent actief is geweest
+            if (e.pointerType === 'touch' && (Date.now() - this.lastPenTime < 500)) {
+                return;
             }
-            updateCursorCircle(clientX, clientY);
-        };
 
-        const handlePointerMove = (clientX, clientY) => {
-            updateCursorCircle(clientX, clientY);
-            if (!isDown) return;
-            if (this.activeTool === 'inpaint') {
-                this.paintMaskAtPoint(clientX, clientY);
-            } else if (this.isBeforeAfterActive) {
-                const rect = this.canvas.getBoundingClientRect();
-                this.splitComparePos = Math.max(0.05, Math.min(0.95, (clientX - rect.left) / rect.width));
-                this.drawActiveCanvas();
+            try {
+                this.canvas.setPointerCapture(e.pointerId);
+            } catch (err) {}
+
+            this.activePointers.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY, type: e.pointerType });
+
+            // Detecteer dubbeltik (hand/pen/muis) voor snelle 100% Fit / 200% Zoom wissel
+            const now = Date.now();
+            if (now - this.lastTapTime < 320) {
+                if (this.zoomLevel > 1.05) this.resetZoom();
+                else this.setZoom(2.0, -(e.clientX - window.innerWidth / 2) * 0.6, -(e.clientY - window.innerHeight / 2) * 0.6);
+                this.lastTapTime = 0;
+                return;
+            }
+            this.lastTapTime = now;
+
+            if (this.activePointers.size === 1) {
+                this.lastPointerPos = null;
+                if (this.activeTool === 'inpaint') {
+                    this.paintMaskStroke(e.clientX, e.clientY, e.pressure, true);
+                } else if (this.isBeforeAfterActive) {
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.splitComparePos = Math.max(0.05, Math.min(0.95, (e.clientX - rect.left) / rect.width));
+                    this.drawActiveCanvas();
+                }
+            } else if (this.activePointers.size === 2) {
+                // Twee vingers (hand) pinch-to-zoom start
+                this.lastPointerPos = null;
+                const pts = Array.from(this.activePointers.values());
+                this.initialPinchDist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+                this.initialZoom = this.zoomLevel;
+                const circle = document.getElementById('brush-cursor-circle');
+                if (circle) circle.style.display = 'none';
+            }
+            updateCursorCircle(e.clientX, e.clientY, e.pressure);
+        });
+
+        // Pointer Move
+        window.addEventListener('pointermove', (e) => {
+            if (this.activePointers.has(e.pointerId)) {
+                this.activePointers.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY, type: e.pointerType });
+                this.updateInputMode(e.pointerType, e.pressure);
+
+                if (this.activePointers.size === 1) {
+                    if (this.activeTool === 'inpaint') {
+                        this.paintMaskStroke(e.clientX, e.clientY, e.pressure, false);
+                    } else if (this.isBeforeAfterActive) {
+                        const rect = this.canvas.getBoundingClientRect();
+                        this.splitComparePos = Math.max(0.05, Math.min(0.95, (e.clientX - rect.left) / rect.width));
+                        this.drawActiveCanvas();
+                    } else if (this.zoomLevel > 1.0) {
+                        // Hand of muis pan bij ingezoomde foto
+                        this.panX += e.movementX || 0;
+                        this.panY += e.movementY || 0;
+                        this.updateCanvasTransform();
+                    }
+                } else if (this.activePointers.size === 2) {
+                    // Twee vingers pinch-to-zoom en pan
+                    const pts = Array.from(this.activePointers.values());
+                    const currentDist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+                    if (this.initialPinchDist > 5) {
+                        const scaleFactor = currentDist / this.initialPinchDist;
+                        this.setZoom(this.initialZoom * scaleFactor);
+                    }
+                }
+            }
+            updateCursorCircle(e.clientX, e.clientY, e.pressure);
+        });
+
+        // Pointer Up & Pointer Cancel
+        const handlePointerUp = (e) => {
+            if (this.activePointers.has(e.pointerId)) {
+                try {
+                    this.canvas.releasePointerCapture(e.pointerId);
+                } catch (err) {}
+                this.activePointers.delete(e.pointerId);
+            }
+            if (this.activePointers.size === 0) {
+                this.lastPointerPos = null;
             }
         };
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
 
-        const handlePointerEnd = () => { isDown = false; };
-
-        // Muis events
-        this.canvas.addEventListener('mousedown', e => handlePointerStart(e.clientX, e.clientY));
-        window.addEventListener('mousemove', e => handlePointerMove(e.clientX, e.clientY));
-        window.addEventListener('mouseup', handlePointerEnd);
-        this.canvas.addEventListener('mouseleave', () => {
+        this.canvas.addEventListener('pointerleave', () => {
             const circle = document.getElementById('brush-cursor-circle');
             if (circle) circle.style.display = 'none';
         });
-
-        // Touch events voor iPad & tablets
-        this.canvas.addEventListener('touchstart', e => {
-            if (e.touches && e.touches[0]) {
-                handlePointerStart(e.touches[0].clientX, e.touches[0].clientY);
-            }
-        }, { passive: true });
-
-        window.addEventListener('touchmove', e => {
-            if (e.touches && e.touches[0]) {
-                handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
-            }
-        }, { passive: true });
-
-        window.addEventListener('touchend', handlePointerEnd);
-    }
-            } else if (this.isBeforeAfterActive) {
-                const rect = this.canvas.getBoundingClientRect();
-                this.splitComparePos = Math.max(0.05, Math.min(0.95, (clientX - rect.left) / rect.width));
-                this.drawActiveCanvas();
-            }
-        };
-
-        const handlePointerEnd = () => { isDown = false; };
-
-        // Muis events
-        this.canvas.addEventListener('mousedown', e => handlePointerStart(e.clientX, e.clientY));
-        window.addEventListener('mousemove', e => handlePointerMove(e.clientX, e.clientY));
-        window.addEventListener('mouseup', handlePointerEnd);
-
-        // Touch events voor iPad & tablets
-        this.canvas.addEventListener('touchstart', e => {
-            if (e.touches && e.touches[0]) {
-                handlePointerStart(e.touches[0].clientX, e.touches[0].clientY);
-            }
-        }, { passive: true });
-
-        window.addEventListener('touchmove', e => {
-            if (isDown && e.touches && e.touches[0]) {
-                handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
-            }
-        }, { passive: true });
-
-        window.addEventListener('touchend', handlePointerEnd);
     }
 
     setupShortcuts() {
@@ -1134,15 +1262,7 @@ class VroonPhotoApp {
         this.drawActiveCanvas();
     }
     paintMaskAtPoint(clientX, clientY) {
-        const rect = this.canvas.getBoundingClientRect();
-        const sx = this.canvas.width / rect.width, sy = this.canvas.height / rect.height;
-        const x = (clientX - rect.left) * sx, y = (clientY - rect.top) * sy;
-        const size = parseInt(document.getElementById('inpaint-brush-size')?.value || 35);
-        this.maskCtx.fillStyle = '#ffffff';
-        this.maskCtx.beginPath();
-        this.maskCtx.arc(x, y, size, 0, Math.PI * 2);
-        this.maskCtx.fill();
-        this.drawActiveCanvas();
+        this.paintMaskStroke(clientX, clientY, 0.5, false);
     }
     applyInpaint() {
         const photo = this.getActivePhoto();
@@ -1347,6 +1467,47 @@ class VroonPhotoApp {
         this.updateCurveLut();
         this.drawCurve();
 
+        // Touch, Pen & Muis bediening voor de Tone Curve
+        let isCurveDragging = false;
+        const handleCurvePointer = (e) => {
+            if (!this.cCanvas) return;
+            const rect = this.cCanvas.getBoundingClientRect();
+            const nx = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const ny = Math.max(0, Math.min(1, 1 - (e.clientY - rect.top) / rect.height));
+
+            // Vind het dichtstbijzijnde punt (1 of 2)
+            const d1 = Math.abs(this.curvePoints[1].x - nx);
+            const d2 = Math.abs(this.curvePoints[2].x - nx);
+            const targetIdx = d1 <= d2 ? 1 : 2;
+
+            this.curvePoints[targetIdx].y = ny;
+            if (targetIdx === 1) this.curvePoints[1].x = Math.max(0.05, Math.min(this.curvePoints[2].x - 0.05, nx));
+            if (targetIdx === 2) this.curvePoints[2].x = Math.max(this.curvePoints[1].x + 0.05, Math.min(0.95, nx));
+
+            this.updateCurveLut();
+            this.drawCurve();
+            this.renderActivePhoto();
+        };
+
+        this.cCanvas?.addEventListener('pointerdown', (e) => {
+            isCurveDragging = true;
+            try { this.cCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+            handleCurvePointer(e);
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (isCurveDragging) handleCurvePointer(e);
+        });
+
+        const stopCurveDrag = (e) => {
+            if (isCurveDragging) {
+                isCurveDragging = false;
+                try { this.cCanvas.releasePointerCapture(e.pointerId); } catch (err) {}
+            }
+        };
+        window.addEventListener('pointerup', stopCurveDrag);
+        window.addEventListener('pointercancel', stopCurveDrag);
+
         document.getElementById('btn-reset-curve')?.addEventListener('click', () => {
             this.curvePoints = [{ x: 0, y: 0 }, { x: 0.25, y: 0.25 }, { x: 0.75, y: 0.75 }, { x: 1, y: 1 }];
             this.updateCurveLut();
@@ -1387,6 +1548,18 @@ class VroonPhotoApp {
             if (i === 0) this.cCtx.moveTo(cx, cy); else this.cCtx.lineTo(cx, cy);
         }
         this.cCtx.stroke();
+
+        // Teken tastbare aanraakpunten voor vingers en stylus
+        this.curvePoints.forEach((pt, idx) => {
+            const px = pt.x * w, py = (1.0 - pt.y) * h;
+            this.cCtx.fillStyle = idx === 0 || idx === 3 ? '#64748b' : '#38bdf8';
+            this.cCtx.beginPath();
+            this.cCtx.arc(px, py, idx === 0 || idx === 3 ? 4 : 7, 0, Math.PI * 2);
+            this.cCtx.fill();
+            this.cCtx.strokeStyle = '#ffffff';
+            this.cCtx.lineWidth = 1.5;
+            this.cCtx.stroke();
+        });
     }
 
     // ═══════════════════════════════════════════════════════

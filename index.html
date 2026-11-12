@@ -18,7 +18,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.2.0</strong> beschikbaar &bull; <span id="upd-note">Slimme focus/deblur met gezichtsbehoud, inpaint objectverwijdering &amp; 12 Lightroom presets</span></span>
+      <span><strong id="upd-ver">v1.3.0</strong> beschikbaar &bull; <span id="upd-note">Ondersteuning voor muis, vinger/touch (hand) &amp; drukgevoelige pen (Apple Pencil / Stylus) met pinch-to-zoom</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -33,10 +33,11 @@
         <span style="font-size: 20px;">📸</span>
         <span class="app-title">&lt;vroonphoto&gt;</span>
         <span class="badge-wasm">WASM Core</span>
+        <span id="input-mode-badge" class="badge-input" title="Invoermethode: Muis, Hand (Touch) of Pen (Apple Pencil / Stylus)">🖱️ Muis</span>
         <span id="photo-counter-badge" class="badge-count">1 / 1 Foto's</span>
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)" title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.2.0</span> 🔄
+          <span id="ver-txt">v1.3.0</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -200,6 +201,14 @@
           <div class="canvas-wrapper">
             <canvas id="main-canvas"></canvas>
             <div id="brush-cursor-circle"></div>
+          </div>
+
+          <!-- Touch / Pen Zoom & Pan Controls -->
+          <div class="viewport-zoom-controls">
+            <button id="btn-zoom-out" class="btn-zoom" title="Uitzoomen (of knijpen met twee vingers)">−</button>
+            <span id="zoom-level-text" class="zoom-text" title="Dubbeltik om terug te keren naar 100% Fit">100%</span>
+            <button id="btn-zoom-in" class="btn-zoom" title="Inzoomen (of spreiden met twee vingers)">+</button>
+            <button id="btn-zoom-reset" class="btn-zoom-reset" title="Passend maken">Fit</button>
           </div>
         </div>
 
