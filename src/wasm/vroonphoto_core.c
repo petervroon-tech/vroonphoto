@@ -341,40 +341,134 @@ void vroon_smart_inpaint(
     int height,
     int radius
 ) {
-    for (int iter = 0; iter < 6; iter++) {
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int p_idx = y * width + x;
-                if (mask[p_idx] < 128) continue;
+    int total_pixels = width * height;
+    unsigned char* status = (unsigned char*)mask + total_pixels;
+    unsigned char* next_rgb = status + total_pixels;
 
-                int pixel_byte = p_idx * 4;
+    int min_x = width, max_x = 0, min_y = height, max_y = 0;
+    int unknown_count = 0;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int i = y * width + x;
+            if (mask[i] >= 100) {
+                status[i] = 0; // UNKNOWN (needs inpainting)
+                unknown_count++;
+                if (x < min_x) min_x = x;
+                if (x > max_x) max_x = x;
+                if (y < min_y) min_y = y;
+                if (y > max_y) max_y = y;
+            } else {
+                status[i] = 1; // KNOWN background
+            }
+        }
+    }
+
+    if (unknown_count == 0) return;
+
+    int pad = radius + 6;
+    int bb_min_x = (min_x - pad < 0) ? 0 : min_x - pad;
+    int bb_max_x = (max_x + pad >= width) ? width - 1 : max_x + pad;
+    int bb_min_y = (min_y - pad < 0) ? 0 : min_y - pad;
+    int bb_max_y = (max_y + pad >= height) ? height - 1 : max_y + pad;
+
+    int r = (radius < 2) ? 2 : (radius > 5 ? 5 : radius);
+    int max_iters = (width > height ? width : height);
+
+    for (int iter = 0; iter < max_iters && unknown_count > 0; iter++) {
+        int newly_filled = 0;
+
+        for (int y = bb_min_y; y <= bb_max_y; y++) {
+            for (int x = bb_min_x; x <= bb_max_x; x++) {
+                int p_idx = y * width + x;
+                if (status[p_idx] != 0) continue;
+
                 float sum_r = 0.0f, sum_g = 0.0f, sum_b = 0.0f;
                 float total_weight = 0.0f;
 
-                for (int dy = -radius; dy <= radius; dy++) {
+                for (int dy = -r; dy <= r; dy++) {
                     int py = y + dy;
                     if (py < 0 || py >= height) continue;
-                    for (int dx = -radius; dx <= radius; dx++) {
+                    for (int dx = -r; dx <= r; dx++) {
                         int px = x + dx;
                         if (px < 0 || px >= width) continue;
 
-                        int neighbor_idx = py * width + px;
-                        float is_valid = (mask[neighbor_idx] < 128) ? 1.0f : 0.08f;
-                        float dist = (float)(dx * dx + dy * dy) + 0.1f;
-                        float weight = is_valid / dist;
+                        int n_idx = py * width + px;
+                        if (status[n_idx] == 1) {
+                            float dist_sq = (float)(dx * dx + dy * dy) + 0.1f;
+                            float weight = 1.0f / dist_sq;
 
-                        int n_byte = neighbor_idx * 4;
-                        sum_r += (float)pixels[n_byte] * weight;
-                        sum_g += (float)pixels[n_byte + 1] * weight;
-                        sum_b += (float)pixels[n_byte + 2] * weight;
-                        total_weight += weight;
+                            int n_byte = n_idx * 4;
+                            sum_r += (float)pixels[n_byte] * weight;
+                            sum_g += (float)pixels[n_byte + 1] * weight;
+                            sum_b += (float)pixels[n_byte + 2] * weight;
+                            total_weight += weight;
+                        }
                     }
                 }
 
                 if (total_weight > 0.0001f) {
-                    pixels[pixel_byte]     = (unsigned char)CLAMP(sum_r / total_weight, 0.0f, 255.0f);
-                    pixels[pixel_byte + 1] = (unsigned char)CLAMP(sum_g / total_weight, 0.0f, 255.0f);
-                    pixels[pixel_byte + 2] = (unsigned char)CLAMP(sum_b / total_weight, 0.0f, 255.0f);
+                    next_rgb[p_idx * 3 + 0] = (unsigned char)CLAMP(sum_r / total_weight, 0.0f, 255.0f);
+                    next_rgb[p_idx * 3 + 1] = (unsigned char)CLAMP(sum_g / total_weight, 0.0f, 255.0f);
+                    next_rgb[p_idx * 3 + 2] = (unsigned char)CLAMP(sum_b / total_weight, 0.0f, 255.0f);
+                    status[p_idx] = 2;
+                    newly_filled++;
+                }
+            }
+        }
+
+        if (newly_filled == 0) {
+            r++;
+            if (r > 15) break;
+            continue;
+        }
+
+        for (int y = bb_min_y; y <= bb_max_y; y++) {
+            for (int x = bb_min_x; x <= bb_max_x; x++) {
+                int i = y * width + x;
+                if (status[i] == 2) {
+                    pixels[i * 4 + 0] = next_rgb[i * 3 + 0];
+                    pixels[i * 4 + 1] = next_rgb[i * 3 + 1];
+                    pixels[i * 4 + 2] = next_rgb[i * 3 + 2];
+                    status[i] = 1;
+                    unknown_count--;
+                }
+            }
+        }
+    }
+
+    // Blend & smooth passes within bounding box to eliminate any seam lines
+    for (int pass = 0; pass < 2; pass++) {
+        for (int y = bb_min_y; y <= bb_max_y; y++) {
+            if (y <= 0 || y >= height - 1) continue;
+            for (int x = bb_min_x; x <= bb_max_x; x++) {
+                if (x <= 0 || x >= width - 1) continue;
+                int p_idx = y * width + x;
+                if (mask[p_idx] < 100) continue;
+
+                float sr = 0, sg = 0, sb = 0, sw = 0;
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int n_idx = (y + dy) * width + (x + dx);
+                        float w = (dx == 0 && dy == 0) ? 2.0f : 1.0f;
+                        sr += (float)pixels[n_idx * 4 + 0] * w;
+                        sg += (float)pixels[n_idx * 4 + 1] * w;
+                        sb += (float)pixels[n_idx * 4 + 2] * w;
+                        sw += w;
+                    }
+                }
+                next_rgb[p_idx * 3 + 0] = (unsigned char)(sr / sw);
+                next_rgb[p_idx * 3 + 1] = (unsigned char)(sg / sw);
+                next_rgb[p_idx * 3 + 2] = (unsigned char)(sb / sw);
+            }
+        }
+        for (int y = bb_min_y; y <= bb_max_y; y++) {
+            for (int x = bb_min_x; x <= bb_max_x; x++) {
+                int i = y * width + x;
+                if (mask[i] >= 100) {
+                    pixels[i * 4 + 0] = next_rgb[i * 3 + 0];
+                    pixels[i * 4 + 1] = next_rgb[i * 3 + 1];
+                    pixels[i * 4 + 2] = next_rgb[i * 3 + 2];
                 }
             }
         }

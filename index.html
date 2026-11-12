@@ -22,7 +22,7 @@
   <div id="update-banner">
     <div class="upd-left">
       <span>🚀</span>
-      <span><strong id="upd-ver">v1.7.1</strong> beschikbaar &bull; <span id="upd-note">Duidelijk zichtbaar Exportcentrum &amp; directe Safari/Mac opslag</span></span>
+      <span><strong id="upd-ver">v1.7.2</strong> beschikbaar &bull; <span id="upd-note">Naadloos objecten &amp; personen verwijderen (WASM inpainting hersteld)</span></span>
     </div>
     <div class="upd-right">
       <button class="btn-upd" id="btn-apply-upd">Nu bijwerken</button>
@@ -43,7 +43,7 @@
         <span id="ver-pill" class="ver-pill" onclick="checkVersion(false)"
           title="Klik om te controleren op updates / geforceerd te herladen">
           <span id="ver-dot" class="dot green"></span>
-          <span id="ver-txt">v1.7.1</span> 🔄
+          <span id="ver-txt">v1.7.2</span> 🔄
         </span>
         <a href="reset.html" class="btn-reset-header" title="Geheugen leegmaken &amp; verse app starten">🧹 Reset</a>
       </div>
@@ -220,7 +220,7 @@
             title="Schilder over ongewenste objecten of mensen om ze te wissen">
             🪄 Object / Persoon Verwijderen
           </button>
-          <div id="inpaint-controls"
+          <div id="inpaint-controls" class="hidden"
             style="display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(9, 14, 24, 0.85); border-radius: 4px; border: 1px solid var(--border-glow);">
             <div style="font-size: 10.5px; color: var(--text-muted); line-height: 1.35; margin-bottom: 2px;">
               Schilder over in de weg staande objecten (prullenbakken, palen, kabels of voorbijgangers) en klik op 'Wis
@@ -1018,7 +1018,7 @@
       <div class="modal-header">
         <span style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 19px;">💡</span>
-          <strong>Handleiding &amp; Mogelijkheden van &lt;vroonphoto&gt; (<span id="help-modal-ver">v1.7.0</span>)</strong>
+          <strong>Handleiding &amp; Mogelijkheden van &lt;vroonphoto&gt; (<span id="help-modal-ver">v1.7.2</span>)</strong>
         </span>
         <button id="btn-close-help-modal" class="btn-icon">✕</button>
       </div>

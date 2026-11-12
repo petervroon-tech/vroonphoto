@@ -493,12 +493,16 @@ class WasmKernel {
 
     smartInpaint(imageData, maskArray, radius = 5) {
         const { data, width, height } = imageData;
-        const totalBytes = width * height * 4;
-        const maskBytes = width * height;
+        const totalPixels = width * height;
+        const totalBytes = totalPixels * 4;
+        const maskBytes = totalPixels;
+        const statusBytes = totalPixels;
+        const rgbBytes = totalPixels * 3;
+        const neededMemory = totalBytes + maskBytes + statusBytes + rgbBytes; // 9 * totalPixels
 
         if (this.isReady && this.instance.exports.vroon_smart_inpaint) {
             const imgOff = 0, maskOff = totalBytes;
-            this.ensureMemory(totalBytes + maskBytes);
+            this.ensureMemory(neededMemory);
             const mem = new Uint8Array(this.memory.buffer);
             mem.set(data, imgOff);
             mem.set(maskArray, maskOff);
@@ -507,31 +511,122 @@ class WasmKernel {
             return;
         }
 
-        // JS Fallback
-        for (let iter = 0; iter < 3; iter++) {
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
+        // JS Fallback (exact dezelfde concentrische ui-schil synthese)
+        const status = new Uint8Array(totalPixels);
+        let unknownCount = 0;
+        let minX = width, maxX = 0, minY = height, maxY = 0;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const i = y * width + x;
+                if (maskArray[i] >= 100) {
+                    status[i] = 0;
+                    unknownCount++;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                } else {
+                    status[i] = 1;
+                }
+            }
+        }
+        if (unknownCount === 0) return;
+
+        const pad = radius + 6;
+        const bbMinX = Math.max(0, minX - pad);
+        const bbMaxX = Math.min(width - 1, maxX + pad);
+        const bbMinY = Math.max(0, minY - pad);
+        const bbMaxY = Math.min(height - 1, maxY + pad);
+
+        let r = Math.max(2, Math.min(5, radius));
+        const maxIters = Math.max(width, height);
+        const nextRgb = new Uint8Array(totalPixels * 3);
+
+        for (let iter = 0; iter < maxIters && unknownCount > 0; iter++) {
+            let newlyFilled = 0;
+            for (let y = bbMinY; y <= bbMaxY; y++) {
+                for (let x = bbMinX; x <= bbMaxX; x++) {
                     const pIdx = y * width + x;
-                    if (maskArray[pIdx] < 128) continue;
+                    if (status[pIdx] !== 0) continue;
+
                     let sR = 0, sG = 0, sB = 0, sW = 0;
-                    for (let dy = -radius; dy <= radius; dy++) {
+                    for (let dy = -r; dy <= r; dy++) {
                         const py = y + dy;
                         if (py < 0 || py >= height) continue;
-                        for (let dx = -radius; dx <= radius; dx++) {
+                        for (let dx = -r; dx <= r; dx++) {
                             const px = x + dx;
                             if (px < 0 || px >= width) continue;
                             const nIdx = py * width + px;
-                            const isValid = maskArray[nIdx] < 128 ? 1.0 : 0.1;
-                            const w = isValid / (dx * dx + dy * dy + 0.1);
-                            const nB = nIdx * 4;
-                            sR += data[nB] * w; sG += data[nB + 1] * w; sB += data[nB + 2] * w; sW += w;
+                            if (status[nIdx] === 1) {
+                                const distSq = dx * dx + dy * dy + 0.1;
+                                const w = 1.0 / distSq;
+                                const nB = nIdx * 4;
+                                sR += data[nB] * w;
+                                sG += data[nB + 1] * w;
+                                sB += data[nB + 2] * w;
+                                sW += w;
+                            }
                         }
                     }
                     if (sW > 0.0001) {
-                        const bIdx = pIdx * 4;
-                        data[bIdx] = (sR / sW) | 0;
-                        data[bIdx + 1] = (sG / sW) | 0;
-                        data[bIdx + 2] = (sB / sW) | 0;
+                        nextRgb[pIdx * 3] = Math.min(255, Math.max(0, (sR / sW) | 0));
+                        nextRgb[pIdx * 3 + 1] = Math.min(255, Math.max(0, (sG / sW) | 0));
+                        nextRgb[pIdx * 3 + 2] = Math.min(255, Math.max(0, (sB / sW) | 0));
+                        status[pIdx] = 2;
+                        newlyFilled++;
+                    }
+                }
+            }
+            if (newlyFilled === 0) {
+                r++;
+                if (r > 15) break;
+                continue;
+            }
+            for (let y = bbMinY; y <= bbMaxY; y++) {
+                for (let x = bbMinX; x <= bbMaxX; x++) {
+                    const i = y * width + x;
+                    if (status[i] === 2) {
+                        data[i * 4] = nextRgb[i * 3];
+                        data[i * 4 + 1] = nextRgb[i * 3 + 1];
+                        data[i * 4 + 2] = nextRgb[i * 3 + 2];
+                        status[i] = 1;
+                        unknownCount--;
+                    }
+                }
+            }
+        }
+
+        // Blend passes
+        for (let pass = 0; pass < 2; pass++) {
+            for (let y = bbMinY; y <= bbMaxY; y++) {
+                if (y <= 0 || y >= height - 1) continue;
+                for (let x = bbMinX; x <= bbMaxX; x++) {
+                    if (x <= 0 || x >= width - 1) continue;
+                    const pIdx = y * width + x;
+                    if (maskArray[pIdx] < 100) continue;
+                    let sr = 0, sg = 0, sb = 0, sw = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const nIdx = (y + dy) * width + (x + dx);
+                            const w = (dx === 0 && dy === 0) ? 2.0 : 1.0;
+                            sr += data[nIdx * 4] * w;
+                            sg += data[nIdx * 4 + 1] * w;
+                            sb += data[nIdx * 4 + 2] * w;
+                            sw += w;
+                        }
+                    }
+                    nextRgb[pIdx * 3] = (sr / sw) | 0;
+                    nextRgb[pIdx * 3 + 1] = (sg / sw) | 0;
+                    nextRgb[pIdx * 3 + 2] = (sb / sw) | 0;
+                }
+            }
+            for (let y = bbMinY; y <= bbMaxY; y++) {
+                for (let x = bbMinX; x <= bbMaxX; x++) {
+                    const i = y * width + x;
+                    if (maskArray[i] >= 100) {
+                        data[i * 4] = nextRgb[i * 3];
+                        data[i * 4 + 1] = nextRgb[i * 3 + 1];
+                        data[i * 4 + 2] = nextRgb[i * 3 + 2];
                     }
                 }
             }
@@ -1053,8 +1148,14 @@ class VroonPhotoApp {
             document.getElementById('inpaint-controls')?.classList.toggle('hidden', !isActive);
             const circle = document.getElementById('brush-cursor-circle');
             if (circle && !isActive) circle.style.display = 'none';
+            this.drawActiveCanvas();
         });
-        document.getElementById('btn-apply-heal')?.addEventListener('click', () => this.applyInpaint());
+        document.getElementById('btn-apply-heal')?.addEventListener('click', () => {
+            this.activeTool = 'inpaint';
+            document.getElementById('tool-inpaint')?.classList.add('active');
+            document.getElementById('inpaint-controls')?.classList.remove('hidden');
+            this.applyInpaint();
+        });
         document.getElementById('btn-clear-heal')?.addEventListener('click', () => this.clearMask());
 
         // Voor/Na toggle
@@ -1296,8 +1397,8 @@ class VroonPhotoApp {
             effectiveRadius = Math.max(4, baseSize * (0.35 + 0.65 * pressure));
         }
 
-        this.maskCtx.fillStyle = '#ffffff';
-        this.maskCtx.strokeStyle = '#ffffff';
+        this.maskCtx.fillStyle = '#ef4444';
+        this.maskCtx.strokeStyle = '#ef4444';
         this.maskCtx.lineCap = 'round';
         this.maskCtx.lineJoin = 'round';
         this.maskCtx.lineWidth = effectiveRadius * 2;
@@ -1368,7 +1469,7 @@ class VroonPhotoApp {
 
             // Detecteer dubbeltik (hand/pen/muis) voor snelle 100% Fit / 200% Zoom wissel
             const now = Date.now();
-            if (now - this.lastTapTime < 320) {
+            if (this.activeTool !== 'inpaint' && this.activeTool !== 'local_adjust' && (now - this.lastTapTime < 320)) {
                 if (this.zoomLevel > 1.05) this.resetZoom();
                 else this.setZoom(2.0, -(e.clientX - window.innerWidth / 2) * 0.6, -(e.clientY - window.innerHeight / 2) * 0.6);
                 this.lastTapTime = 0;
@@ -2753,8 +2854,7 @@ class VroonPhotoApp {
     }
     clearMask() {
         if (!this.maskCtx) return;
-        this.maskCtx.fillStyle = '#000000';
-        this.maskCtx.fillRect(0, 0, this.maskCanvas.width, this.maskCanvas.height);
+        this.maskCtx.clearRect(0, 0, this.maskCanvas.width, this.maskCanvas.height);
         this.drawActiveCanvas();
     }
     paintMaskAtPoint(clientX, clientY) {
@@ -2767,8 +2867,12 @@ class VroonPhotoApp {
         const mask = new Uint8Array(this.maskCanvas.width * this.maskCanvas.height);
         let hasMaskPixels = false;
         for (let i = 0, j = 0; i < mData.length; i += 4, j++) {
-            mask[j] = mData[i];
-            if (mData[i] > 100) hasMaskPixels = true;
+            if (mData[i + 3] > 30 && mData[i] > 50) {
+                mask[j] = 255;
+                hasMaskPixels = true;
+            } else {
+                mask[j] = 0;
+            }
         }
 
         if (!hasMaskPixels) {
@@ -2776,16 +2880,17 @@ class VroonPhotoApp {
             return;
         }
 
-        document.getElementById('loading-overlay')?.classList.remove('hidden');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+        loadingOverlay?.classList.remove('hidden');
+        if (loadingText) loadingText.textContent = "Bezig met naadloos verwijderen van object / persoon via contextuele synthese...";
+
         setTimeout(() => {
-            // Multi-pass contextuele synthese voor naadloze objectverwijdering
-            for (let pass = 0; pass < 3; pass++) {
-                this.wasm.smartInpaint(photo.originalImageData, mask, 8);
-            }
+            this.wasm.smartInpaint(photo.originalImageData, mask, 4);
             this.clearMask();
             this.renderActivePhoto();
-            document.getElementById('loading-overlay')?.classList.add('hidden');
-        }, 40);
+            loadingOverlay?.classList.add('hidden');
+        }, 50);
     }
 
     // ═══════════════════════════════════════════════════════

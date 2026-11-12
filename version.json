@@ -1,11 +1,12 @@
 {
   "app_name": "vroonphoto",
-  "version": "1.7.1",
-  "build": 31,
-  "timestamp": "2026-11-12T20:43:19.930391+00:00",
-  "git_hash": "7ad651e",
+  "version": "1.7.2",
+  "build": 32,
+  "timestamp": "2026-11-12T20:51:35.980936+00:00",
+  "git_hash": "cd358ef",
   "features": [
-    "🚀 Versie v1.7.1: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🚀 Versie v1.7.2: Automatische versie-vernieuwing na elke toevoeging & directe live synchronisatie.",
+    "🪄 Volledig Herstel Objecten & Personen Wissen (v1.7.2): Het wissen van objecten of personen ('🪄 Object / Persoon Verwijderen' -> '✨ Wis Object') is fundamenteel gerepareerd. De inpainting-engine gebruikt nu een geavanceerde concentrische grensgolf (onion peeling) synthese die objecten en personen daadwerkelijk 100% verwijdert en naadloos opvult met de omringende achtergrond in plaats van het object met zichzelf te mengen. Het penseel toont nu bovendien een heldere, kristalheldere robijnrode markering over het object zonder dat de rest van de foto verduisterd wordt, en snelle penseelstreken worden niet langer per abuis onderbroken door dubbeltik-zoom.",
     "⚙️ Duidelijk Zichtbaar Exportcentrum & Directe Safari / Mac Opslag (v1.7.1): De knop '⚙️ Exportcentrum' is nu prominent zichtbaar in de navigatiebalk én in de culling-balk. Bij het klikken op '📂 Kies Doelmap...' of '💾 Opslaan' in Safari (of browsers zonder native Directory Picker) verschijnt geen vage foutmelding meer, maar opent direct het Exportcentrum op het scherm. Bovendien worden meervoudige selecties in Safari automatisch gebundeld in 1 overzichtelijk .zip bestand, zodat er geen pop-ups naar boven schieten in de browser en alle foto's direct en netjes opgeslagen worden.",
     "📂 Direct Opslaan in Finder / Bestandsbeheer zonder Browser-Downloads (v1.7.0): Bij het klikken op '💾 Opslaan (Finder)' of '💾 Sla Selectie Op in Map' opent nu onmiddellijk en direct het officiële macOS Finder (of Windows Verkenner / OS bestandsbeheer) venster! Alle blokkerende tussenmeldingen (zoals alerts vooraf die de gebruikersrechten verbraken) en vertragingen zijn verwijderd. Voor enkele foto's opent direct het Finder 'Bewaar als'-venster; voor batch/selecties opent direct de Finder 'Kies Map'-selectie. Bestanden worden direct bit-exact weggeschreven naar de gekozen map op schijf in plaats van dat er popups naar boven schieten in de downloadbalk van de browser.",
     "🎯 100% Lokale & Onafhankelijke Studio zonder Externe AI Knoppen (v1.6.9): De fotobewerkingsstudio is volledig ontdaan van externe AI-knoppen of cloud-invoervelden. Alle bewerkingen (onscherpte herstel, inpainting, presets, Topaz AI schaling, RAW-ontwikkeling) blijven 100% gratis en lokaal draaien via WebAssembly op uw eigen computer zonder enig puntenverbruik. Tegoed- en quotabeheer is vastgelegd in de officiële Antigravity Workspace Rules (AGENTS.md) met prioriteit voor het wekelijkse inbegrepen tegoed.",
