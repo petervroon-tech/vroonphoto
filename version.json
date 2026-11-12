@@ -1,9 +1,9 @@
 {
   "app_name": "vroonphoto",
   "version": "1.1.0",
-  "build": 8,
-  "timestamp": "2026-11-12T10:36:45.087671+00:00",
-  "git_hash": "c504c29",
+  "build": 9,
+  "timestamp": "2026-11-12T10:56:20.174889+00:00",
+  "git_hash": "8f92310",
   "features": [
     "🎞️ 25-Foto Batch Beheer & Filmstrip (v1.1.0): Bewerk tot 25 foto's tegelijkertijd met onafhankelijke bewerkingsstaten per foto, vloeiende filmstrip onderaan en overzichtelijk schermvullend rasteroverzicht.",
     "📁 Zelf Opslaglocatie Kiezen op Apparaat (v1.1.0): Kies zelf elke gewenste map via de native Directory Picker op Mac/Windows/laptops of via de officiële 'Bewaar in Bestanden' share sheet op iPad (iCloud Drive / Op mijn iPad).",
