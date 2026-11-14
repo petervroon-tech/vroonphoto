@@ -491,14 +491,13 @@ class WasmKernel {
         return dstImageData;
     }
 
-    smartInpaint(imageData, maskArray, radius = 5) {
+    smartInpaint(imageData, maskArray, radius = 35) {
         const { data, width, height } = imageData;
         const totalPixels = width * height;
         const totalBytes = totalPixels * 4;
         const maskBytes = totalPixels;
         const statusBytes = totalPixels;
-        const rgbBytes = totalPixels * 3;
-        const neededMemory = totalBytes + maskBytes + statusBytes + rgbBytes; // 9 * totalPixels
+        const neededMemory = totalBytes + maskBytes + statusBytes + (totalPixels * 12);
 
         if (this.isReady && this.instance.exports.vroon_smart_inpaint) {
             const imgOff = 0, maskOff = totalBytes;
@@ -511,123 +510,310 @@ class WasmKernel {
             return;
         }
 
-        // JS Fallback (exact dezelfde concentrische ui-schil synthese)
-        const status = new Uint8Array(totalPixels);
-        let unknownCount = 0;
+        // JS Fallback: Adobe Content-Aware & Patch-Exemplar Synthese met Poisson Illumination Blending
         let minX = width, maxX = 0, minY = height, maxY = 0;
+        let rawMasked = 0;
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const i = y * width + x;
-                if (maskArray[i] >= 100) {
-                    status[i] = 0;
-                    unknownCount++;
+                if (maskArray[i] >= 30) {
+                    rawMasked++;
                     if (x < minX) minX = x;
                     if (x > maxX) maxX = x;
                     if (y < minY) minY = y;
                     if (y > maxY) maxY = y;
-                } else {
-                    status[i] = 1;
+                }
+            }
+        }
+        if (rawMasked === 0) return;
+
+        // 1. Dilateer masker met 2-3 pixels tegen randlekkage van het object
+        const dilateR = (radius > 30) ? 3 : 2;
+        const status = new Uint8Array(totalPixels);
+        status.fill(1); // 1 = schone achtergrond
+
+        const dMinX = Math.max(0, minX - dilateR);
+        const dMaxX = Math.min(width - 1, maxX + dilateR);
+        const dMinY = Math.max(0, minY - dilateR);
+        const dMaxY = Math.min(height - 1, maxY + dilateR);
+        let unknownCount = 0;
+
+        for (let y = dMinY; y <= dMaxY; y++) {
+            for (let x = dMinX; x <= dMaxX; x++) {
+                let isNear = false;
+                for (let dy = -dilateR; dy <= dilateR && !isNear; dy++) {
+                    const ny = y + dy;
+                    if (ny < 0 || ny >= height) continue;
+                    for (let dx = -dilateR; dx <= dilateR; dx++) {
+                        const nx = x + dx;
+                        if (nx < 0 || nx >= width) continue;
+                        if (dx * dx + dy * dy <= dilateR * dilateR + 1) {
+                            if (maskArray[ny * width + nx] >= 30) {
+                                isNear = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (isNear) {
+                    status[y * width + x] = 0; // 0 = gat om in te vullen
+                    unknownCount++;
                 }
             }
         }
         if (unknownCount === 0) return;
 
-        const pad = radius + 6;
-        const bbMinX = Math.max(0, minX - pad);
-        const bbMaxX = Math.min(width - 1, maxX + pad);
-        const bbMinY = Math.max(0, minY - pad);
-        const bbMaxY = Math.min(height - 1, maxY + pad);
+        // 2. Context Zoekvenster
+        const holeSpan = Math.max(dMaxX - dMinX, dMaxY - dMinY);
+        let pad = Math.max(35, holeSpan);
+        if (pad > 110) pad = 110;
 
-        let r = Math.max(2, Math.min(5, radius));
-        const maxIters = Math.max(width, height);
-        const nextRgb = new Uint8Array(totalPixels * 3);
+        const ctxMinX = Math.max(0, dMinX - pad);
+        const ctxMaxX = Math.min(width - 1, dMaxX + pad);
+        const ctxMinY = Math.max(0, dMinY - pad);
+        const ctxMaxY = Math.min(height - 1, dMaxY + pad);
 
-        for (let iter = 0; iter < maxIters && unknownCount > 0; iter++) {
-            let newlyFilled = 0;
-            for (let y = bbMinY; y <= bbMaxY; y++) {
-                for (let x = bbMinX; x <= bbMaxX; x++) {
-                    const pIdx = y * width + x;
-                    if (status[pIdx] !== 0) continue;
+        // 3. Verzamel zuivere achtergrond kandidaten
+        const HP = 4; // 9x9 patch
+        const candX = [];
+        const candY = [];
+        const maxCands = 1500;
 
-                    let sR = 0, sG = 0, sB = 0, sW = 0;
-                    for (let dy = -r; dy <= r; dy++) {
-                        const py = y + dy;
-                        if (py < 0 || py >= height) continue;
-                        for (let dx = -r; dx <= r; dx++) {
-                            const px = x + dx;
-                            if (px < 0 || px >= width) continue;
-                            const nIdx = py * width + px;
-                            if (status[nIdx] === 1) {
-                                const distSq = dx * dx + dy * dy + 0.1;
-                                const w = 1.0 / distSq;
-                                const nB = nIdx * 4;
-                                sR += data[nB] * w;
-                                sG += data[nB + 1] * w;
-                                sB += data[nB + 2] * w;
-                                sW += w;
-                            }
+        let step = 2;
+        const ctxArea = (ctxMaxX - ctxMinX) * (ctxMaxY - ctxMinY);
+        if (ctxArea > 40000) step = 3;
+        if (ctxArea > 120000) step = 4;
+
+        for (let y = ctxMinY + HP; y <= ctxMaxY - HP && candX.length < maxCands; y += step) {
+            for (let x = ctxMinX + HP; x <= ctxMaxX - HP && candX.length < maxCands; x += step) {
+                let clean = true;
+                for (let dy = -HP; dy <= HP && clean; dy += 2) {
+                    for (let dx = -HP; dx <= HP; dx += 2) {
+                        if (status[(y + dy) * width + (x + dx)] === 0) {
+                            clean = false;
+                            break;
                         }
                     }
-                    if (sW > 0.0001) {
-                        nextRgb[pIdx * 3] = Math.min(255, Math.max(0, (sR / sW) | 0));
-                        nextRgb[pIdx * 3 + 1] = Math.min(255, Math.max(0, (sG / sW) | 0));
-                        nextRgb[pIdx * 3 + 2] = Math.min(255, Math.max(0, (sB / sW) | 0));
-                        status[pIdx] = 2;
-                        newlyFilled++;
+                }
+                if (clean) {
+                    candX.push(x);
+                    candY.push(y);
+                }
+            }
+        }
+
+        if (candX.length === 0) {
+            for (let y = HP; y < height - HP && candX.length < maxCands; y += 4) {
+                for (let x = HP; x < width - HP && candX.length < maxCands; x += 4) {
+                    if (status[y * width + x] === 1) {
+                        candX.push(x);
+                        candY.push(y);
                     }
                 }
             }
-            if (newlyFilled === 0) {
-                r++;
-                if (r > 15) break;
-                continue;
+        }
+
+        // 4. Exemplar Patch Synthese Lus (hoogste betrouwbaarheid eerst)
+        let iters = 0;
+        const maxIters = 1800;
+
+        while (unknownCount > 0 && iters++ < maxIters && candX.length > 0) {
+            let bestTx = -1, bestTy = -1;
+            let bestKnownCount = -1;
+
+            for (let y = dMinY; y <= dMaxY; y++) {
+                for (let x = dMinX; x <= dMaxX; x++) {
+                    const pIdx = y * width + x;
+                    if (status[pIdx] !== 0) continue;
+
+                    let hasKnown = false;
+                    if ((x > 0 && status[pIdx - 1] === 1) ||
+                        (x < width - 1 && status[pIdx + 1] === 1) ||
+                        (y > 0 && status[pIdx - width] === 1) ||
+                        (y < height - 1 && status[pIdx + width] === 1)) {
+                        hasKnown = true;
+                    }
+                    if (!hasKnown) continue;
+
+                    let knownInPatch = 0;
+                    for (let dy = -HP; dy <= HP; dy++) {
+                        const py = y + dy;
+                        if (py < 0 || py >= height) continue;
+                        for (let dx = -HP; dx <= HP; dx++) {
+                            const px = x + dx;
+                            if (px < 0 || px >= width) continue;
+                            if (status[py * width + px] === 1) knownInPatch++;
+                        }
+                    }
+
+                    if (knownInPatch > bestKnownCount) {
+                        bestKnownCount = knownInPatch;
+                        bestTx = x;
+                        bestTy = y;
+                    }
+                }
             }
-            for (let y = bbMinY; y <= bbMaxY; y++) {
-                for (let x = bbMinX; x <= bbMaxX; x++) {
-                    const i = y * width + x;
-                    if (status[i] === 2) {
-                        data[i * 4] = nextRgb[i * 3];
-                        data[i * 4 + 1] = nextRgb[i * 3 + 1];
-                        data[i * 4 + 2] = nextRgb[i * 3 + 2];
-                        status[i] = 1;
+
+            if (bestTx < 0 || bestKnownCount < 1) break;
+
+            // Zoek best passende kandidaat
+            let minErr = 1e12;
+            let bestSx = candX[0], bestSy = candY[0];
+
+            for (let c = 0; c < candX.length; c++) {
+                const sx = candX[c];
+                const sy = candY[c];
+                let err = 0;
+                let compared = 0;
+
+                for (let dy = -HP; dy <= HP; dy++) {
+                    const ty = bestTy + dy;
+                    const py = sy + dy;
+                    for (let dx = -HP; dx <= HP; dx++) {
+                        const tx = bestTx + dx;
+                        const px = sx + dx;
+                        if (status[ty * width + tx] === 1) {
+                            const tIdx = (ty * width + tx) * 4;
+                            const sIdx = (py * width + px) * 4;
+                            const dr = data[tIdx] - data[sIdx];
+                            const dg = data[tIdx + 1] - data[sIdx + 1];
+                            const db = data[tIdx + 2] - data[sIdx + 2];
+                            err += (dr * dr + dg * dg + db * db);
+                            compared++;
+                        }
+                    }
+                    if (err > minErr) break;
+                }
+
+                if (compared > 0) {
+                    err /= compared;
+                    const distSq = (bestTx - sx) * (bestTx - sx) + (bestTy - sy) * (bestTy - sy);
+                    err += distSq * 0.15;
+
+                    if (err < minErr) {
+                        minErr = err;
+                        bestSx = sx;
+                        bestSy = sy;
+                    }
+                }
+            }
+
+            // Kopieer echte textuur van beste kandidaat naar onbekende pixels
+            for (let dy = -HP; dy <= HP; dy++) {
+                const ty = bestTy + dy;
+                if (ty < 0 || ty >= height) continue;
+                const sy = bestSy + dy;
+                for (let dx = -HP; dx <= HP; dx++) {
+                    const tx = bestTx + dx;
+                    if (tx < 0 || tx >= width) continue;
+                    const sx = bestSx + dx;
+                    const idx = ty * width + tx;
+                    if (status[idx] === 0) {
+                        const tByte = idx * 4;
+                        const sByte = (sy * width + sx) * 4;
+                        data[tByte]     = data[sByte];
+                        data[tByte + 1] = data[sByte + 1];
+                        data[tByte + 2] = data[sByte + 2];
+                        data[tByte + 3] = 255;
+                        status[idx] = 1;
                         unknownCount--;
                     }
                 }
             }
         }
 
-        // Blend passes
-        for (let pass = 0; pass < 2; pass++) {
-            for (let y = bbMinY; y <= bbMaxY; y++) {
-                if (y <= 0 || y >= height - 1) continue;
-                for (let x = bbMinX; x <= bbMaxX; x++) {
-                    if (x <= 0 || x >= width - 1) continue;
-                    const pIdx = y * width + x;
-                    if (maskArray[pIdx] < 100) continue;
-                    let sr = 0, sg = 0, sb = 0, sw = 0;
-                    for (let dy = -1; dy <= 1; dy++) {
-                        for (let dx = -1; dx <= 1; dx++) {
-                            const nIdx = (y + dy) * width + (x + dx);
-                            const w = (dx === 0 && dy === 0) ? 2.0 : 1.0;
-                            sr += data[nIdx * 4] * w;
-                            sg += data[nIdx * 4 + 1] * w;
-                            sb += data[nIdx * 4 + 2] * w;
-                            sw += w;
+        // 5. Poisson Illumination Harmonization (0% Naadlijnen)
+        const bw = (dMaxX - dMinX + 1);
+        const bh = (dMaxY - dMinY + 1);
+        const bbLen = bw * bh;
+        const resR = new Float32Array(bbLen);
+        const resG = new Float32Array(bbLen);
+        const resB = new Float32Array(bbLen);
+
+        for (let y = dMinY; y <= dMaxY; y++) {
+            const ly = y - dMinY;
+            for (let x = dMinX; x <= dMaxX; x++) {
+                const lx = x - dMinX;
+                const idx = y * width + x;
+                const lIdx = ly * bw + lx;
+
+                if (maskArray[idx] < 30) continue;
+
+                let diffR = 0, diffG = 0, diffB = 0;
+                let count = 0;
+
+                for (let dy = -1; dy <= 1; dy++) {
+                    const ny = y + dy;
+                    if (ny < 0 || ny >= height) continue;
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const nx = x + dx;
+                        if (nx < 0 || nx >= width) continue;
+                        const nIdx = ny * width + nx;
+                        if (maskArray[nIdx] < 30) {
+                            diffR += data[nIdx * 4] - data[idx * 4];
+                            diffG += data[nIdx * 4 + 1] - data[idx * 4 + 1];
+                            diffB += data[nIdx * 4 + 2] - data[idx * 4 + 2];
+                            count++;
                         }
                     }
-                    nextRgb[pIdx * 3] = (sr / sw) | 0;
-                    nextRgb[pIdx * 3 + 1] = (sg / sw) | 0;
-                    nextRgb[pIdx * 3 + 2] = (sb / sw) | 0;
+                }
+
+                if (count > 0) {
+                    resR[lIdx] = diffR / count;
+                    resG[lIdx] = diffG / count;
+                    resB[lIdx] = diffB / count;
                 }
             }
-            for (let y = bbMinY; y <= bbMaxY; y++) {
-                for (let x = bbMinX; x <= bbMaxX; x++) {
-                    const i = y * width + x;
-                    if (maskArray[i] >= 100) {
-                        data[i * 4] = nextRgb[i * 3];
-                        data[i * 4 + 1] = nextRgb[i * 3 + 1];
-                        data[i * 4 + 2] = nextRgb[i * 3 + 2];
+        }
+
+        // Poisson Laplace relaxatie
+        for (let pIter = 0; pIter < 14; pIter++) {
+            for (let y = dMinY; y <= dMaxY; y++) {
+                const ly = y - dMinY;
+                for (let x = dMinX; x <= dMaxX; x++) {
+                    const lx = x - dMinX;
+                    const idx = y * width + x;
+                    const lIdx = ly * bw + lx;
+                    if (maskArray[idx] < 30) continue;
+
+                    let sumR = 0, sumG = 0, sumB = 0;
+                    let nCount = 0;
+
+                    if (lx > 0) {
+                        sumR += resR[lIdx - 1]; sumG += resG[lIdx - 1]; sumB += resB[lIdx - 1]; nCount++;
                     }
+                    if (lx < bw - 1) {
+                        sumR += resR[lIdx + 1]; sumG += resG[lIdx + 1]; sumB += resB[lIdx + 1]; nCount++;
+                    }
+                    if (ly > 0) {
+                        sumR += resR[lIdx - bw]; sumG += resG[lIdx - bw]; sumB += resB[lIdx - bw]; nCount++;
+                    }
+                    if (ly < bh - 1) {
+                        sumR += resR[lIdx + bw]; sumG += resG[lIdx + bw]; sumB += resB[lIdx + bw]; nCount++;
+                    }
+
+                    if (nCount > 0) {
+                        resR[lIdx] = (resR[lIdx] * 0.3) + (sumR / nCount) * 0.7;
+                        resG[lIdx] = (resG[lIdx] * 0.3) + (sumG / nCount) * 0.7;
+                        resB[lIdx] = (resB[lIdx] * 0.3) + (sumB / nCount) * 0.7;
+                    }
+                }
+            }
+        }
+
+        // Voeg naadloze verlichtingscorrectie toe aan de getransfereerde textuur
+        for (let y = dMinY; y <= dMaxY; y++) {
+            const ly = y - dMinY;
+            for (let x = dMinX; x <= dMaxX; x++) {
+                const lx = x - dMinX;
+                const idx = y * width + x;
+                const lIdx = ly * bw + lx;
+
+                if (maskArray[idx] >= 30) {
+                    const pByte = idx * 4;
+                    data[pByte]     = Math.min(255, Math.max(0, (data[pByte] + resR[lIdx]) | 0));
+                    data[pByte + 1] = Math.min(255, Math.max(0, (data[pByte + 1] + resG[lIdx]) | 0));
+                    data[pByte + 2] = Math.min(255, Math.max(0, (data[pByte + 2] + resB[lIdx]) | 0));
                 }
             }
         }
@@ -1523,6 +1709,7 @@ class VroonPhotoApp {
         } else {
             this.canvas.style.transform = `scale(${this.zoomLevel}) translate(${this.panX / this.zoomLevel}px, ${this.panY / this.zoomLevel}px)`;
         }
+        this.updateCachedCanvasRect();
     }
 
     // Invoermodus Detectie & Badge (Muis, Hand / Touch, Pen / Apple Pencil)
@@ -3138,7 +3325,7 @@ class VroonPhotoApp {
         const mask = new Uint8Array(this.maskCanvas.width * this.maskCanvas.height);
         let hasMaskPixels = false;
         for (let i = 0, j = 0; i < mData.length; i += 4, j++) {
-            if (mData[i + 3] > 30 && mData[i] > 50) {
+            if (mData[i + 3] > 15) {
                 mask[j] = 255;
                 hasMaskPixels = true;
             } else {
@@ -3147,17 +3334,18 @@ class VroonPhotoApp {
         }
 
         if (!hasMaskPixels) {
-            alert("Schilder eerst met de muis of je vinger over het object of de persoon die je wilt verwijderen.");
+            alert("Schilder eerst met de muis, pen of je vinger over het object of de persoon die je wilt verwijderen.");
             return;
         }
 
         const loadingOverlay = document.getElementById('loading-overlay');
         const loadingText = document.getElementById('loading-text');
         loadingOverlay?.classList.remove('hidden');
-        if (loadingText) loadingText.textContent = "Bezig met naadloos verwijderen van object / persoon via contextuele synthese...";
+        if (loadingText) loadingText.textContent = "Bezig met naadloos verwijderen via patch-synthese & Poisson harmonisatie...";
 
+        const radius = this.inpaintBrushSize || 35;
         setTimeout(() => {
-            this.wasm.smartInpaint(photo.originalImageData, mask, 4);
+            this.wasm.smartInpaint(photo.originalImageData, mask, radius);
             this.clearMask();
             this.renderActivePhoto();
             loadingOverlay?.classList.add('hidden');
