@@ -749,73 +749,194 @@ class WasmKernel {
 }
 
 // ═══════════════════════════════════════════════════════
-//  3. LIGHTROOM & AI PRESET DEFINITIES & RECEPTEN
+//  3. LIGHTROOM CC PRESET DEFINITIES & RECEPTEN
 // ═══════════════════════════════════════════════════════
 
 const PRESET_DEFINITIONS = {
+    // 👤 PORTRETTEN (Portraits)
+    'portrait_natural': {
+        name: '👤 Natuurlijk Portret',
+        category: 'portrait',
+        params: { bwEnabled: false, exposure: 0.15, contrast: 8, highlights: -10, shadows: 14, whites: 5, blacks: -5, temp: 6, tint: 4, vibrance: 16, saturation: 4, skinProtection: 80, deblurSkinProtect: 90, smartDeblur: 10 }
+    },
+    'portrait_soft': {
+        name: '🌸 Zachte Huid & Portret',
+        category: 'portrait',
+        params: { bwEnabled: false, exposure: 0.25, contrast: -8, highlights: -16, shadows: 20, whites: -5, blacks: 5, temp: 8, tint: 4, vibrance: 12, saturation: -4, denoiseLuma: 25, denoiseChroma: 35, skinProtection: 85, deblurSkinProtect: 95 }
+    },
+    'portrait_deep': {
+        name: '👤 Diepe Huidtinten',
+        category: 'portrait',
+        params: { bwEnabled: false, exposure: 0.1, contrast: 20, highlights: -12, shadows: 12, whites: 15, blacks: -18, temp: 14, tint: 2, vibrance: 22, saturation: 8, smartDeblur: 15, vignetteAmount: -12 }
+    },
+    'portrait_glamour': {
+        name: '✨ Glamour Glow Portret',
+        category: 'portrait',
+        params: { bwEnabled: false, exposure: 0.35, contrast: -6, highlights: -20, shadows: 25, whites: 10, blacks: 0, temp: 12, tint: 6, vibrance: 20, saturation: 6, skinProtection: 85, vignetteAmount: -15 }
+    },
+
+    // 🏞️ LANDSCHAP (Landscape)
+    'landscape_vivid': {
+        name: '🏞️ Levendig Landschap',
+        category: 'landscape',
+        params: { bwEnabled: false, exposure: 0.1, contrast: 24, highlights: -25, shadows: 30, whites: 18, blacks: -14, temp: 4, tint: -2, vibrance: 48, saturation: 16, smartDeblur: 25 }
+    },
+    'landscape_warm': {
+        name: '☀️ Warm Zonlicht Landschap',
+        category: 'landscape',
+        params: { bwEnabled: false, exposure: 0.2, contrast: 16, highlights: -15, shadows: 20, whites: 12, blacks: -8, temp: 28, tint: 8, vibrance: 32, saturation: 14, smartDeblur: 15 }
+    },
+    'landscape_cool': {
+        name: '❄️ Koel & Helder Landschap',
+        category: 'landscape',
+        params: { bwEnabled: false, exposure: 0.15, contrast: 18, highlights: -12, shadows: 15, whites: 10, blacks: -10, temp: -34, tint: -6, vibrance: 28, saturation: -6, smartDeblur: 30 }
+    },
+    'landscape_hdr': {
+        name: '🏛️ Dynamisch HDR Landschap',
+        category: 'landscape',
+        params: { bwEnabled: false, exposure: 0.05, contrast: 32, highlights: -45, shadows: 50, whites: 22, blacks: -22, temp: -4, vibrance: 42, saturation: 12, smartDeblur: 35, denoiseLuma: 15 }
+    },
+
+    // 🧳 REIS & ARCHITECTUUR (Travel & Architecture)
+    'travel_vintage': {
+        name: '🧳 Vintage Reis',
+        category: 'travel',
+        params: { bwEnabled: false, exposure: 0.15, contrast: -10, highlights: -16, shadows: 22, whites: -8, blacks: 10, temp: 14, tint: 6, vibrance: 16, saturation: -10, bwGrain: 14, vignetteAmount: -18 }
+    },
     'golden_hour': {
         name: '🌅 Gouden Uur',
-        params: { bwEnabled: false, exposure: 0.25, contrast: 15, temp: 24, tint: 6, vibrance: 28, saturation: 12, smartDeblur: 15 }
+        category: 'travel',
+        params: { bwEnabled: false, exposure: 0.25, contrast: 15, highlights: -12, shadows: 20, whites: 10, blacks: -8, temp: 26, tint: 6, vibrance: 30, saturation: 14, smartDeblur: 15 }
     },
     'blue_hour': {
-        name: '🌌 Blauwe Uur',
-        params: { bwEnabled: false, exposure: 0.1, contrast: 20, temp: -42, tint: 14, vibrance: 42, saturation: 12, smartDeblur: 20, denoiseLuma: 15, denoiseChroma: 20, vignetteAmount: -22 }
+        name: '🌌 Blauwe Uur Schemering',
+        category: 'travel',
+        params: { bwEnabled: false, exposure: 0.1, contrast: 20, highlights: -16, shadows: 16, whites: 8, blacks: -12, temp: -42, tint: 14, vibrance: 44, saturation: 12, smartDeblur: 20, denoiseLuma: 18, denoiseChroma: 22, vignetteAmount: -22 }
     },
-    'matte_film': {
-        name: '🌲 Matte Film',
-        params: { bwEnabled: false, exposure: 0.15, contrast: -12, temp: -4, tint: 8, vibrance: 14, saturation: -8, bwGrain: 15, vignetteAmount: -15 }
+    'arch_clean': {
+        name: '🏛️ Strakke Architectuur',
+        category: 'travel',
+        params: { bwEnabled: false, exposure: 0.1, contrast: 30, highlights: -30, shadows: 35, whites: 25, blacks: -18, temp: -4, vibrance: 22, saturation: 6, smartDeblur: 42, denoiseLuma: 12 }
     },
-    'hdr_arch': {
-        name: '🏛️ Architectuur & HDR',
-        params: { bwEnabled: false, exposure: 0.1, contrast: 30, temp: -5, vibrance: 45, saturation: 15, smartDeblur: 40, denoiseLuma: 15 }
-    },
-    'soft_portrait': {
-        name: '🌸 Zacht Portret',
-        params: { bwEnabled: false, exposure: 0.25, contrast: -6, temp: 8, tint: 4, vibrance: 12, saturation: 5, denoiseLuma: 25, denoiseChroma: 35, skinProtection: 80, deblurSkinProtect: 90 }
-    },
+
+    // 🎬 CINEMATIC & CREATIEF (Cinematic / Creative)
     'teal_orange': {
         name: '🏙️ Moody Teal & Orange',
-        params: { bwEnabled: false, exposure: 0.0, contrast: 26, temp: 16, tint: -12, vibrance: 50, saturation: 14, smartDeblur: 20 }
+        category: 'cinematic',
+        params: { bwEnabled: false, exposure: 0.0, contrast: 26, highlights: -15, shadows: 15, whites: 12, blacks: -14, temp: 16, tint: -14, vibrance: 52, saturation: 14, smartDeblur: 20 }
+    },
+    'muted_green': {
+        name: '🌿 Gedempt Groen (Matte)',
+        category: 'cinematic',
+        params: { bwEnabled: false, exposure: 0.1, contrast: 14, highlights: -22, shadows: 24, whites: -6, blacks: 6, temp: -8, tint: -12, vibrance: 12, saturation: -18, vignetteAmount: -16 }
     },
     'autumn_amber': {
         name: '🍂 Herfst Amber',
-        params: { bwEnabled: false, exposure: 0.1, contrast: 22, temp: 32, tint: 14, vibrance: 38, saturation: 20 }
+        category: 'cinematic',
+        params: { bwEnabled: false, exposure: 0.12, contrast: 22, highlights: -12, shadows: 18, whites: 14, blacks: -10, temp: 34, tint: 14, vibrance: 40, saturation: 22 }
     },
-    'winter_cool': {
-        name: '❄️ Winter Koud',
-        params: { bwEnabled: false, exposure: 0.2, contrast: 16, temp: -38, tint: -8, vibrance: -10, saturation: -6, smartDeblur: 25 }
+    'bleach_bypass': {
+        name: '🎬 Bleach Bypass Drama',
+        category: 'cinematic',
+        params: { bwEnabled: false, exposure: 0.0, contrast: 48, highlights: 25, shadows: -28, whites: 30, blacks: -32, temp: -6, tint: 4, vibrance: -35, saturation: -45, smartDeblur: 25 }
     },
-    'smart_focus_deblur': {
-        name: '🔍 Focus & Gezichtsbehoud',
-        params: { bwEnabled: false, smartDeblur: 80, deblurSkinProtect: 85, contrast: 15, vibrance: 15 }
+
+    // 🎞️ VINTAGE & ANALOGE FILM (Vintage / Film)
+    'film_classic_35mm': {
+        name: '🎞️ Klassiek 35mm Analoog',
+        category: 'film',
+        params: { bwEnabled: false, exposure: 0.15, contrast: -8, highlights: -14, shadows: 20, whites: -6, blacks: 8, temp: 6, tint: 8, vibrance: 18, saturation: -6, bwGrain: 20, vignetteAmount: -16 }
+    },
+    'film_portra': {
+        name: '📷 Kodak Portra 400',
+        category: 'film',
+        params: { bwEnabled: false, exposure: 0.2, contrast: 12, highlights: -16, shadows: 24, whites: 8, blacks: -6, temp: 14, tint: 10, vibrance: 24, saturation: 8, bwGrain: 12, skinProtection: 80, deblurSkinProtect: 85 }
+    },
+    'film_polaroid': {
+        name: '📸 Instant Polaroid',
+        category: 'film',
+        params: { bwEnabled: false, exposure: 0.25, contrast: -16, highlights: -22, shadows: 32, whites: -12, blacks: 14, temp: 18, tint: 12, vibrance: -8, saturation: -14, bwGrain: 25, vignetteAmount: -26 }
+    },
+    'matte_film': {
+        name: '🌲 Matte Film (Vintage)',
+        category: 'film',
+        params: { bwEnabled: false, exposure: 0.15, contrast: -12, highlights: -15, shadows: 25, whites: -8, blacks: 12, temp: -4, tint: 8, vibrance: 14, saturation: -8, bwGrain: 16, vignetteAmount: -15 }
+    },
+
+    // ⚡ ZWART-WIT (B&W Lightroom CC)
+    'bw_landscape': {
+        name: '🏞️ B&W Landschap Punch',
+        category: 'bw',
+        params: { bwEnabled: true, bwRed: 45, bwGreen: 25, bwBlue: -20, bwContrast: 48, bwClarity: 52, bwGrain: 6, vignetteAmount: -12 }
+    },
+    'bw_portrait': {
+        name: '👤 B&W Zacht Portret',
+        category: 'bw',
+        params: { bwEnabled: true, bwRed: 55, bwGreen: 35, bwBlue: -10, bwContrast: 22, bwClarity: 18, bwGrain: 8 }
     },
     'ansel_bw': {
-        name: '⚡ Knallend Zwart-Wit',
-        params: { bwEnabled: true, bwRed: 35, bwGreen: 20, bwBlue: -15, bwContrast: 35, bwClarity: 40, bwGrain: 8 }
+        name: '⚡ Ansel Adams Hoog Contrast',
+        category: 'bw',
+        params: { bwEnabled: true, bwRed: 40, bwGreen: 15, bwBlue: -25, bwContrast: 55, bwClarity: 55, bwGrain: 12 }
     },
     'film_noir': {
-        name: '🎬 Film Noir (B&W)',
-        params: { bwEnabled: true, bwRed: 50, bwGreen: -10, bwBlue: -35, bwContrast: 65, bwClarity: 50, bwGrain: 25, vignetteAmount: -40 }
+        name: '🎬 Film Noir & Korrel',
+        category: 'bw',
+        params: { bwEnabled: true, bwRed: 50, bwGreen: -10, bwBlue: -35, bwContrast: 68, bwClarity: 50, bwGrain: 28, vignetteAmount: -42 }
     },
+    'bw_faded': {
+        name: '🌫️ B&W Mat & Faded',
+        category: 'bw',
+        params: { bwEnabled: true, bwRed: 30, bwGreen: 20, bwBlue: 10, bwContrast: -15, bwClarity: 25, bwGrain: 20, vignetteAmount: -16 }
+    },
+
+    // 🛠️ HERSTEL & HULPMIDDELEN (Utility & Fix)
     'stage_fix': {
-        name: '🔴 Stage Red Light Fix',
+        name: '🔴 Concert Rood Licht Fix',
+        category: 'utility',
         params: { bwEnabled: false, stageRedFix: 90, colorBleedReduction: 75, skinProtection: 65, stageBandingReduction: 80, exposure: 0.0, contrast: 10 }
     },
     'denoise_high_iso': {
         name: '🛡️ Hoge ISO Ruis Fix',
+        category: 'utility',
         params: { bwEnabled: false, denoiseLuma: 75, denoiseChroma: 85, denoiseDetail: 50 }
     },
-    'knallend_contrast': {
-        name: '⚡ Knallend Contrast',
-        params: { bwEnabled: true, bwRed: 45, bwGreen: 10, bwBlue: -25, bwContrast: 50, bwClarity: 55, bwGrain: 12 }
+    'smart_focus_deblur': {
+        name: '🔍 Focus & Gezichtsbehoud',
+        category: 'utility',
+        params: { bwEnabled: false, smartDeblur: 80, deblurSkinProtect: 85, contrast: 15, vibrance: 15 }
+    },
+
+    // Aliases voor 100% achterwaartse compatibiliteit
+    'soft_portrait': {
+        name: '🌸 Zachte Huid & Portret',
+        category: 'portrait',
+        params: { bwEnabled: false, exposure: 0.25, contrast: -8, highlights: -16, shadows: 20, whites: -5, blacks: 5, temp: 8, tint: 4, vibrance: 12, saturation: -4, denoiseLuma: 25, denoiseChroma: 35, skinProtection: 85, deblurSkinProtect: 95 }
+    },
+    'hdr_arch': {
+        name: '🏛️ Strakke Architectuur',
+        category: 'travel',
+        params: { bwEnabled: false, exposure: 0.1, contrast: 30, highlights: -30, shadows: 35, whites: 25, blacks: -18, temp: -4, vibrance: 22, saturation: 6, smartDeblur: 42, denoiseLuma: 12 }
+    },
+    'winter_cool': {
+        name: '❄️ Koel & Helder Landschap',
+        category: 'landscape',
+        params: { bwEnabled: false, exposure: 0.15, contrast: 18, highlights: -12, shadows: 15, whites: 10, blacks: -10, temp: -34, tint: -6, vibrance: 28, saturation: -6, smartDeblur: 30 }
     },
     'ansel_adams': {
-        name: '🏞️ Ansel Adams',
-        params: { bwEnabled: true, bwRed: 35, bwGreen: 20, bwBlue: -15, bwContrast: 35, bwClarity: 40, bwGrain: 8 }
+        name: '⚡ Ansel Adams Hoog Contrast',
+        category: 'bw',
+        params: { bwEnabled: true, bwRed: 40, bwGreen: 15, bwBlue: -25, bwContrast: 55, bwClarity: 55, bwGrain: 12 }
+    },
+    'knallend_contrast': {
+        name: '⚡ Ansel Adams Hoog Contrast',
+        category: 'bw',
+        params: { bwEnabled: true, bwRed: 40, bwGreen: 15, bwBlue: -25, bwContrast: 55, bwClarity: 55, bwGrain: 12 }
     },
     'dramatic_street': {
-        name: '📷 Straatfoto',
-        params: { bwEnabled: true, bwRed: 30, bwGreen: 15, bwBlue: -10, bwContrast: 30, bwClarity: 65, bwGrain: 18 }
+        name: '🏞️ B&W Landschap Punch',
+        category: 'bw',
+        params: { bwEnabled: true, bwRed: 45, bwGreen: 25, bwBlue: -20, bwContrast: 48, bwClarity: 52, bwGrain: 6, vignetteAmount: -12 }
     }
 };
 
@@ -1100,6 +1221,16 @@ class VroonPhotoApp {
         });
         document.querySelectorAll('.preset-card').forEach(card => {
             card.addEventListener('click', (e) => this.applyGlobalPreset(e.currentTarget.dataset.preset, 100));
+        });
+
+        // Lightroom CC Preset Categorie Tabs filteren
+        document.querySelectorAll('.preset-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.preset-tab').forEach(t => t.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                const cat = e.currentTarget.dataset.cat;
+                this.filterPresetCategory(cat);
+            });
         });
 
         // Vignette Snelle Knoppen (Donker ◄► Wit)
@@ -2742,6 +2873,22 @@ class VroonPhotoApp {
         document.querySelectorAll('.preset-card').forEach(card => {
             card.classList.toggle('active', card.dataset.preset === this.activePresetKey);
         });
+    }
+
+    filterPresetCategory(cat = 'all') {
+        const cards = document.querySelectorAll('.preset-card');
+        const headers = document.querySelectorAll('.preset-category-header');
+        if (cat === 'all') {
+            cards.forEach(c => c.style.display = 'flex');
+            headers.forEach(h => h.style.display = 'flex');
+        } else {
+            cards.forEach(c => {
+                c.style.display = (c.dataset.cat === cat) ? 'flex' : 'none';
+            });
+            headers.forEach(h => {
+                h.style.display = (h.dataset.cat === cat) ? 'flex' : 'none';
+            });
+        }
     }
 
     checkStageRed(imgData) {
