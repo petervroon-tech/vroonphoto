@@ -1007,12 +1007,12 @@ const PRESET_DEFINITIONS = {
 
     // 🎬 CINEMATIC & CREATIEF (Cinematic / Creative)
     'teal_orange': {
-        name: '🏙️ Moody Teal & Orange',
+        name: '🏙️ Filmisch Blauw & Oranje',
         category: 'cinematic',
         params: { bwEnabled: false, exposure: 0.0, contrast: 26, highlights: -15, shadows: 15, whites: 12, blacks: -14, temp: 16, tint: -14, vibrance: 52, saturation: 14, smartDeblur: 20 }
     },
     'muted_green': {
-        name: '🌿 Gedempt Groen (Matte)',
+        name: '🌿 Gedempt Noords Groen',
         category: 'cinematic',
         params: { bwEnabled: false, exposure: 0.1, contrast: 14, highlights: -22, shadows: 24, whites: -6, blacks: 6, temp: -8, tint: -12, vibrance: 12, saturation: -18, vignetteAmount: -16 }
     },
@@ -1022,7 +1022,7 @@ const PRESET_DEFINITIONS = {
         params: { bwEnabled: false, exposure: 0.12, contrast: 22, highlights: -12, shadows: 18, whites: 14, blacks: -10, temp: 34, tint: 14, vibrance: 40, saturation: 22 }
     },
     'bleach_bypass': {
-        name: '🎬 Bleach Bypass Drama',
+        name: '🎬 Bleach Bypass Contrast',
         category: 'cinematic',
         params: { bwEnabled: false, exposure: 0.0, contrast: 48, highlights: 25, shadows: -28, whites: 30, blacks: -32, temp: -6, tint: 4, vibrance: -35, saturation: -45, smartDeblur: 25 }
     },
@@ -1044,50 +1044,54 @@ const PRESET_DEFINITIONS = {
         params: { bwEnabled: false, exposure: 0.25, contrast: -16, highlights: -22, shadows: 32, whites: -12, blacks: 14, temp: 18, tint: 12, vibrance: -8, saturation: -14, bwGrain: 25, vignetteAmount: -26 }
     },
     'matte_film': {
-        name: '🌲 Matte Film (Vintage)',
+        name: '🌲 Matte Analoge Film',
         category: 'film',
         params: { bwEnabled: false, exposure: 0.15, contrast: -12, highlights: -15, shadows: 25, whites: -8, blacks: 12, temp: -4, tint: 8, vibrance: 14, saturation: -8, bwGrain: 16, vignetteAmount: -15 }
     },
 
     // ⚡ ZWART-WIT (B&W Lightroom CC)
     'bw_landscape': {
-        name: '🏞️ B&W Landschap Punch',
+        name: '🏞️ Zwart-Wit Landschap',
         category: 'bw',
         params: { bwEnabled: true, bwRed: 45, bwGreen: 25, bwBlue: -20, bwContrast: 48, bwClarity: 52, bwGrain: 6, vignetteAmount: -12 }
     },
     'bw_portrait': {
-        name: '👤 B&W Zacht Portret',
+        name: '👤 Zwart-Wit Zacht Portret',
         category: 'bw',
         params: { bwEnabled: true, bwRed: 55, bwGreen: 35, bwBlue: -10, bwContrast: 22, bwClarity: 18, bwGrain: 8 }
     },
     'ansel_bw': {
-        name: '⚡ Ansel Adams Hoog Contrast',
+        name: '⚡ Ansel Adams Contrast',
         category: 'bw',
         params: { bwEnabled: true, bwRed: 40, bwGreen: 15, bwBlue: -25, bwContrast: 55, bwClarity: 55, bwGrain: 12 }
     },
     'film_noir': {
-        name: '🎬 Film Noir & Korrel',
+        name: '🎬 Film Noir Zwart-Wit',
         category: 'bw',
         params: { bwEnabled: true, bwRed: 50, bwGreen: -10, bwBlue: -35, bwContrast: 68, bwClarity: 50, bwGrain: 28, vignetteAmount: -42 }
     },
     'bw_faded': {
-        name: '🌫️ B&W Mat & Faded',
+        name: '🌫️ Zwart-Wit Mat & Zacht',
         category: 'bw',
         params: { bwEnabled: true, bwRed: 30, bwGreen: 20, bwBlue: 10, bwContrast: -15, bwClarity: 25, bwGrain: 20, vignetteAmount: -16 }
     },
 
     // 🛠️ HERSTEL & HULPMIDDELEN (Utility & Fix)
     'stage_fix': {
-        name: '🔴 Concert Rood Licht Fix',
+        name: '🔴 Concert Rood Licht Herstel',
         category: 'utility',
         params: { bwEnabled: false, stageRedFix: 90, colorBleedReduction: 75, skinProtection: 65, stageBandingReduction: 80, exposure: 0.0, contrast: 10 }
     },
     'denoise_high_iso': {
-        name: '🛡️ Hoge ISO Ruis Fix',
+        name: '🛡️ Hoge ISO Ruis Herstel',
         category: 'utility',
         params: { bwEnabled: false, denoiseLuma: 75, denoiseChroma: 85, denoiseDetail: 50 }
     },
     'smart_focus_deblur': {
+        name: '🔍 Focus & Gezichtsbehoud',
+        category: 'utility',
+        params: { bwEnabled: false, smartDeblur: 80, deblurSkinProtect: 85, contrast: 15, vibrance: 15 }
+    },
         name: '🔍 Focus & Gezichtsbehoud',
         category: 'utility',
         params: { bwEnabled: false, smartDeblur: 80, deblurSkinProtect: 85, contrast: 15, vibrance: 15 }
