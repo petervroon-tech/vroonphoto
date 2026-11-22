@@ -16,3 +16,10 @@
 ## 3. Zichtbaarheid in Antigravity
 - Toon en respecteer altijd de status van het wekelijkse tegoed versus de extra gekochte credits.
 
+## 4. Mobile & Tablet Conventies: Single-Focus Intent ("KISS")
+- **Mobile-friendly single-focus intent:** Structuur volgens mobiele en tabletconventies i.p.v. zware desktop-metaforen ("Keep it Simple and Sweet - KISS").
+- **Directe Feedback op Knoppen/Acties (Click/Tick):** Bevestig elke klik/tap direct (gelukt, fout, aantal geladen foto's/albums).
+- **Leesbaarheid & Makkelijke Scroll:** Knoppen en teksten geheel leesbaar zonder afkapping; vloeiend touch-scrollen (`-webkit-overflow-scrolling: touch`).
+- **Datavalidatie & Bronvermelding:** Toon altijd de herkomst van data (bv. camera EXIF-data, GPS-locatie, albumbron).
+
+
