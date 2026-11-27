@@ -1092,10 +1092,6 @@ const PRESET_DEFINITIONS = {
         category: 'utility',
         params: { bwEnabled: false, smartDeblur: 80, deblurSkinProtect: 85, contrast: 15, vibrance: 15 }
     },
-        name: '🔍 Focus & Gezichtsbehoud',
-        category: 'utility',
-        params: { bwEnabled: false, smartDeblur: 80, deblurSkinProtect: 85, contrast: 15, vibrance: 15 }
-    },
 
     // Aliases voor 100% achterwaartse compatibiliteit
     'soft_portrait': {
